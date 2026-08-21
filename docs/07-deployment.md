@@ -62,7 +62,7 @@ the question. Given the frontend is on Vercel, $7/mo is the whole hosting bill.
    | `SUPABASE_SERVICE_ROLE_KEY` | Project Settings → API ⚠ bypasses RLS |
    | `SUPABASE_JWT_SECRET` | Project Settings → API → JWT Settings |
    | `DATABASE_URL` | see the pooler note below |
-   | `CORS_ORIGINS` | `["https://your-domain.com"]` — JSON array, not a bare string |
+   | `CORS_ORIGINS` | `https://your-domain.com` — or a comma-separated list, or a JSON array |
 
 4. Deploy. Confirm `https://<service>.onrender.com/health` returns 200.
    `/docs` is correctly 404 in production — `main.py` disables it there.

@@ -1,10 +1,11 @@
 """Application settings. Everything environment-driven; no secrets in Git (spec §66)."""
 
+import json
 from functools import lru_cache
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import Field, PostgresDsn, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -47,7 +48,15 @@ class Settings(BaseSettings):
     ADMIN_ROLE: str = "admin"
 
     # --- CORS ---
-    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    # `NoDecode` because pydantic-settings JSON-decodes complex types INSIDE
+    # the env source, before any validator runs — so a value like
+    # `https://example.com` did not fail validation with a useful message, it
+    # raised SettingsError at import time and took the whole process down
+    # before uvicorn could bind a port. On a host where this is typed into a
+    # web form rather than a file, that is a boot loop caused by a missing
+    # pair of brackets. Decoding here instead means the accepted formats are
+    # explicit and the error names the field.
+    CORS_ORIGINS: Annotated[list[str], NoDecode] = ["http://localhost:3000"]
 
     # --- Media limits (spec §29, §45). Configurable, as the spec requires. ---
     MAX_IMAGE_BYTES: int = 8 * 1024 * 1024
@@ -74,6 +83,42 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.ENVIRONMENT == "production"
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def _parse_cors_origins(cls, v: object) -> object:
+        """Accept a JSON array or a plain comma-separated list.
+
+        Both of these mean the same thing, and both are things a person
+        reasonably types into a dashboard field:
+
+            ["https://a.com", "https://b.com"]
+            https://a.com, https://b.com
+
+        A single bare origin works too. Anything genuinely malformed still
+        fails, but as a normal validation error naming CORS_ORIGINS rather
+        than an opaque SettingsError during module import.
+        """
+        if not isinstance(v, str):
+            return v
+
+        raw = v.strip()
+        if not raw:
+            return []
+
+        if raw.startswith("["):
+            try:
+                return json.loads(raw)
+            except json.JSONDecodeError as exc:
+                # The overwhelmingly common cause is single quotes, which look
+                # like a list to a human and are not JSON.
+                raise ValueError(
+                    f"CORS_ORIGINS looks like a JSON array but will not parse ({exc.msg}). "
+                    'Use double quotes: ["https://example.com"] — or drop the '
+                    "brackets entirely and give a comma-separated list."
+                ) from exc
+
+        return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
     @field_validator("SUPABASE_JWT_SECRET")
     @classmethod
