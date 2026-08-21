@@ -7,7 +7,7 @@ products so people can choose with confidence — then hand them off to Amazon,s
 Flipkart, or the brand's own store to buy.
 
 PickDForYou is **not** a marketplace. There is no cart, no checkout, no
-inventory. The value is the research and decision layer.
+inventory. The value is the research and decision layerddddd
 
 ---
 
