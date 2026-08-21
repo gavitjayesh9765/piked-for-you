@@ -3,7 +3,7 @@
 > **The decision layer between the user and the marketplace.**
 
 A product research, comparison and recommendation platform. We research
-products so people can choose with confidence — then hand them off to Amazon,
+products so people can choose with confidence — then hand them off to Amazon,ss
 Flipkart, or the brand's own store to buy.
 
 PickDForYou is **not** a marketplace. There is no cart, no checkout, no
