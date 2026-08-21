@@ -32,12 +32,39 @@ const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS !== "0";
 /** Public content is cacheable and revalidated on a short window (spec §48). */
 const REVALIDATE = 300;
 
+/**
+ * Upper bound on a single API call.
+ *
+ * Sized to CLEAR a Render Free cold start, not to cut one off. That instance
+ * spins down after 15 minutes idle and takes ~1 minute to answer the first
+ * request; a shorter timeout would turn a slow-but-successful page into an
+ * error page, which is strictly worse. Vercel Hobby allows a 300s function, so
+ * without any bound a genuinely dead API would hold the request open for five
+ * minutes before the platform killed it.
+ */
+const TIMEOUT_MS = 75_000;
+
 async function get<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...init,
-    headers: { Accept: "application/json", ...init?.headers },
-    next: { revalidate: REVALIDATE },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}${path}`, {
+      ...init,
+      headers: { Accept: "application/json", ...init?.headers },
+      next: { revalidate: REVALIDATE },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch (cause) {
+    // DNS failure, connection refused, or the timeout above. `fetch` reports
+    // all of these as a bare TypeError, which surfaces as an opaque 500 with
+    // nothing naming the endpoint. 503 is the honest status: the upstream is
+    // unavailable, and the request may well succeed on retry.
+    throw new ApiError(
+      `GET ${path} could not reach the API at ${API_URL}`,
+      503,
+      { cause },
+    );
+  }
+
   if (!res.ok) {
     throw new ApiError(`GET ${path} failed`, res.status);
   }
@@ -48,8 +75,9 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status: number,
+    options?: { cause?: unknown },
   ) {
-    super(message);
+    super(message, options);
     this.name = "ApiError";
   }
 }
