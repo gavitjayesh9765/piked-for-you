@@ -98,6 +98,25 @@ If you ever need 6543, add `?prepared_statement_cache_size=0` and pass
 
 ### 2. Frontend → Vercel
 
+`frontend/vercel.json` is deliberately four lines. Vercel validates it against
+a strict schema and **rejects any unknown property**, including the `"//"` key
+that works as a comment in `package.json` — there is no way to comment a
+`vercel.json`, so the reasoning lives here instead:
+
+- **`regions: ["bom1"]`** — Mumbai. Vercel defaults every new project to
+  `iad1` (Washington DC), which would put the SSR layer ~200ms from both
+  Supabase `ap-south-1` and the Render backend, paid on every server-rendered
+  request and several times per page. Hobby allows exactly ONE region, so this
+  array must stay length 1: listing more regions than the plan permits fails
+  the deploy before the build step.
+- **No robots headers.** `app/layout.tsx` and `app/admin/layout.tsx` already
+  declare them through Next metadata. A second source would emit a conflicting
+  `X-Robots-Tag` on admin routes.
+- **No `services` block.** Vercel's import screen detects the FastAPI backend
+  and offers to generate a multi-service config. Do not accept it — the
+  backend belongs on Render. Setting Root Directory to `frontend` makes the
+  detection go away.
+
 1. Import the repo, set **Root Directory** to `frontend`.
 2. [`frontend/vercel.json`](../frontend/vercel.json) pins functions to `bom1`.
    **Verify this in the dashboard after the first deploy** — Vercel defaults to
