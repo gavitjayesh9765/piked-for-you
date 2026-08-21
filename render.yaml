@@ -1,0 +1,92 @@
+# Render Blueprint — PickDForYou API.
+#
+# Infrastructure as code so the deploy is reproducible and you are never one
+# suspended account away from re-clicking a dashboard from memory. Create the
+# service with: Render Dashboard -> New -> Blueprint -> point at this repo.
+#
+# ---------------------------------------------------------------------------
+# WHY `starter` AND NOT `free`
+#
+# The keep-alive-ping plan does not survive Render's own arithmetic. A free
+# workspace gets 750 instance-hours a month, and Render's docs are explicit
+# that "spun-down services don't consume Free instance hours" — the free tier
+# only adds up BECAUSE services sleep. A calendar month is ~730 hours, so
+# pinging a single service awake around the clock spends ~730 of the 750 and
+# leaves ~20 hours of headroom for the entire month. Every redeploy, restart
+# and overlap eats into that, and when it runs out the service is suspended
+# until the 1st.
+#
+# It is also the wrong tier on three counts that no ping can fix:
+#   - Free instances have an EPHEMERAL filesystem, wiped on every restart.
+#   - Render has no India region (Oregon, Ohio, Virginia, Frankfurt,
+#     Singapore), so Singapore below is the closest to Supabase's ap-south-1.
+#   - Render's docs state plainly that Free is "not for production
+#     applications", and this one takes affiliate revenue.
+#
+# Starter is $7/mo, always-on by design, needs no external cron to stay up,
+# and removes the ToS question entirely.
+# ---------------------------------------------------------------------------
+
+services:
+  - type: web
+    name: pickdforyou-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+
+    # Closest region to Supabase ap-south-1 (Mumbai) that Render offers:
+    # ~55-75ms. Oregon would be ~230ms, and every SSR page render makes
+    # several sequential API calls, so that difference compounds per request.
+    region: singapore
+    plan: starter
+
+    healthCheckPath: /health
+
+    # Zero-downtime deploys. Render holds the old instance until the new one
+    # passes healthCheckPath, which matters because an in-flight price-scrape
+    # BackgroundTask on the old instance is not restartable.
+    autoDeploy: true
+
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: "false"
+
+      # --- Supabase. Set every one of these in the Render dashboard under
+      #     Environment -> Secret. `sync: false` means Render prompts for the
+      #     value and never stores it in this file. ---
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      # BYPASSES ROW LEVEL SECURITY. Belongs here and nowhere else — never in
+      # any NEXT_PUBLIC_ variable on the Vercel side.
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_JWT_SECRET
+        sync: false
+
+      # --- Database ---
+      # Use Supabase's SESSION pooler (port 5432), not the transaction pooler
+      # (6543). app/db/session.py builds a SQLAlchemy pool with pool_pre_ping
+      # and does not disable prepared statements; asyncpg emits those, and
+      # pgbouncer in transaction mode rejects them. See docs/07-deployment.md.
+      - key: DATABASE_URL
+        sync: false
+
+      # 512MB instance, one uvicorn worker. The default 10+20 opens up to 30
+      # connections against a Supabase free project that does not have 30 to
+      # give. Trimmed to match the actual concurrency of a single worker.
+      - key: DB_POOL_SIZE
+        value: "5"
+      - key: DB_MAX_OVERFLOW
+        value: "5"
+
+      # --- CORS. Must list the real frontend origin; a wrong value here fails
+      #     only in the browser, which makes it look like a frontend bug. ---
+      - key: CORS_ORIGINS
+        sync: false
+
+      - key: REQUIRE_ADMIN_MFA
+        value: "true"
