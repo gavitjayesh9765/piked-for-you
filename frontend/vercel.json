@@ -1,15 +1,17 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "regions": ["bom1"],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [{ "key": "X-Robots-Tag", "value": "index, follow" }]
-    },
-    {
-      "source": "/admin/(.*)",
-      "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }]
-    }
-  ]
+
+  "//": [
+    "Mumbai. Vercel defaults every new project to iad1 (Washington DC), which",
+    "would put the SSR layer ~200ms from both Supabase ap-south-1 and the",
+    "Render backend — paid on every server-rendered request, several times per",
+    "page. Hobby allows exactly ONE region, so this array must stay length 1:",
+    "listing more regions than the plan permits fails the deploy before build.",
+    "",
+    "Robots directives are deliberately NOT set here. app/layout.tsx and",
+    "app/admin/layout.tsx already declare them through Next metadata, and a",
+    "second source would emit a conflicting X-Robots-Tag on admin routes."
+  ],
+  "regions": ["bom1"]
 }
