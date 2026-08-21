@@ -21,10 +21,14 @@ dependencies = [
   "pyjwt[crypto]>=2.10.0",
   # Supabase Storage + Auth admin API
   "httpx>=0.28.0",
-  # Media handling — real validation needs to decode the file, not trust it
+  # Media handling — real validation needs to decode the file, not trust it.
+  # Pillow IS that validation (app/modules/admin/media.py): a file that
+  # decodes as an image is an image, which is a stronger claim than any
+  # header sniff. Deliberately no python-magic: it was declared here and
+  # imported nowhere, and it binds to libmagic — a system library pip cannot
+  # install, which is the only thing that made this app need a Dockerfile.
   "python-multipart>=0.0.12",
   "pillow>=11.0.0",
-  "python-magic>=0.4.27",
   # Rate limiting / caching
   "redis>=5.2.0",
   "slowapi>=0.1.9",

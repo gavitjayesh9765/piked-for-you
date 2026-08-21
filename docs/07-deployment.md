@@ -5,7 +5,7 @@ Three pieces, three places:
 | Piece | Host | Region | Cost |
 |---|---|---|---|
 | Next.js frontend | Vercel | `bom1` (Mumbai) | $0 Hobby / $20 Pro |
-| FastAPI backend | Render | `singapore` | $7/mo Starter |
+| FastAPI backend | Render | `singapore` | $0 Free (→ $7 Starter at launch) |
 | Postgres + Auth + Storage | Supabase | `ap-south-1` (Mumbai) | $0 free tier |
 
 Everything is pinned to Mumbai or as close to it as the vendor offers. That is
@@ -66,6 +66,19 @@ the question. Given the frontend is on Vercel, $7/mo is the whole hosting bill.
 
 4. Deploy. Confirm `https://<service>.onrender.com/health` returns 200.
    `/docs` is correctly 404 in production — `main.py` disables it there.
+
+#### No Docker
+
+The service uses Render's **native Python runtime**. The only thing that ever
+argued for a Dockerfile was `python-magic`, which binds to libmagic — a system
+library pip cannot install. It turned out to be declared in `pyproject.toml`
+and imported nowhere: media validation is done by decoding the file with
+Pillow (`app/modules/admin/media.py`), a stronger check than any header sniff.
+The dependency was removed and the Dockerfile with it.
+
+Everything remaining resolves to a prebuilt manylinux wheel — Pillow, asyncpg,
+cryptography, uvloop, httptools — so the build has no compiler step and needs
+nothing installed at the OS level.
 
 #### The pooler trap
 
@@ -144,5 +157,5 @@ Not blockers for a deploy, but each one is real:
 ## Routine deploys
 
 Both hosts deploy on push to `main`. Backend changes take ~3–5 minutes
-(Docker build); frontend ~1–2. Roll back from either dashboard — Render keeps
+(pip install); frontend ~1–2. Roll back from either dashboard — Render keeps
 previous images, Vercel keeps previous deployments.
