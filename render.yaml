@@ -5,26 +5,36 @@
 # service with: Render Dashboard -> New -> Blueprint -> point at this repo.
 #
 # ---------------------------------------------------------------------------
-# WHY `starter` AND NOT `free`
+# PLAN: `free` WHILE BUILDING, `starter` BEFORE LAUNCH
 #
-# The keep-alive-ping plan does not survive Render's own arithmetic. A free
-# workspace gets 750 instance-hours a month, and Render's docs are explicit
-# that "spun-down services don't consume Free instance hours" — the free tier
-# only adds up BECAUSE services sleep. A calendar month is ~730 hours, so
-# pinging a single service awake around the clock spends ~730 of the 750 and
-# leaves ~20 hours of headroom for the entire month. Every redeploy, restart
-# and overlap eats into that, and when it runs out the service is suspended
-# until the 1st.
+# Free is set deliberately, and it is a temporary setting. It is fine right
+# now — nobody is using the site, so a cold start costs you a minute of your
+# own time and nothing else. It stops being fine the moment real users arrive.
 #
-# It is also the wrong tier on three counts that no ping can fix:
-#   - Free instances have an EPHEMERAL filesystem, wiped on every restart.
-#   - Render has no India region (Oregon, Ohio, Virginia, Frankfurt,
-#     Singapore), so Singapore below is the closest to Supabase's ap-south-1.
-#   - Render's docs state plainly that Free is "not for production
-#     applications", and this one takes affiliate revenue.
+# What Free costs you:
+#   - SPIN-DOWN after 15 minutes idle, then ~1 minute to wake. A first-time
+#     visitor sees a loading page for a minute. That is the whole ballgame for
+#     an affiliate site: they leave.
+#   - 750 INSTANCE-HOURS/month, and Render's docs are explicit that
+#     "spun-down services don't consume Free instance hours" — the tier only
+#     adds up BECAUSE services sleep. A month is ~730 hours, so a keep-alive
+#     ping spends ~730 of the 750 and leaves ~20 hours of headroom for the
+#     whole month. Redeploys eat that, then the service is suspended until
+#     the 1st. This is why the ping plan was abandoned; it is arithmetic.
+#   - EPHEMERAL FILESYSTEM, wiped on every restart. Harmless here only
+#     because uploads go to Supabase Storage — keep it that way.
+#   - Price-scrape BackgroundTasks DIE if the instance spins down mid-run.
+#     Do not kick off a long scrape and walk away while on Free.
+#   - Render states plainly that Free is "not for production applications",
+#     and this one takes affiliate revenue.
 #
-# Starter is $7/mo, always-on by design, needs no external cron to stay up,
-# and removes the ToS question entirely.
+# Switching later is this one line plus a redeploy. Set a reminder.
+#
+# REGION: Render has no India region (Oregon, Ohio, Virginia, Frankfurt,
+# Singapore). Singapore is the closest to Supabase ap-south-1 at ~55-75ms.
+# If Render rejects `singapore` on the Free plan, do NOT silently fall back
+# to Oregon — that is ~230ms to the database on every server-rendered
+# request. Move to Starter instead, or rethink the host.
 # ---------------------------------------------------------------------------
 
 services:
@@ -38,7 +48,8 @@ services:
     # ~55-75ms. Oregon would be ~230ms, and every SSR page render makes
     # several sequential API calls, so that difference compounds per request.
     region: singapore
-    plan: starter
+    # ⚠ FLIP THIS TO `starter` BEFORE YOU LAUNCH. See the note above.
+    plan: free
 
     healthCheckPath: /health
 
