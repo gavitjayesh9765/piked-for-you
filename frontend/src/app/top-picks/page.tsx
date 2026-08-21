@@ -214,6 +214,13 @@ function RankedRow({ product, rank }: { product: ProductSummary; rank: number })
           </h3>
 
           <p className="mt-1.5 line-clamp-1 text-body-sm text-ink-muted">{tagline}</p>
+
+          {/* The right-hand price column is gone below `sm`, so the price
+              rejoins the copy rather than vanishing — on a ranked board it is
+              half of what makes a position arguable. */}
+          <p className="tabular mt-2 text-body-sm font-bold text-ink sm:hidden">
+            {formatPrice(pricing.current, pricing.currency)}
+          </p>
         </div>
 
         {/* Signals — badge and price collapse away first, the score never does */}

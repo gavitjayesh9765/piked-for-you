@@ -89,10 +89,10 @@ function SectionRenderer({ section }: { section: HomepageSection }) {
       return (
         <Section>
           <SectionHeader title={section.title ?? "Brands"} subtitle={section.subtitle} href="/b" />
-          <div
-            className="mt-8 grid gap-3"
-            style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(160px, 100%), 1fr))" }}
-          >
+          {/* 160px + a 12px gap is 332px, four more than a 360px phone's
+              content box — which is how a brand grid that looks fine on a
+              laptop ends up one tile per row on the device most people use. */}
+          <div className="grid-tiles mt-8" style={{ "--tile-min": "160px" } as React.CSSProperties}>
             {(section.brands ?? [])
               .filter((b) => b.isPinned)
               .map((b) => (

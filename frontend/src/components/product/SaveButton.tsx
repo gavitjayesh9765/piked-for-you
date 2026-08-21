@@ -91,7 +91,9 @@ export function SaveButton({
       aria-label={saved ? "Remove from saved" : "Save product"}
       title={saved ? "Remove from saved" : "Save product"}
       className={cn(
-        "relative z-10 grid h-9 w-9 place-items-center rounded-full border",
+        // 32px in the product card's overlay strip, 36px once the card is wide
+        // enough for a header row. Matches ProductCard's `lg` split.
+        "relative z-10 grid h-8 w-8 place-items-center rounded-full border lg:h-9 lg:w-9",
         "transition-all duration-fast ease-ease disabled:opacity-60",
         saved
           ? "border-brand-vivid bg-brand-soft text-brand"

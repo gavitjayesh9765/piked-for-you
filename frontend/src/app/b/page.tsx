@@ -74,10 +74,7 @@ export default async function BrandsPage() {
               <h2 id="covered" className="t-eyebrow border-b border-line pb-5">
                 With published research
               </h2>
-              <div
-                className="mt-8 grid gap-4"
-                style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(240px, 100%), 1fr))" }}
-              >
+              <div className="grid-tiles mt-8" style={{ "--tile-min": "240px" } as React.CSSProperties}>
                 {covered.map((brand) => (
                   <BrandCard key={brand.id} brand={brand} />
                 ))}
@@ -94,10 +91,7 @@ export default async function BrandsPage() {
                 We have these on the list. Nothing appears against a brand until the research
                 behind it is finished.
               </p>
-              <div
-                className="mt-8 grid gap-4"
-                style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(240px, 100%), 1fr))" }}
-              >
+              <div className="grid-tiles mt-8" style={{ "--tile-min": "240px" } as React.CSSProperties}>
                 {pending.map((brand) => (
                   <BrandCard key={brand.id} brand={brand} />
                 ))}

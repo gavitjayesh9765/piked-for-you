@@ -13,10 +13,7 @@ import { CategoryIcon } from "@/components/ui/CategoryIcon";
  */
 export function CategoryTiles({ categories }: { categories: Category[] }) {
   return (
-    <div
-      className="grid gap-3 sm:gap-4"
-      style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(150px, 100%), 1fr))" }}
-    >
+    <div className="grid-tiles" style={{ "--tile-min": "150px" } as React.CSSProperties}>
       {categories
         .filter((c) => c.isActive && c.showOnHomepage)
         .map((c) => (

@@ -16,11 +16,14 @@ export function ScoreRing({
 }: {
   /** 0–10 */
   score: number;
-  size?: "sm" | "md" | "lg" | "xl";
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
   showLabel?: boolean;
   className?: string;
 }) {
   const dims = {
+    // `xs` exists for the two-up product grid on a phone, where the ring rides
+    // in the corner of a ~155px plate rather than in a header row.
+    xs: { box: 34, stroke: 3, text: "text-[11px]" },
     sm: { box: 40, stroke: 3, text: "text-[13px]" },
     md: { box: 56, stroke: 3, text: "text-[17px]" },
     lg: { box: 76, stroke: 3.5, text: "text-[24px]" },

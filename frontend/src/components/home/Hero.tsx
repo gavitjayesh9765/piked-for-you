@@ -19,11 +19,8 @@ import { SearchField } from "@/components/ui/SearchField";
  * `svh` rather than `vh` so mobile browser chrome doesn't push the CTA off-screen.
  *
  * MOBILE: the two columns stack, so a viewport-height cap would only stretch
- * the copy and a full-bleed image column would become a 300px slab the reader
- * has to scroll a whole screen to reach. Below `lg` the section is therefore
- * left at its natural height and the image demotes to a short banner card that
- * sits inside the gutter — enough to carry the product photography, not enough
- * to cost the reader a scroll.
+ * the copy. Below `lg` the section is therefore left at its natural height and
+ * the image column is dropped entirely — see the note on it below.
  */
 export function Hero() {
   return (
@@ -87,26 +84,35 @@ export function Hero() {
         </div>
 
         {/* --- Image ---
-            Below `lg` it is a short banner inset by the gutter, so it reads as a
-            deliberate card closing the hero rather than an unattached slab. From
-            `lg` it drops the inset and runs to the true viewport edge, filling
-            the column. */}
+            DESKTOP ONLY. From `lg` it runs to the true viewport edge and fills
+            its column, which is the composition the hero was designed around.
+
+            Below `lg` it is gone rather than demoted. Stacked, it could only
+            ever be a decorative band between the CTA row and the first product
+            rail — a screenful of stock photography the reader has to scroll
+            past to reach the picks, carrying no information the copy above it
+            does not already carry. Removing it puts the search field and the
+            first real content inside one phone screen. */}
         <div
-          className="plate relative mx-gutter mb-8 h-40 overflow-hidden rounded-lg border border-line
-                     sm:mb-12 sm:h-56
-                     lg:mx-0 lg:mb-0 lg:h-auto lg:rounded-none lg:border-0"
+          className="plate relative hidden overflow-hidden
+                     lg:block lg:h-auto lg:border-0"
         >
+          {/* Deliberately NOT `priority`. A priority image emits a preload link
+              in <head>, which a phone would honour for an image its layout has
+              already thrown away — a full-width hero JPEG downloaded to render
+              nothing. Left lazy, the hidden column never fetches it, and on a
+              desktop it sits at the top of the viewport so the browser starts
+              it at parse time anyway. */}
           <Image
             src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1600&q=80"
             alt=""
             fill
-            priority
-            sizes="(max-width: 1024px) 100vw, 50vw"
+            sizes="50vw"
             className="object-cover"
           />
           {/* Softens the seam between copy and image without dimming the product */}
           <div
-            className="pointer-events-none absolute inset-0 hidden lg:block"
+            className="pointer-events-none absolute inset-0"
             style={{ background: "linear-gradient(to right, var(--c-bg), transparent 22%)" }}
           />
           <div className="dot-matrix pointer-events-none absolute inset-0 opacity-60" />

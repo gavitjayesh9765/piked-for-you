@@ -6,13 +6,20 @@ import type { SpecGroup } from "@/lib/types";
  * exists. Marked with a purple rule because it is *our* judgement (the colour
  * grammar: purple = deciding).
  *
- * Constrained to the prose measure even though the page is full-bleed: width is
- * for grids, not paragraphs (docs/01-design-brainstorm.md §3.2).
+ * It sits on a panel like everything else in the research column: a bare block
+ * of prose floating between two bordered panels read as a gap in the page
+ * rather than as the page's most important paragraph.
+ *
+ * The measure stays capped even though the panel is wider: width is for grids,
+ * not paragraphs (docs/01-design-brainstorm.md §3.2).
  */
-export function VerdictBlock({ verdict }: { verdict: string }) {
+export function VerdictBlock({ verdict, className }: { verdict: string; className?: string }) {
   return (
-    <section aria-labelledby="verdict-heading" className="relative pl-6">
-      <span className="absolute left-0 top-1 h-[calc(100%-0.5rem)] w-[3px] rounded-full bg-brand-vivid" aria-hidden="true" />
+    <section
+      aria-labelledby="verdict-heading"
+      className={cn("panel relative overflow-hidden p-6 pl-7 sm:p-8 sm:pl-9", className)}
+    >
+      <span className="absolute inset-y-0 left-0 w-[3px] bg-brand-vivid" aria-hidden="true" />
       <h2 id="verdict-heading" className="t-eyebrow text-brand">
         Our verdict
       </h2>
@@ -29,19 +36,43 @@ export function VerdictBlock({ verdict }: { verdict: string }) {
  * Best For / Not Ideal For (spec §25). Paired panels, never one merged list —
  * the value of this block is that a reader can find themselves in one column
  * and stop reading.
+ *
+ * `className` replaces the layout wholesale rather than being appended to it,
+ * because `cn` is a plain joiner: appending `lg:grid-cols-1` to a base that
+ * already sets `md:grid-cols-2` would leave the winner to stylesheet order.
+ * An empty side renders nothing — an outlined box containing no list items is
+ * the kind of hole that makes a page look unfinished.
  */
-export function AudienceFit({ bestFor, notIdealFor }: { bestFor: string[]; notIdealFor: string[] }) {
+export function AudienceFit({
+  bestFor,
+  notIdealFor,
+  className = "grid gap-4 md:grid-cols-2",
+}: {
+  bestFor: string[];
+  notIdealFor: string[];
+  className?: string;
+}) {
+  const panels = (
+    [
+      { title: "Best for", items: bestFor, tone: "value" },
+      { title: "Not ideal for", items: notIdealFor, tone: "muted" },
+    ] as const
+  ).filter((p) => p.items.length > 0);
+
+  if (panels.length === 0) return null;
+
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <FitPanel title="Best for" items={bestFor} tone="value" />
-      <FitPanel title="Not ideal for" items={notIdealFor} tone="muted" />
+    <div className={className}>
+      {panels.map((p) => (
+        <FitPanel key={p.title} title={p.title} items={p.items} tone={p.tone} />
+      ))}
     </div>
   );
 }
 
 function FitPanel({ title, items, tone }: { title: string; items: string[]; tone: "value" | "muted" }) {
   return (
-    <div className="panel p-6">
+    <div className="panel p-5 sm:p-6">
       <h3 className={cn("t-eyebrow", tone === "value" ? "text-value" : "text-ink-subtle")}>{title}</h3>
       <ul className="mt-4 space-y-2.5">
         {items.map((item) => (
@@ -59,31 +90,45 @@ function FitPanel({ title, items, tone }: { title: string; items: string[]; tone
 }
 
 /** Pros and cons (spec §25) — scannable, paired, colour-coded. */
-export function ProsCons({ pros, cons }: { pros: string[]; cons: string[] }) {
+export function ProsCons({
+  pros,
+  cons,
+  className = "grid gap-4 md:grid-cols-2",
+}: {
+  pros: string[];
+  cons: string[];
+  className?: string;
+}) {
+  if (pros.length === 0 && cons.length === 0) return null;
+
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <div className="panel p-6">
-        <h3 className="t-eyebrow text-value">Pros</h3>
-        <ul className="mt-4 space-y-3">
-          {pros.map((p) => (
-            <li key={p} className="flex gap-3 text-body-md text-ink">
-              <CheckGlyph className="mt-1 shrink-0 text-value" />
-              {p}
-            </li>
-          ))}
-        </ul>
-      </div>
-      <div className="panel p-6">
-        <h3 className="t-eyebrow text-danger">Cons</h3>
-        <ul className="mt-4 space-y-3">
-          {cons.map((c) => (
-            <li key={c} className="flex gap-3 text-body-md text-ink">
-              <CrossGlyph className="mt-1 shrink-0 text-danger" />
-              {c}
-            </li>
-          ))}
-        </ul>
-      </div>
+    <div className={className}>
+      {pros.length > 0 && (
+        <div className="panel p-5 sm:p-6">
+          <h3 className="t-eyebrow text-value">Pros</h3>
+          <ul className="mt-4 space-y-3">
+            {pros.map((p) => (
+              <li key={p} className="flex gap-3 text-body-md text-ink">
+                <CheckGlyph className="mt-1 shrink-0 text-value" />
+                {p}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {cons.length > 0 && (
+        <div className="panel p-5 sm:p-6">
+          <h3 className="t-eyebrow text-danger">Cons</h3>
+          <ul className="mt-4 space-y-3">
+            {cons.map((c) => (
+              <li key={c} className="flex gap-3 text-body-md text-ink">
+                <CrossGlyph className="mt-1 shrink-0 text-danger" />
+                {c}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
@@ -92,15 +137,19 @@ export function ProsCons({ pros, cons }: { pros: string[]; cons: string[] }) {
  * Specifications (spec §18). Values are mono and tabular so numbers align down
  * the column — the detail that makes the page feel engineered.
  */
-export function SpecTable({ groups }: { groups: SpecGroup[] }) {
+export function SpecTable({ groups, className }: { groups: SpecGroup[]; className?: string }) {
   return (
-    <div className="panel divide-y divide-line overflow-hidden">
+    <div className={cn("panel divide-y divide-line overflow-hidden", className)}>
       {groups.map((group) => (
-        <div key={group.label} className="p-6">
+        <div key={group.label} className="p-5 sm:p-6">
           <h3 className="t-eyebrow">{group.label}</h3>
           <dl className="mt-4 divide-y divide-line-faint">
+            {/* A spec label and its value are both unpredictable lengths. On a
+                phone they get a 4px gap and the value keeps its right edge; the
+                pair wraps to two lines rather than the value being squeezed to
+                one character per line. */}
             {group.items.map((item) => (
-              <div key={item.label} className="flex items-baseline justify-between gap-6 py-2.5">
+              <div key={item.label} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-2.5 sm:gap-x-6">
                 <dt className="text-body-sm text-ink-muted">{item.label}</dt>
                 <dd className="tabular text-right text-body-sm font-medium text-ink">{item.value}</dd>
               </div>

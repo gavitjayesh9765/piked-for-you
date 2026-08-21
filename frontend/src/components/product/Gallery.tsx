@@ -186,7 +186,7 @@ export function Gallery({ images, title }: { images: MediaAsset[]; title: string
               fill
               priority
               sizes="(max-width: 1024px) 100vw, 45vw"
-              className="object-contain p-8 transition-transform duration-slow ease-ease will-change-transform"
+              className="object-contain p-5 transition-transform duration-slow ease-ease will-change-transform sm:p-8"
               style={{
                 transformOrigin: `${origin.x}% ${origin.y}%`,
                 transform: zooming ? `scale(${ZOOM})` : "scale(1)",

@@ -86,8 +86,13 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
               deciding what to buy they are the same thing: another look. */}
           <Gallery images={[...product.images, ...product.videos]} title={product.title} />
 
-          <div className="flex max-w-2xl flex-col">
-            <div className="flex items-start justify-between gap-6">
+          <div className="flex max-w-3xl flex-col">
+            {/* `gap-4` on a phone: a 76px ring, a 24px gap and a 36px headline
+                leave under 230px of measure inside a 360px viewport, which is
+                where a model number like "WH-1000XM5" starts overflowing.
+                `[overflow-wrap:anywhere]` is the backstop for the titles that
+                are one unbreakable token. */}
+            <div className="flex items-start justify-between gap-4 sm:gap-6">
               <div className="min-w-0">
                 <Link
                   href={`/b/${product.brand.slug}`}
@@ -95,12 +100,25 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                 >
                   {product.brand.name}
                 </Link>
-                <h1 className="mt-2 font-display text-display-lg text-ink">{product.title}</h1>
+                <h1 className="mt-2 font-display text-display-lg text-ink [overflow-wrap:anywhere]">
+                  {product.title}
+                </h1>
                 {product.shortDescription && (
-                  <p className="mt-3 text-body-lg text-ink-muted">{product.shortDescription}</p>
+                  <p className="mt-3 text-body-md text-ink-muted sm:text-body-lg">
+                    {product.shortDescription}
+                  </p>
                 )}
               </div>
-              {product.score && <ScoreRing score={product.score.overall} size="lg" className="shrink-0" />}
+              {product.score && (
+                <>
+                  <ScoreRing score={product.score.overall} size="md" className="shrink-0 sm:hidden" />
+                  <ScoreRing
+                    score={product.score.overall}
+                    size="lg"
+                    className="hidden shrink-0 sm:flex"
+                  />
+                </>
+              )}
             </div>
 
             {product.badges.length > 0 && (
@@ -112,7 +130,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             )}
 
             {/* --- Price block (spec §20) --- */}
-            <div className="mt-8 flex flex-wrap items-baseline gap-x-4 gap-y-2 border-t border-line pt-8">
+            <div className="mt-7 flex flex-wrap items-baseline gap-x-4 gap-y-2 border-t border-line pt-7 sm:mt-8 sm:pt-8">
               <span className="tabular text-display-lg font-bold leading-none text-ink">
                 {formatPrice(product.pricing.current, product.pricing.currency)}
               </span>
@@ -155,7 +173,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 
             {/* --- Score breakdown (spec §24) --- */}
             {product.score && product.score.criteria.length > 0 && (
-              <div className="panel mt-8 p-6">
+              <div className="panel mt-8 p-5 sm:p-6">
                 <div className="flex items-baseline justify-between">
                   <h2 className="t-eyebrow text-brand">PickD Score breakdown</h2>
                   <span className="tabular text-headline-sm font-bold text-ink">
@@ -169,29 +187,40 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           </div>
         </div>
 
-        {/* ================= The research ================= */}
-        {product.verdict && (
-          <Section width="wide">
-            <VerdictBlock verdict={product.verdict} />
-          </Section>
-        )}
+        {/* ================= The research =================
+            One region, not four. Each of these blocks used to be its own
+            <Section>, so a full section gap sat between a verdict and the pros
+            that argue it — the page read as unrelated islands with dead air
+            between them.
 
-        <Section width="wide">
-          <AudienceFit bestFor={product.bestFor} notIdealFor={product.notIdealFor} />
-        </Section>
-
-        <Section width="wide">
-          <ProsCons pros={product.pros} cons={product.cons} />
-        </Section>
-
-        {product.specifications.length > 0 && (
-          <Section width="wide">
-            <SectionHeader title="Specifications" />
-            <div className="mt-8">
-              <SpecTable groups={product.specifications} />
+            The reading column carries the judgement (verdict, then pros and
+            cons); the rail beside it carries the reference a reader dips into
+            (who it suits, then the numbers). Capped narrower than the hero on
+            purpose — the hero is a grid and wants the width, this is prose and
+            does not (docs/01-design-brainstorm.md §3.2). */}
+        <div className="shell-wide mt-section">
+          <div className="mx-auto grid max-w-[1240px] items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] xl:gap-6">
+            <div className="flex min-w-0 flex-col gap-5">
+              {product.verdict && <VerdictBlock verdict={product.verdict} />}
+              <ProsCons pros={product.pros} cons={product.cons} className="grid gap-5 md:grid-cols-2" />
             </div>
-          </Section>
-        )}
+
+            <aside className="flex flex-col gap-5">
+              <AudienceFit
+                bestFor={product.bestFor}
+                notIdealFor={product.notIdealFor}
+                className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1"
+              />
+
+              {product.specifications.length > 0 && (
+                <div>
+                  <h2 className="t-eyebrow mb-3">Specifications</h2>
+                  <SpecTable groups={product.specifications} />
+                </div>
+              )}
+            </aside>
+          </div>
+        </div>
 
         {/* ================= Community ================= */}
         <Section width="wide">

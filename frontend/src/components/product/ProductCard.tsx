@@ -45,60 +45,111 @@ export function ProductCard({
         className,
       )}
     >
-      {/* --- Header: badge + score, the two curation signals --- */}
-      <div className="flex items-start justify-between gap-3 p-4 pb-0">
-        {/* `min-w-0` lets a long badge name truncate. Without it the badge's
-            intrinsic width becomes the card's minimum, and the card's minimum
-            becomes the grid's — which is how one long name used to push a
-            360px-wide phone into a horizontal scroll. */}
-        {leadBadge ? <Badge badge={leadBadge} size="sm" className="min-w-0" /> : <span />}
-        <div className="flex shrink-0 items-start gap-2">
-          {/* Sits above the card's link overlay so it stays clickable */}
-          <SaveButton productId={product.id} initialSaved={isSaved} isAuthed={isAuthed} />
-          {score ? <ScoreRing score={score.overall} size="sm" showLabel={false} /> : null}
+      {/* --- Image plate + the two curation signals ---
+
+          The split is at `lg`, NOT at `sm`. What decides which layout works is
+          the CARD's width, and the card's width comes from `--card-min`, which
+          holds the column at roughly 150-200px everywhere below 1024px — a
+          640px tablet gets three ~185px columns, not two wide ones. Switching
+          at `sm` put the desktop layout into a 185px column, where "Worth it"
+          and a price fight over one line and the badge truncates to four
+          letters. 1024px is the first width at which a card is ~300px.
+
+          The grid puts two of these side by side on a phone, which leaves the
+          card about 155px wide. A header row cannot hold a badge, a save
+          control and a score ring at that width — the badge ends up truncated
+          to three letters. So below `sm` the controls stop being a row and
+          become overlays on the plate, which is dead space anyway (the image is
+          `object-contain`, so its corners are bare plate).
+
+          DOM order is controls-then-plate because from `sm` the controls go
+          back into the flow ABOVE the image. On mobile they are out of flow, so
+          the plate starts at the wrapper's top edge and `top-2` lands on it. */}
+      <div className="relative">
+        {/* `pointer-events-none` on the strip, restored on the controls group:
+            once this is a z-10 overlay it would otherwise sit above the card's
+            `after:inset-0` link and turn the badge corner into a dead zone —
+            the one part of a card a thumb reaches first. */}
+        <div
+          className="pointer-events-none absolute inset-x-2 top-2 z-10 flex items-start justify-between gap-2
+                     lg:static lg:inset-auto lg:p-4 lg:pb-0"
+        >
+          {/* `min-w-0` lets a long badge name truncate. Without it the badge's
+              intrinsic width becomes the card's minimum, and the card's minimum
+              becomes the grid's — which is how one long name used to push a
+              360px-wide phone into a horizontal scroll. */}
+          {leadBadge ? <Badge badge={leadBadge} size="sm" className="min-w-0" /> : <span />}
+          <div className="pointer-events-auto flex shrink-0 items-start gap-2">
+            {/* Sits above the card's link overlay so it stays clickable */}
+            <SaveButton productId={product.id} initialSaved={isSaved} isAuthed={isAuthed} />
+            {/* The desktop position. Its mobile twin is on the plate below —
+                ScoreRing holds no state, so rendering it twice is free. */}
+            {score ? (
+              <ScoreRing score={score.overall} size="sm" showLabel={false} className="hidden lg:flex" />
+            ) : null}
+          </div>
         </div>
+
+        <Link href={productHref(product)} className="relative block" tabIndex={-1} aria-hidden="true">
+          {/* Full-bleed on a phone: at 155px the 16px inset was costing a tenth
+              of the image's width to reproduce a margin nobody reads. */}
+          <div className="plate relative aspect-[4/3] overflow-hidden lg:mx-4 lg:mt-3 lg:rounded-md">
+            {primaryImage ? (
+              <Image
+                src={primaryImage.url}
+                alt=""
+                fill
+                sizes="(max-width: 640px) 45vw, (max-width: 1280px) 33vw, 20vw"
+                priority={priority}
+                className="object-contain p-4 transition-transform duration-slow ease-ease group-hover:scale-[1.03] lg:p-5"
+              />
+            ) : (
+              <div className="dot-matrix h-full w-full" />
+            )}
+          </div>
+        </Link>
+
+        {score ? (
+          <ScoreRing
+            score={score.overall}
+            size="xs"
+            showLabel={false}
+            className="pointer-events-none absolute bottom-2 right-2 z-10 lg:hidden"
+          />
+        ) : null}
       </div>
 
-      {/* --- Image plate --- */}
-      <Link href={productHref(product)} className="relative block" tabIndex={-1} aria-hidden="true">
-        <div className="plate relative mx-4 mt-3 aspect-[4/3] overflow-hidden rounded-md">
-          {primaryImage ? (
-            <Image
-              src={primaryImage.url}
-              alt=""
-              fill
-              sizes="(max-width: 640px) 90vw, (max-width: 1280px) 33vw, 20vw"
-              priority={priority}
-              className="object-contain p-5 transition-transform duration-slow ease-ease group-hover:scale-[1.03]"
-            />
-          ) : (
-            <div className="dot-matrix h-full w-full" />
-          )}
-        </div>
-      </Link>
-
       {/* --- Body --- */}
-      <div className="flex flex-1 flex-col p-4 pt-5">
+      <div className="flex flex-1 flex-col p-3 pt-3 lg:p-4 lg:pt-5">
         <span className="t-eyebrow">{brand.name}</span>
 
-        <h3 className="mt-1.5 text-headline-sm text-ink">
+        {/* 20px type wraps a two-word product name onto three lines in a 130px
+            column, so the card steps down a size below `sm`. */}
+        <h3 className="mt-1 text-[0.9375rem] font-semibold leading-snug tracking-[-0.01em] text-ink lg:mt-1.5 lg:text-headline-sm">
           <Link href={productHref(product)} className="after:absolute after:inset-0 hover:text-brand transition-colors duration-fast">
             {title}
           </Link>
         </h3>
 
         {/* THE VERDICT LINE — this is the product */}
-        <p className="mt-2 line-clamp-2 text-body-sm text-ink-muted">{tagline}</p>
+        <p className="mt-1.5 line-clamp-2 text-[0.8125rem] leading-snug text-ink-muted lg:mt-2 lg:text-body-sm lg:leading-normal">
+          {tagline}
+        </p>
 
-        {/* --- Footer: value signal + price --- */}
-        <div className="mt-auto flex items-end justify-between gap-3 pt-5">
+        {/* --- Footer: value signal + price ---
+            Stacked on a phone: "Worth it" and a price are together about 150px
+            of unshrinkable content, and the column is 130px. */}
+        <div className="mt-auto flex flex-col items-start gap-2 pt-3 lg:flex-row lg:items-end lg:justify-between lg:gap-3 lg:pt-5">
           <div>{hasValueSignal ? <ValueChip /> : null}</div>
-          <div className="text-right">
-            <div className="tabular text-headline-sm font-bold text-ink">
+          <div className="text-left lg:text-right">
+            <div className="tabular text-[1.0625rem] font-bold text-ink lg:text-headline-sm">
               {formatPrice(pricing.current, pricing.currency)}
             </div>
+            {/* Stays at 10px at every width. Two formatted prices and a dash
+                run to ~140px at 11px — over budget both in a 134px phone
+                column and, for the longest numbers, in a 263px desktop one. */}
             {pricing.min != null && pricing.max != null && (
-              <div className="tabular text-label-xs text-ink-subtle">
+              <div className="tabular text-[0.625rem] text-ink-subtle">
                 {formatPriceRange(pricing.min, pricing.max, pricing.currency)}
               </div>
             )}
@@ -108,8 +159,8 @@ export function ProductCard({
         {/* Community rating sits below a hairline, visually separated from the
             PickD Score above — two different sources, never merged (spec §32) */}
         {communityRating && communityRating.count > 0 && (
-          <div className="hairline mt-4 pt-3">
-            <CommunityRating average={communityRating.average} count={communityRating.count} />
+          <div className="hairline mt-3 pt-3 lg:mt-4">
+            <CommunityRating average={communityRating.average} count={communityRating.count} compact />
           </div>
         )}
       </div>
@@ -169,21 +220,23 @@ export function ProductCardWide({ product }: { product: ProductSummary }) {
   );
 }
 
-/** Skeleton matching the card's exact geometry, so grids don't jump on load. */
+/** Skeleton matching the card's exact geometry, so grids don't jump on load.
+    It tracks the same `sm` split as the card: full-bleed plate with no header
+    row on a phone, inset plate under a header row from `sm` up. */
 export function ProductCardSkeleton() {
   return (
     <div className="panel flex animate-pulse flex-col overflow-hidden">
-      <div className="flex items-start justify-between p-4 pb-0">
+      <div className="hidden items-start justify-between p-4 pb-0 lg:flex">
         <div className="h-6 w-28 rounded-xs bg-surface-2" />
         <div className="h-10 w-10 rounded-full bg-surface-2" />
       </div>
-      <div className="mx-4 mt-3 aspect-[4/3] rounded-md bg-surface-2" />
-      <div className="flex flex-col gap-2 p-4 pt-5">
+      <div className="aspect-[4/3] bg-surface-2 lg:mx-4 lg:mt-3 lg:rounded-md" />
+      <div className="flex flex-col gap-2 p-3 pt-3 lg:p-4 lg:pt-5">
         <div className="h-3 w-16 rounded-xs bg-surface-2" />
         <div className="h-5 w-3/4 rounded-xs bg-surface-2" />
         <div className="h-3 w-full rounded-xs bg-surface-2" />
         <div className="h-3 w-5/6 rounded-xs bg-surface-2" />
-        <div className="mt-4 h-6 w-24 self-end rounded-xs bg-surface-2" />
+        <div className="mt-3 h-6 w-24 rounded-xs bg-surface-2 lg:mt-4 lg:self-end" />
       </div>
     </div>
   );

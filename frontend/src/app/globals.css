@@ -138,11 +138,41 @@
 
   /* The canonical product grid. auto-fill means the column count follows the
      available width instead of a breakpoint table: 5 cards at 1440px,
-     8 at 2560px, no media queries involved. */
+     8 at 2560px, no media queries involved.
+
+     The `min()` caps each track's floor at half the container, which puts a
+     hard floor of TWO columns under the grid at every width — including a
+     320px phone, where `--card-min` alone would still resolve to one. Without
+     the cap the two-up layout would depend on the token staying below half of
+     the narrowest viewport we support, which is the kind of invariant that
+     silently breaks the next time the gutter changes. */
   .grid-products {
     display: grid;
     gap: var(--grid-gap);
-    grid-template-columns: repeat(auto-fill, minmax(var(--card-min), 1fr));
+    grid-template-columns: repeat(
+      auto-fill,
+      minmax(min(var(--card-min), calc((100% - var(--grid-gap)) / 2)), 1fr)
+    );
+  }
+
+  /* The same shape as `.grid-products`, for the non-product tile grids —
+     brands, categories, chapter blocks. Callers set `--tile-min` (and
+     `--tile-gap` when the section wants its own rhythm) instead of hand-rolling
+     an inline `grid-template-columns`, so the two-up floor is stated once
+     rather than re-derived per page and quietly lost on the next one.
+
+     Opt a grid OUT of the floor — for blocks that genuinely need the full
+     width on a phone — by setting `--tile-min` to a value and leaving the cap
+     to do nothing, or by not using this class. */
+  .grid-tiles {
+    --tile-min: 240px;
+    --tile-gap: var(--grid-gap);
+    display: grid;
+    gap: var(--tile-gap);
+    grid-template-columns: repeat(
+      auto-fill,
+      minmax(min(var(--tile-min), calc((100% - var(--tile-gap)) / 2)), 1fr)
+    );
   }
 
   /* A rail is a grid that scrolls horizontally on small screens instead of

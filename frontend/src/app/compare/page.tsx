@@ -132,9 +132,17 @@ function ComparisonTable({ products }: { products: Product[] }) {
 
   return (
     <div className="overflow-x-auto">
-      <div className="min-w-[42rem]">
+      {/* The floor scales with the number of columns instead of being a flat
+          42rem. Two products now fit inside a phone with no sideways scroll at
+          all; three still scroll, which is the honest outcome — but a reader
+          comparing a pair should not have to drag the page to see the second
+          one. */}
+      <div style={{ minWidth: `${products.length * 9.5}rem` }}>
         {/* --- Heads ------------------------------------------------- */}
-        <div className="grid gap-6 border-b border-line pb-6" style={{ gridTemplateColumns: cols }}>
+        <div
+          className="grid gap-4 border-b border-line pb-6 sm:gap-6"
+          style={{ gridTemplateColumns: cols }}
+        >
           {products.map((p) => (
             <div key={p.id}>
               <div className="plate relative mb-4 aspect-[16/9] overflow-hidden rounded-md">
@@ -185,7 +193,7 @@ function ComparisonTable({ products }: { products: Product[] }) {
               return (
                 <div key={c.key} className="border-b border-line-faint py-4 last:border-b-0">
                   <p className="mb-3 text-body-sm text-ink-subtle">{c.label}</p>
-                  <div className="grid gap-6" style={{ gridTemplateColumns: cols }}>
+                  <div className="grid gap-4 sm:gap-6" style={{ gridTemplateColumns: cols }}>
                     {values.map((v, i) => (
                       <div key={products[i].id}>
                         <div className="flex items-baseline justify-between gap-2">
@@ -219,7 +227,7 @@ function ComparisonTable({ products }: { products: Product[] }) {
 
         {/* --- Verdict ----------------------------------------------- */}
         <Block title="Our verdict">
-          <div className="grid gap-6" style={{ gridTemplateColumns: cols }}>
+          <div className="grid gap-4 sm:gap-6" style={{ gridTemplateColumns: cols }}>
             {products.map((p) => (
               <p key={p.id} className="text-body-sm text-ink-muted">
                 {p.verdict || p.tagline}
@@ -247,7 +255,7 @@ function ComparisonTable({ products }: { products: Product[] }) {
 
         {/* --- Community --------------------------------------------- */}
         <Block title="What owners say">
-          <div className="grid gap-6" style={{ gridTemplateColumns: cols }}>
+          <div className="grid gap-4 sm:gap-6" style={{ gridTemplateColumns: cols }}>
             {products.map((p) =>
               p.communityRating && p.communityRating.count > 0 ? (
                 <CommunityRating
@@ -267,7 +275,7 @@ function ComparisonTable({ products }: { products: Product[] }) {
         {/* --- Specifications, when they exist ------------------------ */}
         {products.some((p) => p.specifications.length > 0) ? (
           <Block title="Specifications">
-            <div className="grid gap-6" style={{ gridTemplateColumns: cols }}>
+            <div className="grid gap-4 sm:gap-6" style={{ gridTemplateColumns: cols }}>
               {products.map((p) => (
                 <div key={p.id}>
                   {p.specifications.length === 0 ? (
@@ -320,7 +328,7 @@ function ListRow({
 }) {
   const cols = `repeat(${products.length}, minmax(0, 1fr))`;
   return (
-    <div className="grid gap-6" style={{ gridTemplateColumns: cols }}>
+    <div className="grid gap-4 sm:gap-6" style={{ gridTemplateColumns: cols }}>
       {products.map((p) => {
         const items = pick(p);
         return (

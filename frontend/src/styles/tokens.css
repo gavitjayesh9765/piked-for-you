@@ -70,7 +70,7 @@
   --s-12: 8rem;
 
   /* Gap between top-level page sections — generous, scales with viewport */
-  --section-gap: clamp(3.5rem, 2rem + 5vw, 7.5rem);
+  --section-gap: clamp(3rem, 2rem + 3vw, 5.5rem);
 
   /* ---------------------------------------------------------------------
      LAYOUT — the full-bleed system. See docs/01-design-brainstorm.md §3.2.
@@ -86,10 +86,15 @@
   --shell-prose: 72ch; /* editorial reading measure */
 
   --grid-cols: 4; /* mobile */
-  --grid-gap: 1rem;
+  --grid-gap: 0.75rem; /* tighter on a phone so a two-up grid keeps card width */
 
-  /* Fluid product grid: fills available width, no breakpoint churn */
-  --card-min: 260px;
+  /* Fluid product grid: fills available width, no breakpoint churn.
+     The mobile value is deliberately small enough that TWO cards fit inside a
+     320px viewport's content box. A phone showing one card per screen reads as
+     a feed of adverts; two side by side reads as a shortlist you are comparing,
+     which is what this product actually is. `.grid-products` additionally caps
+     the track at half the container so the two-up floor holds at any width. */
+  --card-min: 150px;
 
   --nav-h: 68px; /* primary nav height */
   /* The category sub-nav is `hidden md:block` (SiteHeader), so below that
@@ -134,6 +139,8 @@
     --gutter: 1.5rem;
     --grid-cols: 8;
     --grid-gap: 1.25rem;
+    /* Tablet: 3 cards at 640-1000px, 4 by ~950px. */
+    --card-min: 175px;
   }
 }
 /* The category sub-nav appears here — see --subnav-h above. */
@@ -147,7 +154,11 @@
     --gutter: 2.5rem;
     --grid-cols: 12;
     --grid-gap: 1.5rem;
-    --card-min: 280px;
+    /* 260, not 280. The widest product grid on the site is the category page's,
+       and it sits beside a 260px filter rail — which leaves 884px at 1280, four
+       pixels short of the 888 three 280px cards need. The grid fell to two
+       ~430px cards on the most common laptop width. */
+    --card-min: 260px;
   }
 }
 @media (min-width: 1536px) {

@@ -57,6 +57,9 @@ export function ValueChip({ label = "Worth it", className }: { label?: string; c
       className={cn(
         "inline-flex items-center gap-1.5 rounded-xs border border-value-line bg-value-soft",
         "px-2.5 py-1 font-label text-label-xs font-bold uppercase tracking-[0.12em] text-value-on-soft",
+        // Two words. Broken across two lines in a squeezed card footer it reads
+        // as a rendering fault rather than a signal.
+        "whitespace-nowrap",
         className,
       )}
     >
@@ -76,20 +79,39 @@ export function ValueChip({ label = "Worth it", className }: { label?: string; c
 export function CommunityRating({
   average,
   count,
+  compact = false,
   className,
 }: {
   average: number;
   count: number;
+  /**
+   * For the product card, whose column is ~130px of content below `lg`. Five
+   * 13px stars, an average and the word "reviews" measure about 190px there,
+   * so the compact form shrinks the stars and drops the noun — the count
+   * itself stays, because "4.5" without a sample size is the number that
+   * misleads. The `lg` breakpoint matches ProductCard's own layout split.
+   */
+  compact?: boolean;
   className?: string;
 }) {
   const value = Number(average);
   const safe = Number.isFinite(value) ? value : 0;
   const rounded = Math.round(safe);
+  // Sized in CSS rather than by width/height attributes so the compact form can
+  // grow back at `lg` without a second render.
+  const star = compact ? "h-2.5 w-2.5 lg:h-[13px] lg:w-[13px]" : "h-[13px] w-[13px]";
+  const text = compact ? "text-[0.625rem] lg:text-body-sm" : "text-body-sm";
   return (
-    <div className={cn("flex items-center gap-2 text-ink-subtle", className)}>
+    <div
+      className={cn(
+        "flex items-center text-ink-subtle",
+        compact ? "gap-1 lg:gap-2" : "gap-2",
+        className,
+      )}
+    >
       <div className="flex gap-0.5" aria-hidden="true">
         {[1, 2, 3, 4, 5].map((i) => (
-          <svg key={i} width="13" height="13" viewBox="0 0 16 16">
+          <svg key={i} viewBox="0 0 16 16" className={cn("shrink-0", star)}>
             <path
               d="m8 1.6 1.9 4 4.3.6-3.1 3 .7 4.3L8 11.5l-3.8 2 .7-4.3-3.1-3 4.3-.6z"
               fill={i <= rounded ? "var(--c-star)" : "var(--c-line-strong)"}
@@ -97,9 +119,13 @@ export function CommunityRating({
           </svg>
         ))}
       </div>
-      <span className="tabular text-body-sm">{safe.toFixed(1)}</span>
-      <span className="text-body-sm">
-        · {count} {count === 1 ? "review" : "reviews"}
+      <span className={cn("tabular", text)}>{safe.toFixed(1)}</span>
+      <span className={cn("whitespace-nowrap", text)}>
+        · {count}
+        <span className={compact ? "hidden lg:inline" : undefined}>
+          {" "}
+          {count === 1 ? "review" : "reviews"}
+        </span>
       </span>
     </div>
   );

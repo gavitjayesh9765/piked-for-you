@@ -64,7 +64,7 @@ export function ReviewList({
       )}
 
       {reviews.length === 0 ? (
-        <div className="dot-matrix mt-8 rounded-lg border border-line py-16 text-center">
+        <div className="dot-matrix mt-6 rounded-lg border border-line py-12 text-center">
           <p className="text-body-md text-ink-muted">No community reviews yet.</p>
           <p className="mt-1 text-body-sm text-ink-subtle">Be the first to share your experience.</p>
         </div>
