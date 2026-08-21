@@ -1,0 +1,91 @@
+-- ============================================================================
+-- Close the two functions that 20260820000005_harden_functions.sql could not
+-- have known about.
+--
+-- That migration did exactly the right thing for the functions that existed
+-- when it was written: it pinned `search_path` and revoked EXECUTE on the
+-- trigger functions, with a header explaining precisely why a definer-rights
+-- function reachable at /rest/v1/rpc/<name> is not something to leave standing.
+--
+-- Then 20260820000006_video_links_and_tree.sql added two more functions and
+-- inherited none of that. Everything in `public` is exposed over PostgREST by
+-- default, so the reasoning applied to the old functions applied to the new
+-- ones from the moment they were created — nobody re-ran the check.
+--
+-- Confirmed against the live database rather than inferred from the source:
+--
+--   rebuild_category_paths  security_definer=true   anon=X, authenticated=X
+--   check_category_cycle    search_path=(none)      anon=X, authenticated=X
+--   handle_new_user         security_definer=true   postgres=X, service_role=X  <- correct
+--   sync_helpful_count      security_definer=true   postgres=X, service_role=X  <- correct
+--
+-- The contrast in that list is the whole finding.
+-- ============================================================================
+
+
+-- ---------------------------------------------------------------------------
+-- 1. rebuild_category_paths — the one that mattered
+--
+-- SECURITY DEFINER, and executable by `anon`. The anon key is public by design,
+-- so this was a live, unauthenticated endpoint:
+--
+--     POST https://<project>.supabase.co/rest/v1/rpc/rebuild_category_paths
+--     apikey: <public anon key>
+--     { "root_id": null }
+--
+-- ...which runs with the owner's rights and rewrites the denormalised `path`
+-- column across the whole category tree. Two problems, either sufficient:
+--
+--   * It is a WRITE to editorial structure by someone who is not signed in.
+--     RLS does not enter into it — a definer-rights function runs as its owner.
+--   * It walks the tree recursively, so it is also a cheap way to make the
+--     database do a lot of work on demand, repeatedly.
+--
+-- Nothing legitimate regresses. The only caller is FastAPI
+-- (app/modules/admin/taxonomy.py), which runs `select
+-- public.rebuild_category_paths()` over the owner connection, and the trigger
+-- path is unaffected: PostgreSQL checks EXECUTE on a trigger function at
+-- CREATE TRIGGER time, not on each firing.
+-- ---------------------------------------------------------------------------
+revoke execute on function public.rebuild_category_paths(uuid) from anon, authenticated, public;
+
+
+-- ---------------------------------------------------------------------------
+-- 2. check_category_cycle — a trigger function, exposed and unpinned
+--
+-- Not SECURITY DEFINER, so the blast radius is far smaller. It is still a
+-- trigger function that strangers can invoke as an RPC, with a mutable
+-- `search_path` — the same two properties the earlier migration removed from
+-- `is_admin` and `set_updated_at`, for the reason it gave there: a function
+-- without a pinned search_path resolves unqualified names against whatever the
+-- caller's search_path happens to be.
+--
+-- Both properties are fixed here rather than one, because "it would error out
+-- if called directly" is the argument the previous migration explicitly
+-- declined to rely on.
+-- ---------------------------------------------------------------------------
+alter function public.check_category_cycle() set search_path = public, pg_temp;
+revoke execute on function public.check_category_cycle() from anon, authenticated, public;
+
+
+-- ---------------------------------------------------------------------------
+-- Deliberately NOT addressed
+--
+-- `public.rls_auto_enable()` is flagged by the linter with the same shape. It
+-- is Supabase platform-managed, not ours — the same call 20260820000005 made,
+-- and for the same reason: revoking on a function the platform installs and
+-- may re-create is a good way to break tooling without improving anything we
+-- control.
+--
+-- `pg_trgm` and `unaccent` living in `public` are also still flagged. Moving
+-- them means dropping and rebuilding the gin_trgm_ops indexes on
+-- products.title and products.tagline. That remains a real migration with a
+-- rebuild cost rather than a one-line ALTER, and these extensions add no
+-- privilege-bearing surface.
+--
+-- One thing this file CANNOT fix, because it is not SQL: **leaked password
+-- protection is disabled** on this project. Supabase Auth can check new
+-- passwords against HaveIBeenPwned, and it is off. That is a dashboard toggle
+-- (Authentication -> Policies), and it is worth more than most of this file
+-- now that the account area has a working password-change form.
+-- ============================================================================

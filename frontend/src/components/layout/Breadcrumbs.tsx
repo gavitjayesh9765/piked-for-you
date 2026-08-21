@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { jsonLd } from "@/lib/json-ld";
 
 /** Breadcrumbs (spec §18, §47). Emits BreadcrumbList structured data alongside
  *  the visual trail so search engines get the hierarchy for free. */
@@ -29,7 +30,7 @@ export function Breadcrumbs({ items }: { items: { label: string; href?: string }
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
+          __html: jsonLd({
             "@context": "https://schema.org",
             "@type": "BreadcrumbList",
             itemListElement: items.map((item, i) => ({

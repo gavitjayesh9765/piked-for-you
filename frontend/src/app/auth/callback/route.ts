@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { safePublicPath } from "@/lib/safe-path";
 
 /**
  * Email confirmation / OAuth callback.
@@ -18,10 +19,11 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get("code");
   const rawNext = searchParams.get("next");
 
-  const next =
-    rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") && !rawNext.startsWith("/admin")
-      ? rawNext
-      : "/";
+  // Prefixing `${origin}` below happened to contain the weaker check this
+  // replaced, but "safe by accident of how it is concatenated" is not a
+  // property to rely on — the shared validator resolves the value the way a
+  // browser will, and is the same one the login form and the proxy use.
+  const next = safePublicPath(rawNext, "/");
 
   if (!code) {
     return NextResponse.redirect(`${origin}/login?error=missing_code`);

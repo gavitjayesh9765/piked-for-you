@@ -15,13 +15,15 @@ signature?" Useful for hydrating a UI; never a source of authority on its own.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Response, status
+from fastapi import APIRouter, Request, Response, status
 from pydantic import BaseModel, ConfigDict
 from pydantic.alias_generators import to_camel
 from sqlalchemy import select
 
+from app.core import audit
 from app.core.config import settings
-from app.core.deps import CurrentUser, DbSession, OptionalUser
+from app.core.deps import CurrentAdmin, CurrentUser, DbSession, OptionalUser, client_ip
+from app.core.limiter import WRITE, limiter
 from app.models import Profile
 
 router = APIRouter()
@@ -125,6 +127,45 @@ async def update_profile(
         avatar_url=profile.avatar_url,
         is_admin=user.is_admin,
         mfa_required=user.is_admin_pending_mfa,
+    )
+
+
+@router.post("/admin-sign-in", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
+@limiter.limit(WRITE)
+async def record_admin_sign_in(
+    request: Request, admin: CurrentAdmin, db: DbSession, response: Response
+) -> None:
+    """Write one `auth.admin_sign_in` entry to the audit log.
+
+    Why this endpoint exists at all: authentication happens in the browser
+    against Supabase Auth, so the server never sees a sign-in and the audit
+    trail could not answer "who entered the panel, and when?" — only what they
+    changed once inside. Supabase keeps its own auth log, but correlating two
+    systems by timestamp during an incident is exactly the work you do not want
+    to be doing during an incident.
+
+    What it can and cannot be trusted for, stated plainly:
+
+      * **Who** is trustworthy. `CurrentAdmin` re-verifies the signature, the
+        role and `aal2`, so the actor recorded is the token's real subject.
+      * **Whether a sign-in happened** is not independently verified — a caller
+        holding a valid aal2 admin token could post this without having just
+        signed in. They are, by definition, already an authenticated admin, so
+        the entry is at worst redundant, never a forged identity.
+
+    It is therefore a convenience record, not evidence, and the rate limit
+    keeps it from becoming a way to flood the log.
+    """
+    response.headers["Cache-Control"] = "no-store, private"
+
+    await audit.record(
+        db,
+        actor_id=admin.id,
+        action="auth.admin_sign_in",
+        entity_type="session",
+        summary=f"Admin session started for {admin.email or admin.id}",
+        meta={"session_id": admin.session_id, "aal": admin.aal},
+        ip_address=client_ip(request),
     )
 
 

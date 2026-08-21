@@ -64,6 +64,17 @@ services:
     # out buys contention, not throughput. Scale the instance up, not out.
     # $PORT is injected by Render and must be bound, or the deploy is marked
     # unhealthy no matter how well the app started.
+    # --forwarded-allow-ips='*' trusts X-Forwarded-* from any peer. That is
+    # correct HERE and nowhere else: on Render the instance is reachable only
+    # through Render's own proxy, whose address is not fixed or published, so
+    # there is no narrower value to set. Two things keep it honest —
+    #   * app/core/deps.py::client_ip is explicit that the resulting address is
+    #     caller-controlled and is used for rate-limit keys and audit metadata
+    #     ONLY, never for authorization;
+    #   * nothing else can open a socket to this process.
+    # If this service is ever exposed directly, or moved behind a proxy with a
+    # known address, replace '*' with that address — a spoofed X-Forwarded-For
+    # would otherwise let one caller consume another's rate-limit budget.
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --proxy-headers --forwarded-allow-ips='*'
 
     healthCheckPath: /health
@@ -116,3 +127,22 @@ services:
 
       - key: REQUIRE_ADMIN_MFA
         value: "true"
+
+      # --- Rate limiting (app/core/limiter.py) ---
+      # Deliberately EMPTY rather than absent. The setting defaults to
+      # `redis://localhost:6379/0`, and there is no Redis on this instance —
+      # so leaving it unset pointed the limiter at a socket that does not
+      # exist. The limiter falls back to in-memory either way, but an empty
+      # value says so on purpose instead of arriving via a failed connection.
+      #
+      # In-memory is a real limit at `--workers 1` (pinned above) and resets on
+      # deploy. Add a Redis URL here the moment this scales past one worker, or
+      # each worker will enforce the limits below independently.
+      - key: REDIS_URL
+        value: ""
+      - key: RATE_LIMIT_ANON
+        value: "60/minute"
+      - key: RATE_LIMIT_AUTH
+        value: "180/minute"
+      - key: RATE_LIMIT_WRITE
+        value: "20/minute"

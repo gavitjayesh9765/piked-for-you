@@ -88,6 +88,14 @@ def fetcher(**overrides) -> Fetcher:
             "timeout_seconds": 10,
             "max_retries": 0,
             "respect_robots": True,
+            # The server below is on 127.0.0.1 on an ephemeral port, which the
+            # SSRF guard (app/core/net.py) correctly refuses — that refusal is
+            # the point of the guard. Mocking the transport instead would let
+            # every failure this module exists to handle pass while the real
+            # socket behaviour broke, so the hatch is opened here rather than
+            # the tests being made less real. It is ignored when
+            # ENVIRONMENT=production, and no production call site passes it.
+            "allow_private_addresses": True,
             **overrides,
         }
     )

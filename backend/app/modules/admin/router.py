@@ -26,7 +26,7 @@ from app.models import ActivityLog, ContactMessage, Product, Profile, Review
 from app.modules.admin import service
 from app.modules.products.repository import ProductRepository
 from app.modules.products.service import sign_for, to_admin_detail, to_summary
-from app.schemas.common import AdminSortOption, Page, PageParams
+from app.schemas.common import MAX_PAGE, AdminSortOption, Page, PageParams
 from app.schemas.product import (
     MediaReorder,
     ProductCreate,
@@ -83,7 +83,7 @@ async def list_products(
         Literal["missing", "present", "failing"] | None, Query(alias="priceState")
     ] = None,
     stale_hours: Annotated[int | None, Query(alias="staleHours", ge=0, le=8760)] = None,
-    page: Annotated[int, Query(ge=1)] = 1,
+    page: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 25,
 ) -> Page[ProductSummaryOut]:
     """Unlike the public list, this returns drafts and archived products.
@@ -281,7 +281,7 @@ async def list_reviews(
     db: DbSession,
     response: Response,
     status_filter: Annotated[str, Query(alias="status")] = "pending",
-    page: Annotated[int, Query(ge=1)] = 1,
+    page: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 25,
 ) -> dict:
     """The moderation queue — oldest first, so nothing waits indefinitely."""
@@ -412,7 +412,7 @@ async def list_messages(
     db: DbSession,
     response: Response,
     status_filter: Annotated[str, Query(alias="status")] = "new",
-    page: Annotated[int, Query(ge=1)] = 1,
+    page: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 1,
 ) -> dict:
     _private(response)
     page_size = 25
@@ -466,7 +466,7 @@ async def list_users(
     db: DbSession,
     response: Response,
     q: Annotated[str | None, Query(max_length=200)] = None,
-    page: Annotated[int, Query(ge=1)] = 1,
+    page: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 1,
 ) -> dict:
     """Registered shoppers.
 
@@ -534,7 +534,7 @@ async def activity_logs(
     db: DbSession,
     response: Response,
     entity_type: Annotated[str | None, Query()] = None,
-    page: Annotated[int, Query(ge=1)] = 1,
+    page: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 50,
 ) -> dict:
     """Read-only. There is deliberately no endpoint to edit or delete a log

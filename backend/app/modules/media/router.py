@@ -27,12 +27,17 @@ import io
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
 from PIL import Image, UnidentifiedImageError
+
+# Lives on PIL.Image, not on the package root, and subclasses Exception
+# directly — which is exactly why it slipped past the OSError/ValueError clause.
+from PIL.Image import DecompressionBombError
 from sqlalchemy import delete, func, select
 
 from app.core.config import settings
 from app.core.deps import CurrentUser, DbSession, owns_or_admin
+from app.core.limiter import WRITE, limiter
 from app.core.storage import remove, sign_url, upload
 from app.core.video import UnknownDuration, probe_duration
 from app.models import Review, ReviewMedia
@@ -55,7 +60,12 @@ async def _load_own_review(db: DbSession, review_id: uuid.UUID, user) -> Review:
 
 
 @router.post("/review", response_model=MediaOut, status_code=status.HTTP_201_CREATED)
+# The most expensive endpoint on the public surface: it accepts up to 50 MB,
+# decodes it, and re-encodes it. Metered tighter than a read for that reason
+# alone, quite apart from abuse.
+@limiter.limit(WRITE)
 async def upload_review_media(
+    request: Request,
     user: CurrentUser,
     db: DbSession,
     review_id: Annotated[uuid.UUID, Form()],
@@ -135,6 +145,17 @@ async def _store_image(db: DbSession, review: Review, user, raw: bytes, declared
         Image.open(io.BytesIO(raw)).verify()
         img = Image.open(io.BytesIO(raw))  # reopen — verify() leaves it unusable
         img.load()
+    except DecompressionBombError:
+        # A decompression bomb: a few KB of file that declares enormous
+        # dimensions and expands to gigabytes of pixels on decode. Pillow
+        # raises this from `Exception`, NOT from OSError or ValueError, so it
+        # slipped past the clause below and surfaced as an uncaught 500 —
+        # which is a crash report for us and an unexplained failure for the
+        # uploader. It is a rejected file, and it says so.
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "That image declares dimensions far too large to process.",
+        ) from None
     except (UnidentifiedImageError, OSError, ValueError):
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY, "That file is not a readable image."

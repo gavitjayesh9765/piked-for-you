@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getAccessToken } from "@/lib/supabase/server";
+import { badBody, readJson, userGuard, NO_STORE } from "@/lib/user-guard";
 
 /**
  * Preferences proxy.
@@ -10,31 +10,37 @@ import { getAccessToken } from "@/lib/supabase/server";
  * forwards the token.
  *
  * No user id is passed: the API derives it from the token, so there is no
- * parameter to tamper with.
+ * parameter to tamper with. `userGuard` adds the origin check — without it, a
+ * cross-site page could quietly rewrite a signed-in visitor's preferences.
  */
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+const UPSTREAM_TIMEOUT_MS = 15_000;
 
 export async function PUT(request: NextRequest) {
-  const token = await getAccessToken();
-  if (!token) {
-    return NextResponse.json({ error: "unauthenticated" }, { status: 401 });
-  }
+  const auth = await userGuard(request);
+  if (!auth.ok) return auth.response;
+
+  const body = await readJson(request);
+  if (body === undefined || typeof body !== "object" || body === null) return badBody();
 
   try {
-    const body = await request.json();
     const res = await fetch(`${API_URL}/me/preferences`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${auth.token}`,
       },
       body: JSON.stringify(body),
       cache: "no-store",
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
 
     const data = await res.json().catch(() => null);
-    return NextResponse.json(data ?? {}, { status: res.status });
+    return NextResponse.json(data ?? {}, { status: res.status, headers: NO_STORE });
   } catch {
-    return NextResponse.json({ error: "upstream_unavailable" }, { status: 502 });
+    return NextResponse.json(
+      { error: "upstream_unavailable" },
+      { status: 502, headers: NO_STORE },
+    );
   }
 }

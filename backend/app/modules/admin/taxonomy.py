@@ -16,14 +16,15 @@ import unicodedata
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Body, HTTPException, Query, Request, status
+from fastapi import APIRouter, Body, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
 from sqlalchemy import delete, func, select, text
 
 from app.core import audit
 from app.core.deps import CurrentAdmin, DbSession, client_ip
-from app.core.video_links import InvalidVideoLink, parse as parse_video
+from app.core.video_links import InvalidVideoLink
+from app.core.video_links import parse as parse_video
 from app.models import Badge, Brand, Category, Product, ProductMedia
 
 router = APIRouter()

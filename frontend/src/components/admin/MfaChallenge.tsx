@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { safeInternalPath } from "@/lib/safe-path";
+import { recordAdminSignIn } from "@/lib/sign-in-event";
 
 /**
  * Verify an **already enrolled** TOTP factor, lifting this session to aal2.
@@ -111,6 +112,8 @@ export function MfaChallenge({ email }: { email: string | null }) {
     // the new claims, then send them where they were trying to go — which is
     // the whole point of the `next` the proxy attached on the way in.
     setBusy(false);
+    recordAdminSignIn();
+
     router.replace(safeNext());
     router.refresh();
   }

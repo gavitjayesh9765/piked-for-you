@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { cn } from "@/lib/cn";
 import { getAuthedUser } from "@/lib/supabase/server";
+import { safePublicPath } from "@/lib/safe-path";
 import { getCategories } from "@/lib/api";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
@@ -45,8 +46,10 @@ export default async function AccountLayout({ children }: { children: React.Reac
 
   if (!user) {
     // Same-origin paths only — this value ends up in a redirect, and an
-    // absolute URL here would make the login page an open redirect.
-    const next = here && here.startsWith("/") && !here.startsWith("//") ? here : "/account";
+    // absolute URL here would make the login page an open redirect. Uses the
+    // shared validator rather than a prefix test: `x-pathname` is stamped by
+    // the proxy from the request URL, so it is attacker-influenced.
+    const next = safePublicPath(here, "/account");
     redirect(`/login?next=${encodeURIComponent(next)}`);
   }
 

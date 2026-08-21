@@ -62,6 +62,7 @@ from app.models import (
     ProductRetailer,
     Retailer,
 )
+from app.schemas.common import MAX_PAGE
 from app.services.scraper import apply_reading, execute_job, preview_url, resolve_targets
 
 router = APIRouter(prefix="/pricing", tags=["admin", "pricing"])
@@ -585,7 +586,7 @@ async def list_runs(
     admin: CurrentAdmin,
     db: DbSession,
     response: Response,
-    page: Annotated[int, Query(ge=1)] = 1,
+    page: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 20,
 ) -> dict:
     _private(response)

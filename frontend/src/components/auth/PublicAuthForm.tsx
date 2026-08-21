@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
+import { safePublicPath } from "@/lib/safe-path";
 
 /**
  * Public sign-in / sign-up for shoppers (spec §27).
@@ -33,12 +34,18 @@ export function PublicAuthForm({ mode }: { mode: Mode }) {
 
   const isRegister = mode === "register";
 
+  /**
+   * Same-origin paths only, and never an admin route.
+   *
+   * This used to be a hand-rolled `startsWith("/") && !startsWith("//")` test.
+   * That rejects the obvious `//evil.example` and misses `/\evil.example`,
+   * which browsers normalise to a protocol-relative URL — so
+   * `router.replace()` resolved it against the current origin and left the
+   * site. `safePublicPath` resolves the value the way the browser will and
+   * keeps it only if it still points here; see lib/safe-path.ts.
+   */
   function safeNext(): string {
-    const raw = params.get("next");
-    if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/";
-    // Never let a public login land someone on an admin route.
-    if (raw.startsWith("/admin")) return "/";
-    return raw;
+    return safePublicPath(params.get("next"), "/");
   }
 
   async function submit(e: React.FormEvent) {

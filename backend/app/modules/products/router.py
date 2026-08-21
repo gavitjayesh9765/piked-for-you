@@ -12,7 +12,7 @@ from app.core.config import settings
 from app.core.deps import DbSession
 from app.modules.products.repository import ProductRepository
 from app.modules.products.service import sign_for, to_detail, to_summary
-from app.schemas.common import Facet, Page, PageParams, SortOption
+from app.schemas.common import MAX_PAGE, Facet, Page, PageParams, SortOption
 from app.schemas.product import ProductOut, ProductSummaryOut
 
 router = APIRouter()
@@ -36,7 +36,7 @@ async def list_products(
     max_price: Annotated[Decimal | None, Query(ge=0)] = None,
     min_score: Annotated[Decimal | None, Query(ge=0, le=10)] = None,
     sort: Annotated[SortOption, Query()] = "score_desc",
-    page: Annotated[int, Query(ge=1)] = 1,
+    page: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 24,
 ) -> Page[ProductSummaryOut]:
     _cache(response)

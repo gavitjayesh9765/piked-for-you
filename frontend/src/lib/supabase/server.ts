@@ -157,7 +157,65 @@ export async function isAdmin(): Promise<boolean> {
   return (await getAdminGate()).ok;
 }
 
-/** The access token, for forwarding to the FastAPI backend. */
+/**
+ * Any verified signed-in caller, plus their token — the shopper equivalent of
+ * `getAdminSession`.
+ *
+ * Claims first, token second, and in that order for the same reason the admin
+ * version gives: if this caller is not who the cookie claims, there is no
+ * reason to go looking for a token to hand them.
+ *
+ * This replaces a bare `getAccessToken()` in every `/api/*` shopper handler.
+ * That helper read the cookie with `getSession()` and never validated it,
+ * which made it the one place in this codebase that relaxed its own rule —
+ * stated two functions up — that `getSession()` believes a tampered cookie.
+ * It was not exploitable, because FastAPI re-verifies the token it is handed
+ * and would reject a forged one, but "the next layer catches it" is how a
+ * check goes missing at the layer that eventually stops re-checking.
+ *
+ * A refusal never carries a token. That is the point of the union: there is no
+ * shape of this value that says "denied" while still handing out a credential.
+ */
+export type UserSession =
+  | { ok: true; token: string; userId: string; email: string | null }
+  | { ok: false; reason: "anonymous" };
+
+export async function getUserSession(): Promise<UserSession> {
+  if (!isConfigured()) return { ok: false, reason: "anonymous" };
+
+  try {
+    const supabase = await createClient();
+
+    const { data, error } = await supabase.auth.getClaims();
+    if (error || !data?.claims) return { ok: false, reason: "anonymous" };
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    // Verified caller, no token to forward. Refusing is the only honest
+    // answer: a request with no credential cannot be made on their behalf.
+    if (!token) return { ok: false, reason: "anonymous" };
+
+    return {
+      ok: true,
+      token,
+      userId: data.claims.sub,
+      email: typeof data.claims.email === "string" ? data.claims.email : null,
+    };
+  } catch {
+    return { ok: false, reason: "anonymous" };
+  }
+}
+
+/**
+ * The access token, for forwarding to the FastAPI backend.
+ *
+ * Server Components only. Route Handlers must use `getUserSession()` via
+ * `lib/user-guard.ts` instead — they are the cookie-authenticated,
+ * CSRF-reachable surface, and this function performs no origin check and no
+ * claim verification.
+ */
 export async function getAccessToken(): Promise<string | null> {
   if (!isConfigured()) return null;
   try {

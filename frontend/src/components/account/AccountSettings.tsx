@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { PasswordForm } from "@/components/account/PasswordForm";
 
 const THEME_KEY = "pickd-theme";
 const ANALYTICS_KEY = "pickd-analytics-consent";
@@ -22,6 +23,7 @@ type Theme = "light" | "dark" | "system";
 export function AccountSettings() {
   return (
     <>
+      <SecuritySetting />
       <ThemeSetting />
       <AnalyticsSetting />
       <DataSetting />
@@ -30,6 +32,25 @@ export function AccountSettings() {
 }
 
 /* ------------------------------------------------------------------ */
+
+/**
+ * Security sits first because it is the only section here with a consequence
+ * beyond this browser. Theme and analytics are local preferences; this one
+ * changes a credential.
+ */
+function SecuritySetting() {
+  return (
+    <Section id="security" title="Security">
+      <p className="max-w-prose text-body-sm text-ink-muted">
+        Your password is stored and checked by our authentication provider — it never passes
+        through this site&apos;s servers, and nobody here can read it.
+      </p>
+      <div className="mt-6">
+        <PasswordForm />
+      </div>
+    </Section>
+  );
+}
 
 function ThemeSetting() {
   const [theme, setTheme] = useState<Theme>("system");

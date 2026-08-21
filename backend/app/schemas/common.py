@@ -73,3 +73,16 @@ class Facet(BaseModel):
 
 class Message(BaseModel):
     detail: str
+
+# Deepest page anyone may request.
+#
+# `page` was bounded below (ge=1) and not above, so `?page=99999999` produced an
+# OFFSET that Postgres must count past row by row. On the public product,
+# review and search listings — unauthenticated, and now the cheapest way to
+# make a free-tier database work hard — that is an availability problem rather
+# than a data one.
+#
+# 1000 pages is far past where any real reader goes and far short of where the
+# query starts to hurt. Anything genuinely needing to walk the whole catalogue
+# should use a keyset cursor, not a deeper offset.
+MAX_PAGE = 1000

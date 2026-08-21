@@ -236,6 +236,71 @@ through it.
 2. **FastAPI** (`app/core/deps.py`) — verifies signature, audience, role, MFA. *The control.*
 3. **Row Level Security** — the database refuses the row. A bug in layer 2 still cannot leak data.
 
+### Route Handlers are cookie-authenticated, and therefore CSRF-reachable
+
+Anything under `frontend/src/app/**/api/` reads the session from an `httpOnly`
+cookie the browser attaches automatically. That is what makes an XSS bug unable
+to steal a session — and it is exactly the precondition for CSRF.
+
+**Every such handler must go through a guard**, and there are two, one per
+surface. They are not interchangeable:
+
+| Surface | Guard | Requires |
+|---|---|---|
+| `app/admin/api/**` | `guard()` — `lib/admin-guard.ts` | same origin, admin role, aal2 |
+| `app/api/**` | `userGuard()` — `lib/user-guard.ts` | same origin, verified session |
+
+Do not reach for `getAccessToken()` in a Route Handler. It reads the cookie
+without verifying it and performs no origin check; it exists for Server
+Components, which are not reachable by a cross-site form post.
+
+Two details that make "JSON bodies are protected by CORS preflight" false here,
+and are the reason the origin check is not optional:
+
+* `request.json()` parses the body **regardless of `Content-Type`**, so a
+  cross-site form posted as `text/plain` arrives as a valid JSON request.
+* `request.formData()` accepts `multipart/form-data`, which is a CORS-*simple*
+  content type — no preflight is sent at all.
+
+### Path segments are validated before they reach an upstream URL
+
+`isId()` for UUIDs, `isSlug()` for slugs (`lib/api.ts`), and an explicit
+allow-list `Set` for action segments. An unchecked segment interpolated into an
+upstream path template lets `..%2f..%2f` choose the endpoint — carrying the
+caller's own token.
+
+### RLS scopes rows; GRANTs scope columns
+
+A policy answers "which row may you touch", and says nothing about which
+*columns* you may set in it. Several policies were row-correct and
+column-permissive — `review_media.storage_path`, `reviews.is_featured`,
+`profiles.is_active`. Column-level `GRANT`s close that (migration
+`20260821000011`), because a `with check` clause cannot tell "unchanged" from
+"set to the same value", and enumerating immutable columns in a policy
+expression is a list that rots as columns are added.
+
+Related: **everything in the `public` schema is exposed over PostgREST**, with
+the anon key, which is public by design. That includes functions. A new
+`SECURITY DEFINER` function is an unauthenticated RPC endpoint until you revoke
+`EXECUTE` from `anon` and `authenticated` (migration `20260821000012`).
+`supabase get_advisors --type security` catches this; run it after any
+migration that adds a function.
+
+### Outbound requests
+
+The price scraper fetches URLs someone else chose, which is SSRF by shape.
+`app/core/net.py` is the guard: http/https on ports 80/443 only, every
+*resolved address* must be publicly routable, and every redirect hop is
+re-validated (so `follow_redirects` is off and the chain is walked by hand).
+Checking only the submitted URL is defeated by a 302.
+
+### Rate limiting
+
+`app/core/limiter.py`, applied via `SlowAPIMiddleware` for defaults and
+`@limiter.limit(WRITE)` on writes. Keyed by verified token subject when signed
+in, IP otherwise. Falls back to in-memory storage when Redis is unreachable —
+which is a real limit at `--workers 1` and *not* one beyond that.
+
 ---
 
 ## 6a. Mass assignment

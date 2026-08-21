@@ -36,6 +36,23 @@ class SearchResults(BaseModel):
     total: int
 
 
+def _like_pattern(raw: str) -> str:
+    """Wrap a search term as a contains-pattern, escaping LIKE wildcards.
+
+    The parameter is bound, so this was never an injection risk; escaping `%`
+    and `_` stops a user's literal underscore from acting as a wildcard and
+    returning nonsense.
+
+    Written as statements rather than inline in an f-string because a backslash
+    inside an f-string expression is a **SyntaxError before Python 3.12**, and
+    `pyproject.toml` declares `requires-python = ">=3.11"`. It only ran because
+    `render.yaml` happens to pin 3.13 — so the declared floor was not actually
+    importable, and the failure mode is the whole module failing to load.
+    """
+    escaped = raw.strip().replace("%", r"\%").replace("_", r"\_")
+    return f"%{escaped}%"
+
+
 @router.get("", response_model=SearchResults)
 async def search(
     db: DbSession,
@@ -51,10 +68,7 @@ async def search(
     if not needle:
         return SearchResults(products=[], categories=[], brands=[], total=0)
 
-    # ILIKE with an escaped pattern. The parameter is bound, so this is not an
-    # injection risk; escaping % and _ stops a user's literal underscore from
-    # behaving as a wildcard and returning nonsense.
-    pattern = f"%{needle.replace('%', r'\%').replace('_', r'\_')}%"
+    pattern = _like_pattern(needle)
 
     product_stmt = (
         select(Product)
@@ -157,7 +171,7 @@ async def suggest(
     db: DbSession, q: Annotated[str, Query(min_length=1, max_length=100)]
 ) -> list[str]:
     """Type-ahead over product titles and brand names."""
-    pattern = f"%{q.strip().replace('%', r'\%').replace('_', r'\_')}%"
+    pattern = _like_pattern(q)
 
     titles = (
         await db.execute(

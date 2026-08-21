@@ -5,6 +5,7 @@ import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
 import { safeInternalPath } from "@/lib/safe-path";
+import { recordAdminSignIn } from "@/lib/sign-in-event";
 
 /**
  * Admin sign-in: password, then TOTP.
@@ -137,6 +138,10 @@ export function AdminLoginForm() {
       setBusy(false);
       return;
     }
+
+    // aal2 reached. Note the arrival in the audit log before navigating —
+    // fire-and-forget, so it never delays the redirect.
+    recordAdminSignIn();
 
     router.replace(safeNext());
     router.refresh();

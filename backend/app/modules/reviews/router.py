@@ -16,19 +16,20 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Body, HTTPException, Query, Response, status
+from fastapi import APIRouter, Body, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field
+from pydantic.alias_generators import to_camel
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
-from pydantic.alias_generators import to_camel
 
 from app.core.config import settings
-from app.core.deps import CurrentUser, DbSession, OptionalUser, owns_or_admin
+from app.core.deps import CurrentUser, DbSession, owns_or_admin
+from app.core.limiter import WRITE, limiter
 from app.core.storage import sign_many
 from app.models import Product, Review, ReviewMedia, ReviewReport
 from app.modules.products.repository import ProductRepository
-from app.schemas.common import Page
+from app.schemas.common import MAX_PAGE, Page
 from app.schemas.product import MediaOut
 from app.schemas.review import ReviewOut
 
@@ -70,13 +71,35 @@ class ReportRequest(Strict):
     detail: str | None = Field(default=None, max_length=1000)
 
 
+def _owns_path(review: Review, storage_path: str | None) -> bool:
+    """Does this media row point inside its own author's storage folder?
+
+    Objects are written as `{user_id}/{review_id}/{file}` by the upload handler
+    and the storage RLS policy pins the first segment to `auth.uid()`. But the
+    *database row* naming the object is a separate thing from the object, and
+    `sign_many` below signs with the service-role key — which is exempt from
+    storage RLS by design.
+
+    So a row whose `storage_path` points at another user's folder would have
+    been signed and served. The RLS `with check` added in migration
+    20260821000011 stops such a row being written; this stops one that already
+    exists, or one written by any future path that forgets, from being read.
+    Two independent checks, because the consequence of missing it is one user
+    reading another's private media.
+    """
+    if not storage_path:
+        return False
+    return storage_path.startswith(f"{review.user_id}/")
+
+
 async def _to_out(db: DbSession, reviews: list[Review], include_pending_media: bool) -> list[ReviewOut]:
     """Map to the wire type, signing media URLs in one batch."""
     paths = [
         m.storage_path
         for r in reviews
         for m in r.media
-        if include_pending_media or m.moderation_status == "approved"
+        if (include_pending_media or m.moderation_status == "approved")
+        and _owns_path(r, m.storage_path)
     ]
     urls = await sign_many("review-media", paths) if paths else {}
 
@@ -93,7 +116,12 @@ async def _to_out(db: DbSession, reviews: list[Review], include_pending_media: b
                 display_order=m.display_order,
             )
             for m in sorted(r.media, key=lambda x: x.display_order)
-            if include_pending_media or m.moderation_status == "approved"
+            if (include_pending_media or m.moderation_status == "approved")
+            # Dropped rather than rendered with an empty URL: a row pointing
+            # outside its author's folder is not a broken image, it is a row
+            # that should not exist, and showing a placeholder for it would
+            # make the anomaly look like an ordinary storage hiccup.
+            and _owns_path(r, m.storage_path)
         ]
         out.append(
             ReviewOut(
@@ -122,7 +150,7 @@ async def list_reviews(
     product_id: uuid.UUID,
     db: DbSession,
     response: Response,
-    page: Annotated[int, Query(ge=1)] = 1,
+    page: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 1,
     page_size: Annotated[int, Query(ge=1, le=50)] = 20,
 ) -> Page[ReviewOut]:
     """Approved reviews only; featured first (spec §30).
@@ -165,7 +193,7 @@ async def my_reviews(
     user: CurrentUser,
     db: DbSession,
     response: Response,
-    page: Annotated[int, Query(ge=1)] = 1,
+    page: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 1,
     page_size: Annotated[int, Query(ge=1, le=50)] = 20,
 ) -> Page[ReviewOut]:
     """Your own reviews, in every state — so you can see what is still pending."""
@@ -198,8 +226,12 @@ async def my_reviews(
 
 
 @router.post("", response_model=ReviewOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit(WRITE)
 async def create_review(
-    payload: Annotated[ReviewCreate, Body()], user: CurrentUser, db: DbSession
+    request: Request,
+    payload: Annotated[ReviewCreate, Body()],
+    user: CurrentUser,
+    db: DbSession,
 ) -> ReviewOut:
     """Create a review. Always lands in `pending` (spec §30).
 
@@ -244,7 +276,9 @@ async def create_review(
 
 
 @router.patch("/{review_id}", response_model=ReviewOut)
+@limiter.limit(WRITE)
 async def update_review(
+    request: Request,
     review_id: uuid.UUID,
     payload: Annotated[ReviewUpdate, Body()],
     user: CurrentUser,
@@ -309,7 +343,9 @@ async def delete_review(review_id: uuid.UUID, user: CurrentUser, db: DbSession) 
 
 
 @router.post("/{review_id}/report", status_code=status.HTTP_202_ACCEPTED)
+@limiter.limit(WRITE)
 async def report_review(
+    request: Request,
     review_id: uuid.UUID,
     payload: Annotated[ReportRequest, Body()],
     user: CurrentUser,

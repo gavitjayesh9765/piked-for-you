@@ -10,6 +10,7 @@ import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { Section, SectionHeader } from "@/components/layout/Section";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
+import { jsonLd } from "@/lib/json-ld";
 import { Badge, CommunityRating } from "@/components/ui/Badge";
 import { RetailButton } from "@/components/ui/Button";
 import { Gallery } from "@/components/product/Gallery";
@@ -228,7 +229,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
+          __html: jsonLd({
             "@context": "https://schema.org",
             "@type": "Product",
             name: `${product.brand.name} ${product.title}`,

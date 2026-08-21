@@ -30,6 +30,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile, status
 from PIL import Image, UnidentifiedImageError
+
+# Lives on PIL.Image, not on the package root, and subclasses Exception
+# directly — which is exactly why it slipped past the OSError/ValueError clause.
+from PIL.Image import DecompressionBombError
 from sqlalchemy import delete, func, select
 
 from app.core import audit
@@ -93,6 +97,15 @@ async def upload_product_image(
         probe.verify()  # structural check; consumes the object
         img = Image.open(io.BytesIO(raw))  # reopen — verify() leaves it unusable
         img.load()
+    except DecompressionBombError:
+        # Raised from `Exception`, not OSError/ValueError, so it was not caught
+        # by the clause below and became an uncaught 500. Same rejection as any
+        # other unusable file — an admin account is a compromise target, and
+        # "the uploader is trusted" is not a reason to decode a bomb.
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "That image declares dimensions far too large to process.",
+        ) from None
     except (UnidentifiedImageError, OSError, ValueError):
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,

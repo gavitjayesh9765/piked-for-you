@@ -36,6 +36,7 @@ from app.models import (
     ReviewReport,
     TopPick,
 )
+from app.schemas.common import MAX_PAGE
 
 router = APIRouter()
 
@@ -563,7 +564,7 @@ async def media_library(
     db: DbSession,
     response: Response,
     kind: Annotated[str, Query()] = "all",
-    page: Annotated[int, Query(ge=1)] = 1,
+    page: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 1,
 ) -> dict:
     """Everything attached to a product, newest first."""
     _private(response)

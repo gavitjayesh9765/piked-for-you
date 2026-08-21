@@ -115,11 +115,37 @@ export async function getCategories(): Promise<Category[]> {
   return get<Category[]>("/categories");
 }
 
+/**
+ * Slug shape, checked before a value from the URL becomes part of an upstream
+ * path.
+ *
+ * Route params are attacker-controlled: `/c/<anything>`, `/b/<anything>`,
+ * `/p/<anything>/<anything>` all reach these functions verbatim. Interpolating
+ * them raw means `..%2f..%2f` — which Next decodes for us — reaches an
+ * endpoint the caller chose rather than the one written here.
+ *
+ * These particular calls send no Authorization header, so the worst case today
+ * is an unauthenticated 404 rather than a privileged read. That is a property
+ * of the current call sites, not of the pattern, and it is the same class the
+ * admin guard rejects outright with `isId`. Category, brand and product slugs
+ * are generated kebab-case, so the check costs nothing legitimate.
+ */
+const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+function isSlug(value: string | undefined | null): value is string {
+  return typeof value === "string" && value.length <= 120 && SLUG_RE.test(value);
+}
+
 export async function getCategory(path: string[]): Promise<Category | null> {
   if (USE_MOCKS) {
     const slug = path[path.length - 1];
     return mock.categories.find((c) => c.slug === slug) ?? null;
   }
+  // A path that is not made of slugs cannot match a category, so refusing it
+  // here is the same answer the API would give — reached without making the
+  // request, and without the segments ever entering a URL template.
+  if (path.length === 0 || path.length > 6 || !path.every(isSlug)) return null;
+
   try {
     return await get<Category>(`/categories/${path.join("/")}`);
   } catch (e) {
@@ -135,6 +161,7 @@ export async function getBrands(opts: { pinnedOnly?: boolean } = {}): Promise<Br
 
 export async function getBrand(slug: string): Promise<Brand | null> {
   if (USE_MOCKS) return mock.brands.find((b) => b.slug === slug) ?? null;
+  if (!isSlug(slug)) return null;
   try {
     return await get<Brand>(`/brands/${slug}`);
   } catch (e) {
@@ -211,6 +238,7 @@ function sortMock(items: ProductSummary[], sort: SortOption): ProductSummary[] {
 
 export async function getProduct(categorySlug: string, slug: string): Promise<Product | null> {
   if (USE_MOCKS) return mock.productDetail(slug);
+  if (!isSlug(categorySlug) || !isSlug(slug)) return null;
   try {
     return await get<Product>(`/products/${categorySlug}/${slug}`);
   } catch (e) {
@@ -221,7 +249,11 @@ export async function getProduct(categorySlug: string, slug: string): Promise<Pr
 
 export async function getAlternatives(productId: string, limit = 4): Promise<ProductSummary[]> {
   if (USE_MOCKS) return mock.products.filter((p) => p.id !== productId).slice(0, limit);
-  return get<ProductSummary[]>(`/products/${productId}/alternatives?limit=${limit}`);
+  // productId comes from data we rendered rather than from the URL, but it is
+  // still interpolated into a path — encode rather than assume.
+  return get<ProductSummary[]>(
+    `/products/${encodeURIComponent(productId)}/alternatives?limit=${limit}`,
+  );
 }
 
 export async function getFacets(categorySlug?: string): Promise<FilterFacet[]> {
@@ -248,7 +280,11 @@ export async function getFacets(categorySlug?: string): Promise<FilterFacet[]> {
       },
     ];
   }
-  return get<FilterFacet[]>(`/products/facets${categorySlug ? `?category=${categorySlug}` : ""}`);
+  // Encoded: unescaped, a slug containing `&` would append query parameters of
+  // the caller's choosing to our own request.
+  return get<FilterFacet[]>(
+    `/products/facets${categorySlug ? `?category=${encodeURIComponent(categorySlug)}` : ""}`,
+  );
 }
 
 /* ------------------------------------------------------------------ */

@@ -6,7 +6,6 @@ from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Response, status
 from sqlalchemy import func, select
-from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.core.deps import DbSession

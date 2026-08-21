@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { safeInternalPath } from "@/lib/safe-path";
+import { recordAdminSignIn } from "@/lib/sign-in-event";
 
 /**
  * TOTP enrolment for admins.
@@ -115,6 +116,7 @@ export function MfaEnrolment({ alreadyEnrolled }: { alreadyEnrolled: boolean }) 
     // is actually waiting on. Refresh so the server re-reads the new claims.
     setStage("done");
     setBusy(false);
+    recordAdminSignIn();
     router.refresh();
   }
 

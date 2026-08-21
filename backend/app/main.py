@@ -12,9 +12,12 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.v1.router import api_router
 from app.core.config import settings
+from app.core.limiter import limiter, rate_limited
 from app.db.session import engine
 
 
@@ -62,6 +65,19 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type"],
 )
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# --- Rate limiting -------------------------------------------------------
+# The limiter object has to live on app.state: slowapi's decorator looks it up
+# there at request time rather than closing over the instance.
+#
+# SlowAPIMiddleware applies `default_limits` to every route, including ones
+# that never named a limit. Routes that need a different budget declare it with
+# @limiter.limit(...) and that declaration wins. Ordering matters — this is
+# added last, so it runs first, and a caller who is over their budget is turned
+# away before the request reaches a database session.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limited)  # type: ignore[arg-type]
+app.add_middleware(SlowAPIMiddleware)
 
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 

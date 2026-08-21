@@ -29,7 +29,7 @@ from app.models import (
     UserPreferences,
 )
 from app.modules.products.service import sign_for, to_summary
-from app.schemas.common import Page
+from app.schemas.common import MAX_PAGE, Page
 from app.schemas.product import ProductSummaryOut
 
 router = APIRouter()
@@ -76,7 +76,7 @@ async def list_saved(
     user: CurrentUser,
     db: DbSession,
     response: Response,
-    page: Annotated[int, Query(ge=1)] = 1,
+    page: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 1,
     page_size: Annotated[int, Query(ge=1, le=100)] = 24,
 ) -> Page[SavedItemOut]:
     """The caller's shortlist. Scoped by token — there is no user id parameter."""

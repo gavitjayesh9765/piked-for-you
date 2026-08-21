@@ -45,3 +45,26 @@ export function safeInternalPath(raw: string | null | undefined, fallback = "/ad
   const path = url.pathname + url.search;
   return path.startsWith("//") ? fallback : path;
 }
+
+/**
+ * The same validation, plus: never an admin route.
+ *
+ * For the *public* login and the account area. A shopper signing in at
+ * /login?next=/admin/products should land on the homepage, not be walked up to
+ * a staff door — the proxy and the API would refuse them anyway, but sending
+ * them there produces a confusing bounce and advertises that the surface
+ * exists.
+ *
+ * This existed as a hand-rolled `startsWith("/") && !startsWith("//")` test in
+ * PublicAuthForm, AccountLayout and the auth callback — the exact check the
+ * header of this file explains is insufficient. `/\evil.example` passed all
+ * three: browsers normalise the backslash to a slash, so `new URL()` resolved
+ * it to a different origin and the "internal" redirect left the site.
+ */
+export function safePublicPath(raw: string | null | undefined, fallback = "/"): string {
+  const path = safeInternalPath(raw, fallback);
+  // Case-insensitive: routing is case-sensitive but the intent here is "does
+  // this aim at the staff surface", and /Admin aims at it just as squarely.
+  if (/^\/admin(\/|$|\?)/i.test(path)) return fallback;
+  return path;
+}

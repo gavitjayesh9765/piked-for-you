@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getAccessToken } from "@/lib/supabase/server";
+import { badBody, readJson, userGuard, NO_STORE } from "@/lib/user-guard";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+const UPSTREAM_TIMEOUT_MS = 15_000;
 
 /**
  * Review submission proxy.
@@ -11,22 +12,33 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1
  * here and this forwards the token server-side.
  *
  * No user id crosses the wire: the API derives it from the token.
+ *
+ * The `userGuard` call is what stops a cross-site page posting reviews in a
+ * signed-in visitor's name. `request.json()` parses a body regardless of its
+ * Content-Type, so the usual "JSON needs a preflight" reasoning does not hold
+ * here — a plain HTML form with `enctype="text/plain"` was enough.
  */
 export async function POST(request: NextRequest) {
-  const token = await getAccessToken();
-  if (!token) return NextResponse.json({ detail: "Sign in to review." }, { status: 401 });
+  const auth = await userGuard(request);
+  if (!auth.ok) return auth.response;
+
+  const body = await readJson(request);
+  if (body === undefined || typeof body !== "object" || body === null) return badBody();
 
   try {
-    const body = await request.json();
     const res = await fetch(`${API_URL}/reviews`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${auth.token}`, "Content-Type": "application/json" },
       body: JSON.stringify(body),
       cache: "no-store",
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
     const data = await res.json().catch(() => null);
-    return NextResponse.json(data ?? {}, { status: res.status });
+    return NextResponse.json(data ?? {}, { status: res.status, headers: NO_STORE });
   } catch {
-    return NextResponse.json({ detail: "Could not post the review." }, { status: 502 });
+    return NextResponse.json(
+      { detail: "Could not post the review." },
+      { status: 502, headers: NO_STORE },
+    );
   }
 }
