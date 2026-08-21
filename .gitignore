@@ -1,0 +1,61 @@
+# --- Secrets (spec §66 — never commit these) ---
+.env
+.env.local
+.env.bak
+.en.bak.
+.env.*.local
+*.pem
+*.key
+
+# --- Node / Next ---
+node_modules/
+.next/
+out/
+build/
+*.tsbuildinfo
+next-env.d.ts
+.vercel/
+backend/.env.bak
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# --- Local infrastructure ---
+*.sqlite3
+*.db
+docker-data/
+minio-data/
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Design source archives (the extracted folder is tracked) ---
+stitch_pickdforyou_design_system.zip
+
+# --- Supabase ---
+# Local stack state and any resolved (non-example) env
+supabase/.branches/
+supabase/.temp/
+.supabase/
+
+.env
+.env.*
+!.env.example
+backend/.env.bak
+
+.env
+.env.*
+!.env.example
+backend/.env.bak

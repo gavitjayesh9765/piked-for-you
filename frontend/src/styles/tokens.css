@@ -1,0 +1,422 @@
+/* ==========================================================================
+   PickDForYou — Design Tokens
+   Source of truth for the visual system. Derived from the Stitch design system
+   "PickD Visual Identity", extended with a tuned dark theme and a fluid,
+   full-bleed layout scale.
+
+   Contract: components reference ROLES (--c-ink-muted), never colours (#6C5CE7).
+   Both themes fill every role independently. See docs/01-design-brainstorm.md §3.1.
+   ========================================================================== */
+
+:root {
+  /* ---------------------------------------------------------------------
+     BRAND CONSTANTS — identical in both themes. These are the brand, not
+     the theme. Use the semantic roles below for anything you actually paint.
+     --------------------------------------------------------------------- */
+  --brand-purple: #6c5ce7; /* DECIDING — our intelligence */
+  --brand-orange: #ff6b35; /* GETTING  — outbound to retailer */
+  --brand-green: #16a34a; /* VALUE    — worth-it signals */
+  --brand-obsidian: #0a0a0a; /* EDITORIAL — authority, badges */
+
+  /* ---------------------------------------------------------------------
+     TYPOGRAPHY
+     --------------------------------------------------------------------- */
+  /* next/font injects --font-hanken etc. in app/layout.tsx; the literal names
+     are the fallback for any surface that renders outside the Next app
+     (e.g. the standalone token preview). */
+  --font-display: var(--font-hanken), "Hanken Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-body: var(--font-inter), "Inter", system-ui, -apple-system, sans-serif;
+  --font-label: var(--font-geist), "Geist", "Inter", system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, monospace;
+
+  /* Type scale — fluid between mobile and desktop via clamp().
+     Display sizes are the ones that must feel confident at full width. */
+  --t-display-xl: clamp(2.75rem, 1.4rem + 4.6vw, 4.5rem); /*  44 -> 72 */
+  --t-display-lg: clamp(2.25rem, 1.4rem + 2.9vw, 3.5rem); /*  36 -> 56 */
+  --t-headline-lg: clamp(1.75rem, 1.3rem + 1.6vw, 2.5rem); /*  28 -> 40 */
+  --t-headline-md: clamp(1.375rem, 1.2rem + 0.6vw, 1.75rem); /*  22 -> 28 */
+  --t-headline-sm: 1.25rem; /*  20 */
+  --t-body-lg: 1.125rem; /*  18 */
+  --t-body-md: 1rem; /*  16 */
+  --t-body-sm: 0.875rem; /*  14 */
+  --t-label: 0.75rem; /*  12 */
+  --t-label-xs: 0.6875rem; /*  11 */
+
+  --lh-tight: 1.05;
+  --lh-snug: 1.25;
+  --lh-normal: 1.55;
+  --lh-relaxed: 1.7;
+
+  --tr-display: -0.04em; /* tight tracking for confident headlines */
+  --tr-headline: -0.02em;
+  --tr-normal: 0;
+  --tr-label: 0.08em; /* tracked-out mono labels */
+  --tr-label-wide: 0.14em; /* editorial badges */
+
+  /* ---------------------------------------------------------------------
+     SPACE — base-8 scale (spec §"Vertical Rhythm")
+     --------------------------------------------------------------------- */
+  --s-1: 0.25rem;
+  --s-2: 0.5rem;
+  --s-3: 0.75rem;
+  --s-4: 1rem;
+  --s-5: 1.5rem;
+  --s-6: 2rem;
+  --s-7: 2.5rem;
+  --s-8: 3rem;
+  --s-9: 4rem;
+  --s-10: 5rem;
+  --s-11: 6rem;
+  --s-12: 8rem;
+
+  /* Gap between top-level page sections — generous, scales with viewport */
+  --section-gap: clamp(3.5rem, 2rem + 5vw, 7.5rem);
+
+  /* ---------------------------------------------------------------------
+     LAYOUT — the full-bleed system. See docs/01-design-brainstorm.md §3.2.
+
+     The page shell is FLUID. `--gutter` grows with the viewport so that
+     edge-to-edge never means edge-to-cramped. Maximums are applied per
+     content type, not globally, because a grid and a paragraph want
+     different things from a wide screen.
+     --------------------------------------------------------------------- */
+  --gutter: 1rem; /* 16px — mobile */
+  --shell-wide: 1920px; /* soft cap for grids/dashboards on ultrawide */
+  --shell-content: 1100px; /* forms, settings, focused panels */
+  --shell-prose: 72ch; /* editorial reading measure */
+
+  --grid-cols: 4; /* mobile */
+  --grid-gap: 1rem;
+
+  /* Fluid product grid: fills available width, no breakpoint churn */
+  --card-min: 260px;
+
+  --nav-h: 68px; /* primary nav height */
+  /* The category sub-nav is `hidden md:block` (SiteHeader), so below that
+     breakpoint it occupies no space. Anything that offsets against the header
+     stack — scroll-padding, sticky rails, the hero's height cap — has to agree
+     with that, or it reserves 44px of nothing on every phone. */
+  --subnav-h: 0px;
+
+  /* ---------------------------------------------------------------------
+     RADIUS — "controlled and sophisticated"
+     --------------------------------------------------------------------- */
+  --r-xs: 0.25rem;
+  --r-sm: 0.5rem;
+  --r-md: 0.75rem;
+  --r-lg: 1rem;
+  --r-xl: 1.5rem;
+  --r-2xl: 2rem;
+  --r-full: 9999px;
+
+  /* ---------------------------------------------------------------------
+     MOTION — restrained and physical
+     --------------------------------------------------------------------- */
+  --d-fast: 160ms;
+  --d-base: 240ms;
+  --d-slow: 320ms;
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* ---------------------------------------------------------------------
+     Z-INDEX
+     --------------------------------------------------------------------- */
+  --z-base: 0;
+  --z-sticky: 30;
+  --z-subnav: 40;
+  --z-nav: 50;
+  --z-overlay: 80;
+  --z-modal: 90;
+  --z-toast: 100;
+}
+
+@media (min-width: 640px) {
+  :root {
+    --gutter: 1.5rem;
+    --grid-cols: 8;
+    --grid-gap: 1.25rem;
+  }
+}
+/* The category sub-nav appears here — see --subnav-h above. */
+@media (min-width: 768px) {
+  :root {
+    --subnav-h: 44px;
+  }
+}
+@media (min-width: 1024px) {
+  :root {
+    --gutter: 2.5rem;
+    --grid-cols: 12;
+    --grid-gap: 1.5rem;
+    --card-min: 280px;
+  }
+}
+@media (min-width: 1536px) {
+  :root {
+    --gutter: 4rem;
+  }
+}
+@media (min-width: 1920px) {
+  :root {
+    --gutter: 5rem;
+    --card-min: 300px;
+  }
+}
+
+/* ==========================================================================
+   LIGHT THEME (default)
+   "Paper", not "lightbox". The Stitch identity's off-white (#FCF8F8) sat at
+   L*98 with the whole ramp inside 8 L* points, so every surface read as the
+   same sheet of white and large fills (the hero) glared. The base now sits at
+   L*95 with a 12-point spread, and #FFFFFF is deliberately unused — a surface
+   earns brightness by being RAISED, so nothing competes with the page itself.
+
+   Hue is warm-neutral (R>G>B) rather than the previous rose cast (R>G=B),
+   which flatters both the purple and the orange. See docs/01-design-brainstorm.md §3.1.
+   ========================================================================== */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Surfaces — tonal layering, lowest to highest. L*: 95.3 98.0 92.9 89.8 85.6 */
+  --c-bg: #f4f1ed;
+  --c-surface-0: #fbf9f6; /* raised: cards/panels, never the page */
+  --c-surface-1: #eeeae5;
+  --c-surface-2: #e6e1db;
+  --c-surface-3: #dbd5ce;
+  --c-surface-inverse: #0a0a0a;
+  --c-on-surface-inverse: #f5f3f2;
+
+  /* Ink — #0A0A0A on near-white was ~19:1, past useful and prone to halation
+     (the shimmer around letterforms). 16:1 still clears AAA with room. */
+  --c-ink: #16161a; /* 16.0:1 on --c-bg */
+  --c-ink-muted: #4a4856; /* 7.9:1 — secondary text */
+  --c-ink-subtle: #65626f; /* was #7A7786, which already failed AA at 4.1:1.
+                              Solved against --c-surface-2, the deepest surface
+                              placeholders sit on: 5.3:1 on the page, 4.6:1 there. */
+  --c-ink-faint: #a5a2ae; /* disabled only — not held to a text ratio */
+  --c-ink-on-accent: #ffffff;
+
+  /* Lines — hairlines carry elevation here, not shadows */
+  --c-line: #e0dad3;
+  --c-line-strong: #c6bfb7;
+  --c-line-faint: #ece7e1;
+
+  /* --- DECIDING (purple) --- */
+  --c-brand: #5b4bd6; /* text-safe on light bg: 5.5:1 */
+  --c-brand-vivid: #6c5ce7; /* the brand hue, for fills and rings */
+  --c-brand-fill: #6c5ce7;
+  --c-brand-on-fill: #ffffff;
+  --c-brand-soft: #e7e4f6; /* tinted container, L*91.3 — reads BELOW the page */
+  --c-brand-on-soft: #3a2ba8;
+  --c-brand-line: #cfc7f7;
+
+  /* --- GETTING (orange) — outbound retailer only ---
+     Split accent/fill: #FF6B35 is only ~2.6:1 with white, unusable as a button. */
+  --c-retail: #b8410f; /* text-safe accent: 4.9:1 */
+  --c-retail-vivid: #ff6b35; /* brand hue, decorative use only */
+  --c-retail-fill: #b8410f;
+  --c-retail-on-fill: #ffffff;
+  --c-retail-soft: #f2e4dd;
+  --c-retail-on-soft: #8f3009;
+  --c-retail-line: #f6c9b3;
+
+  /* --- VALUE (green) --- */
+  --c-value: #157d3c; /* 4.6:1 — nudged from #15803D, which fell to 4.45 */
+  --c-value-vivid: #16a34a;
+  --c-value-fill: #15803d;
+  --c-value-on-fill: #ffffff;
+  --c-value-soft: #dceae1;
+  --c-value-on-soft: #0f6330;
+  --c-value-line: #b6e2c5;
+
+  /* --- Status --- */
+  --c-danger: #ba1a1a; /* 5.7:1 */
+  --c-danger-fill: #ba1a1a;
+  --c-danger-on-fill: #ffffff;
+  --c-danger-soft: #ffdad6; /* already L*90, sits below the page unchanged */
+  --c-danger-on-soft: #93000a;
+
+  --c-warn: #a15c07; /* 4.6:1 */
+  --c-warn-soft: #f1e5d2;
+  --c-warn-on-soft: #7c4306;
+
+  /* --- Component-specific --- */
+  --c-editorial-bg: #0a0a0a; /* editorial badge keeps true obsidian — small
+                                area, and the badge's authority IS the contrast */
+  --c-editorial-fg: #ffffff;
+  --c-star: #e0a800; /* community rating — deliberately NOT brand purple */
+  --c-score-track: #e2ddd6; /* score ring unfilled arc */
+  --c-glass: rgba(244, 241, 237, 0.72); /* nav backdrop — follows the page */
+  --c-glass-line: rgba(38, 30, 20, 0.08);
+  --c-dot: rgba(38, 30, 20, 0.09); /* dot-matrix */
+  --c-scrim: rgba(26, 20, 14, 0.42);
+  --c-focus: #6c5ce7;
+
+  /* Image plate — the soft stage a product photo sits on */
+  --c-plate: #ede9e3;
+
+  /* Elevation — very diffuse, and tinted warm. A pure-black shadow on a warm
+     paper base desaturates to grey and reads as dirt rather than depth. */
+  --e-1: 0 1px 2px rgba(48, 38, 26, 0.05);
+  --e-2: 0 4px 20px rgba(48, 38, 26, 0.07);
+  --e-3: 0 8px 30px rgba(48, 38, 26, 0.09);
+  --e-brand: 0 8px 28px rgba(108, 92, 231, 0.22);
+}
+
+/* ==========================================================================
+   DARK THEME
+   Not an inversion. Obsidian base with tonal layers rising toward the viewer,
+   accents lifted in luminance to hold their hue against black, and elevation
+   expressed as a brighter border rather than a shadow (shadows are invisible
+   on #0A0A0A). See docs/01-design-brainstorm.md §3.1.
+   ========================================================================== */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --c-bg: #0a0a0a;
+  --c-surface-0: #121212;
+  --c-surface-1: #171718;
+  --c-surface-2: #1f1f21;
+  --c-surface-3: #29292c;
+  --c-surface-inverse: #f5f3f2;
+  --c-on-surface-inverse: #0a0a0a;
+
+  --c-ink: #f5f3f2;
+  --c-ink-muted: #a8a5b3;
+  --c-ink-subtle: #7c7986;
+  --c-ink-faint: #55535d;
+  --c-ink-on-accent: #ffffff;
+
+  --c-line: #262629;
+  --c-line-strong: #3a3a40;
+  --c-line-faint: #1b1b1d;
+
+  /* DECIDING — lifted so the hue survives on black */
+  --c-brand: #a394ff;
+  --c-brand-vivid: #8b7bf0;
+  --c-brand-fill: #6c5ce7;
+  --c-brand-on-fill: #ffffff;
+  --c-brand-soft: #1d1836;
+  --c-brand-on-soft: #c6bfff;
+  --c-brand-line: #3a3170;
+
+  /* GETTING — the vivid brand orange finally works as a fill here,
+     paired with near-black text (13.1:1) rather than white. */
+  --c-retail: #ff8a5c;
+  --c-retail-vivid: #ff6b35;
+  --c-retail-fill: #ff6b35;
+  --c-retail-on-fill: #1c0a00;
+  --c-retail-soft: #2c1409;
+  --c-retail-on-soft: #ffb59d;
+  --c-retail-line: #5c2a12;
+
+  /* VALUE */
+  --c-value: #4ade80;
+  --c-value-vivid: #22c55e;
+  --c-value-fill: #16a34a;
+  --c-value-on-fill: #04150a;
+  --c-value-soft: #0d2417;
+  --c-value-on-soft: #7ff0a5;
+  --c-value-line: #1d4a30;
+
+  --c-danger: #ff8f87;
+  --c-danger-fill: #d13b34;
+  --c-danger-on-fill: #ffffff;
+  --c-danger-soft: #33100e;
+  --c-danger-on-soft: #ffb4ab;
+
+  --c-warn: #f5b544;
+  --c-warn-soft: #2c1e06;
+  --c-warn-on-soft: #ffd28a;
+
+  /* Editorial badge inverts: on a dark page, white-on-black has no authority,
+     so the badge takes the light surface and obsidian text. */
+  --c-editorial-bg: #f5f3f2;
+  --c-editorial-fg: #0a0a0a;
+  --c-star: #f5c243;
+  --c-score-track: #2a2a2e;
+  --c-glass: rgba(10, 10, 10, 0.68);
+  --c-glass-line: rgba(255, 255, 255, 0.08);
+  --c-dot: rgba(255, 255, 255, 0.07);
+  --c-scrim: rgba(0, 0, 0, 0.68);
+  --c-focus: #a394ff;
+
+  /* Product photography reads best on a slightly raised neutral plate */
+  --c-plate: #17171a;
+
+  --e-1: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --e-2: 0 4px 20px rgba(0, 0, 0, 0.55);
+  --e-3: 0 8px 30px rgba(0, 0, 0, 0.62);
+  --e-brand: 0 8px 28px rgba(108, 92, 231, 0.38);
+}
+
+/* Respect the OS preference before the user has made an explicit choice.
+   `data-theme` on <html> always wins once set. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --c-bg: #0a0a0a;
+    --c-surface-0: #121212;
+    --c-surface-1: #171718;
+    --c-surface-2: #1f1f21;
+    --c-surface-3: #29292c;
+    --c-surface-inverse: #f5f3f2;
+    --c-on-surface-inverse: #0a0a0a;
+
+    --c-ink: #f5f3f2;
+    --c-ink-muted: #a8a5b3;
+    --c-ink-subtle: #7c7986;
+    --c-ink-faint: #55535d;
+
+    --c-line: #262629;
+    --c-line-strong: #3a3a40;
+    --c-line-faint: #1b1b1d;
+
+    --c-brand: #a394ff;
+    --c-brand-vivid: #8b7bf0;
+    --c-brand-soft: #1d1836;
+    --c-brand-on-soft: #c6bfff;
+    --c-brand-line: #3a3170;
+
+    --c-retail: #ff8a5c;
+    --c-retail-fill: #ff6b35;
+    --c-retail-on-fill: #1c0a00;
+    --c-retail-soft: #2c1409;
+    --c-retail-on-soft: #ffb59d;
+    --c-retail-line: #5c2a12;
+
+    --c-value: #4ade80;
+    --c-value-vivid: #22c55e;
+    --c-value-fill: #16a34a;
+    --c-value-on-fill: #04150a;
+    --c-value-soft: #0d2417;
+    --c-value-on-soft: #7ff0a5;
+    --c-value-line: #1d4a30;
+
+    --c-danger: #ff8f87;
+    --c-danger-fill: #d13b34;
+    --c-danger-soft: #33100e;
+    --c-danger-on-soft: #ffb4ab;
+
+    --c-warn: #f5b544;
+    --c-warn-soft: #2c1e06;
+    --c-warn-on-soft: #ffd28a;
+
+    --c-editorial-bg: #f5f3f2;
+    --c-editorial-fg: #0a0a0a;
+    --c-star: #f5c243;
+    --c-score-track: #2a2a2e;
+    --c-glass: rgba(10, 10, 10, 0.68);
+    --c-glass-line: rgba(255, 255, 255, 0.08);
+    --c-dot: rgba(255, 255, 255, 0.07);
+    --c-scrim: rgba(0, 0, 0, 0.68);
+    --c-focus: #a394ff;
+    --c-plate: #17171a;
+
+    --e-1: 0 1px 2px rgba(0, 0, 0, 0.5);
+    --e-2: 0 4px 20px rgba(0, 0, 0, 0.55);
+    --e-3: 0 8px 30px rgba(0, 0, 0, 0.62);
+    --e-brand: 0 8px 28px rgba(108, 92, 231, 0.38);
+  }
+}

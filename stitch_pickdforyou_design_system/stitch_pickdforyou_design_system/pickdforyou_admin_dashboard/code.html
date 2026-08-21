@@ -1,0 +1,384 @@
+<!DOCTYPE html><html class="light" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Admin Dashboard - PickDForYou</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700;800;900&amp;family=Inter:wght@400;500;600&amp;family=Geist:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-fixed": "#e4dfff",
+                        "on-primary-fixed-variant": "#4029ba",
+                        "on-surface": "#1c1b1b",
+                        "primary": "#5341cd",
+                        "secondary": "#ab3500",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-low": "#f6f3f2",
+                        "on-secondary": "#ffffff",
+                        "surface-bright": "#fcf8f8",
+                        "inverse-surface": "#313030",
+                        "inverse-on-surface": "#f3f0ef",
+                        "on-primary-fixed": "#160066",
+                        "outline": "#787586",
+                        "on-primary": "#ffffff",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed": "#002109",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-container": "#6c5ce7",
+                        "on-error-container": "#93000a",
+                        "surface-container-high": "#ebe7e7",
+                        "on-background": "#1c1b1b",
+                        "primary-fixed-dim": "#c6bfff",
+                        "secondary-container": "#fe6a34",
+                        "surface-variant": "#e5e2e1",
+                        "tertiary-fixed-dim": "#62df7d",
+                        "on-tertiary-container": "#e1ffdf",
+                        "on-secondary-fixed": "#390c00",
+                        "inverse-primary": "#c6bfff",
+                        "error-container": "#ffdad6",
+                        "surface": "#fcf8f8",
+                        "tertiary-fixed": "#7ffc97",
+                        "on-secondary-container": "#5d1900",
+                        "surface-dim": "#dcd9d9",
+                        "surface-tint": "#5847d2",
+                        "on-tertiary-fixed-variant": "#005320",
+                        "on-secondary-fixed-variant": "#832600",
+                        "surface-container": "#f0edec",
+                        "surface-container-highest": "#e5e2e1",
+                        "tertiary": "#00672a",
+                        "on-surface-variant": "#474554",
+                        "secondary-fixed": "#ffdbd0",
+                        "background": "#fcf8f8",
+                        "secondary-fixed-dim": "#ffb59d",
+                        "error": "#ba1a1a",
+                        "on-primary-container": "#faf6ff",
+                        "tertiary-container": "#008338",
+                        "outline-variant": "#c8c4d7"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-desktop": "40px",
+                        "container-max": "1280px",
+                        "base": "8px",
+                        "gutter": "24px",
+                        "margin-mobile": "16px",
+                        "section-gap": "80px"
+                    },
+                    "fontFamily": {
+                        "display-xl-mobile": ["Hanken Grotesk"],
+                        "headline-lg": ["Hanken Grotesk"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "label-mono": ["Geist"],
+                        "display-xl": ["Hanken Grotesk"],
+                        "body-md": ["Inter"],
+                        "body-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "display-xl-mobile": ["40px", { "lineHeight": "48px", "letterSpacing": "-0.03em", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "600" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-mono": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "display-xl": ["64px", { "lineHeight": "72px", "letterSpacing": "-0.04em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "body-sm": ["14px", { "lineHeight": "20px", "fontWeight": "400" }]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .dot-pattern {
+            background-image: radial-gradient(#c8c4d7 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex antialiased selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- SideNavBar (from JSON) -->
+<aside class="hidden md:flex flex-col h-screen p-base fixed left-0 top-0 z-40 bg-surface-container-lowest border-r border-outline-variant docked left-0 h-full w-64">
+<!-- Header -->
+<div class="mb-gutter px-base pt-base">
+<div class="flex items-center gap-3 mb-4">
+<img alt="Admin User Profile" class="w-10 h-10 rounded-full border border-outline-variant/30 object-cover" data-alt="A small, professional portrait of a tech admin, brightly lit, isolated on a minimal light grey background. Sharp focus, high contrast, clean modern aesthetic fitting a premium tech platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAuG2exRbzkwMneKe2Bsj-GQojbIEu2IEHg0Na8MRLjKQU0OGFloLaYr3GkgyItRJHY0ufdRlU0YmtkcScc-G2y4yTSYBvMYvh6utfDzMgha3BTfeFFt-rFZk9uvqklozMXpB7pj010dzgmVCo0yyjnpL0o-0-Yp3X7SH3D3EEzSYl31eKnoIeNHs5QTSaGkJiI4bKELy31jAYBCwDhwEJnNNmMMOc4kfIG0E0mb4e5pFC7DOmkm_AN">
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Admin Panel</h2>
+<p class="font-label-mono text-label-mono text-on-surface-variant uppercase tracking-wider">Technical Management</p>
+</div>
+</div>
+<button class="w-full bg-primary-container text-on-primary-container font-label-mono text-label-mono py-2 px-4 rounded flex items-center justify-center gap-2 hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined" data-icon="add" style="font-variation-settings: 'FILL' 1;">add</span>
+                New Report
+            </button>
+</div>
+<!-- Navigation Links -->
+<nav class="flex-1 flex flex-col gap-1 overflow-y-auto font-label-mono text-label-mono">
+<!-- Active Tab: Dashboard -->
+<a class="bg-primary-fixed text-on-primary-fixed rounded-lg font-bold flex items-center gap-3 px-3 py-2 Active: translate-x-1 duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+                Dashboard
+            </a>
+<a class="text-on-surface-variant hover:bg-surface-container transition-colors flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="article">article</span>
+                Content
+            </a>
+<a class="text-on-surface-variant hover:bg-surface-container transition-colors flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="group">group</span>
+                Community
+            </a>
+<a class="text-on-surface-variant hover:bg-surface-container transition-colors flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+                Settings
+            </a>
+</nav>
+<!-- Footer Links -->
+<div class="mt-auto pt-4 border-t border-outline-variant/30 flex flex-col gap-1 font-label-mono text-label-mono text-body-sm">
+<a class="text-on-surface-variant hover:bg-surface-container transition-colors flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="help">help</span>
+                Support
+            </a>
+<a class="text-on-surface-variant hover:bg-surface-container transition-colors flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-surface-container-high transition-all" href="#">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+                Logout
+            </a>
+</div>
+<!-- Brand -->
+<div class="mt-4 px-3 text-center">
+<span class="font-label-mono text-label-mono font-bold text-primary tracking-widest">PICKDFORYOU</span>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-64 p-margin-mobile md:p-margin-desktop min-h-screen relative z-10">
+<!-- Subtle Background Pattern -->
+<div class="absolute inset-0 dot-pattern opacity-30 pointer-events-none -z-10"></div>
+<!-- Header -->
+<header class="mb-section-gap">
+<h1 class="font-display-xl text-display-xl-mobile md:text-display-xl text-on-surface mb-2">Platform Overview</h1>
+<p class="font-label-mono text-label-mono text-on-surface-variant uppercase tracking-wider">System metrics and recent activity</p>
+</header>
+<!-- Bento Grid: Stats Overview -->
+<section class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-gutter mb-section-gap">
+<!-- Stat Card 1 -->
+<div class="bg-surface border border-outline-variant/50 rounded-xl p-6 flex flex-col justify-between hover:shadow-[0px_4px_20px_rgba(0,0,0,0.04)] transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<span class="font-label-mono text-label-mono text-on-surface-variant uppercase">Total Products</span>
+<span class="material-symbols-outlined text-outline" data-icon="inventory_2">inventory_2</span>
+</div>
+<div>
+<span class="font-headline-lg text-headline-lg text-on-surface">12,482</span>
+<div class="mt-2 flex items-center gap-1 text-tertiary-container font-label-mono text-label-mono">
+<span class="material-symbols-outlined text-sm" data-icon="trending_up">trending_up</span>
+<span>+4.2% this week</span>
+</div>
+</div>
+</div>
+<!-- Stat Card 2 -->
+<div class="bg-surface border border-outline-variant/50 rounded-xl p-6 flex flex-col justify-between hover:shadow-[0px_4px_20px_rgba(0,0,0,0.04)] transition-shadow">
+<div class="flex justify-between items-start mb-4">
+<span class="font-label-mono text-label-mono text-on-surface-variant uppercase">Pending Reviews</span>
+<span class="material-symbols-outlined text-outline" data-icon="rate_review">rate_review</span>
+</div>
+<div>
+<span class="font-headline-lg text-headline-lg text-on-surface">348</span>
+<div class="mt-2 flex items-center gap-1 text-secondary-container font-label-mono text-label-mono">
+<span class="material-symbols-outlined text-sm" data-icon="warning">warning</span>
+<span>Requires attention</span>
+</div>
+</div>
+</div>
+<!-- Stat Card 3 -->
+<div class="bg-surface border border-outline-variant/50 rounded-xl p-6 flex flex-col justify-between hover:shadow-[0px_4px_20px_rgba(0,0,0,0.04)] transition-shadow col-span-1 lg:col-span-2 relative overflow-hidden group">
+<!-- abstract graphic for wide card -->
+<div class="absolute right-0 top-0 bottom-0 w-1/2 bg-gradient-to-l from-primary-fixed/20 to-transparent pointer-events-none group-hover:from-primary-fixed/30 transition-all"></div>
+<div class="flex justify-between items-start mb-4 relative z-10">
+<span class="font-label-mono text-label-mono text-on-surface-variant uppercase">System Health</span>
+<span class="material-symbols-outlined text-primary" data-icon="monitor_heart">monitor_heart</span>
+</div>
+<div class="relative z-10 flex gap-8 items-end">
+<div>
+<span class="block text-xs text-on-surface-variant mb-1">API Latency</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">42ms</span>
+</div>
+<div>
+<span class="block text-xs text-on-surface-variant mb-1">Uptime</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">99.99%</span>
+</div>
+<div>
+<span class="block text-xs text-on-surface-variant mb-1">Reported Media</span>
+<span class="font-headline-sm text-headline-sm text-on-surface text-error">12</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Main Data Area -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter">
+<!-- Product Management Table (Takes up 2/3) -->
+<section class="lg:col-span-2 bg-surface border border-outline-variant/50 rounded-xl overflow-hidden flex flex-col">
+<div class="p-6 border-b border-outline-variant/30 flex justify-between items-center bg-surface-bright">
+<h3 class="font-headline-sm text-headline-sm text-on-surface">Product Catalog</h3>
+<!-- Search Input Minimal -->
+<div class="relative w-64">
+<span class="material-symbols-outlined absolute left-0 top-1/2 -translate-y-1/2 text-outline text-sm" data-icon="search">search</span>
+<input class="w-full bg-transparent border-0 border-b border-outline-variant focus:border-primary focus:ring-0 pl-6 py-1 text-sm font-label-mono text-label-mono text-on-surface placeholder:text-outline-variant transition-colors" placeholder="Search ID or Name" type="text">
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-outline-variant/30 bg-surface-container-lowest font-label-mono text-[10px] text-on-surface-variant uppercase tracking-widest">
+<th class="p-4 font-medium">Product</th>
+<th class="p-4 font-medium">Brand/Category</th>
+<th class="p-4 font-medium text-right">Price</th>
+<th class="p-4 font-medium text-center">Score</th>
+<th class="p-4 font-medium">Status</th>
+<th class="p-4 font-medium text-right">Actions</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-on-surface">
+<!-- Row 1 -->
+<tr class="border-b border-outline-variant/20 hover:bg-surface-container-lowest transition-colors group">
+<td class="p-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-surface-variant rounded flex-shrink-0 border border-outline-variant/30 overflow-hidden">
+<img alt="Headphones" class="w-full h-full object-cover" data-alt="A sleek, minimalist wireless over-ear headphone, silver and white, isolated on a stark white background. High resolution product photography, premium tech aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxZOAo0DW8LPcCNCsZJb4-vSwTe3xdOo09hCdU8uJMI1iP3z7wf1VLJVa8UxPs340Qqv5Q9X6AZ-JF3gfPnePaznsTVNjPCwCLyvJaodBViPpPGd4V-Bk44q3M8QeMK5F92l02eCO3BMZL7u1JlvXx-aZrMfOBUpZliKg_yDHSz4VDxKSp5zKdFsvHyZJPoqxhRFCYurKZMIqOL6WKEU5XF8Sbg6IhaqqpEYLn1uKrVVB1oI3dgfLr">
+</div>
+<div class="truncate max-w-[150px] font-medium">Noise Cancelling Pro Max</div>
+</div>
+</td>
+<td class="p-4">
+<div class="text-on-surface">SonicAudio</div>
+<div class="text-xs text-on-surface-variant">Electronics</div>
+</td>
+<td class="p-4 text-right font-label-mono text-label-mono">$349.99</td>
+<td class="p-4 text-center">
+<span class="inline-flex items-center justify-center w-8 h-8 rounded-full border-2 border-primary text-primary font-label-mono text-label-mono font-bold">92</span>
+</td>
+<td class="p-4">
+<span class="px-2 py-1 bg-tertiary-container/10 text-tertiary-container text-xs rounded-sm font-label-mono">Published</span>
+</td>
+<td class="p-4 text-right">
+<button class="text-outline hover:text-primary transition-colors p-1"><span class="material-symbols-outlined text-sm" data-icon="edit">edit</span></button>
+<button class="text-outline hover:text-error transition-colors p-1 ml-1"><span class="material-symbols-outlined text-sm" data-icon="delete">delete</span></button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="border-b border-outline-variant/20 hover:bg-surface-container-lowest transition-colors group">
+<td class="p-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-surface-variant rounded flex-shrink-0 border border-outline-variant/30 overflow-hidden">
+<img alt="Thermostat" class="w-full h-full object-cover" data-alt="A modern, geometric smart home thermostat device, black glass screen on matte white body, isolated on white background. Clean, high-tech industrial design." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCeC4EWnv08Alu-1Q4iDoykBtTXBOz_vZTjyHq_ncAWHcC_oViP0TcmSYDowEqN8rX_zCdRaQj5ogeqA4-gVnp55LuQMyMn6w7qGSztG4ZlTN2zReyEOYWGdF6bgh6VuLs5bD3R8SYL07HW0tNIsdtx6Z9qrCdw8-wa_6cP99wiOJAA7heJktgrVX42Xq63jAggJc-4hjd8ttoxyth0I8pC80rSZqnEexUbwoF0I3VvF3i270y9C8wO">
+</div>
+<div class="truncate max-w-[150px] font-medium">Smart Thermostat V3</div>
+</div>
+</td>
+<td class="p-4">
+<div class="text-on-surface">ClimaTech</div>
+<div class="text-xs text-on-surface-variant">Home</div>
+</td>
+<td class="p-4 text-right font-label-mono text-label-mono">$199.00</td>
+<td class="p-4 text-center">
+<span class="inline-flex items-center justify-center w-8 h-8 rounded-full border-2 border-primary text-primary font-label-mono text-label-mono font-bold">88</span>
+</td>
+<td class="p-4">
+<span class="px-2 py-1 bg-surface-variant text-on-surface-variant text-xs rounded-sm font-label-mono">Draft</span>
+</td>
+<td class="p-4 text-right">
+<button class="text-outline hover:text-primary transition-colors p-1"><span class="material-symbols-outlined text-sm" data-icon="edit">edit</span></button>
+<button class="text-outline hover:text-error transition-colors p-1 ml-1"><span class="material-symbols-outlined text-sm" data-icon="delete">delete</span></button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="border-b border-outline-variant/20 hover:bg-surface-container-lowest transition-colors group">
+<td class="p-4">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-surface-variant rounded flex-shrink-0 border border-outline-variant/30 overflow-hidden">
+<img alt="Keyboard" class="w-full h-full object-cover" data-alt="A high-end mechanical keyboard with blank grey and white keycaps, metallic chassis, resting on a stark white surface. Minimalist, premium desk accessory aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAFngIseJwRrL2jvEZ8jWm6AKmVWgisYmIdXKA8shRftB-kJakXIHQ_3hY5GFGr7TPGcpgJwrOR2lcvVksx8eLCw7CEt011cpvP973dl-Igh4r2FbseElEv0KPdbc75mBjDR9lwKYOAw1CUg-uvyvo5Fe2lcHqLsdYbjNcPnRaMzhK5L30mv-Y7AvGthgjhCx_JXC6UB8l9FjCD1FzDhu6i8tN4NDuCrjGkFKHcuY2AST-AQFTAxt_n">
+</div>
+<div class="truncate max-w-[150px] font-medium">Mech Keys Minimal</div>
+</div>
+</td>
+<td class="p-4">
+<div class="text-on-surface">Typecraft</div>
+<div class="text-xs text-on-surface-variant">Electronics</div>
+</td>
+<td class="p-4 text-right font-label-mono text-label-mono">$129.50</td>
+<td class="p-4 text-center">
+<span class="inline-flex items-center justify-center w-8 h-8 rounded-full border-2 border-outline-variant text-on-surface-variant font-label-mono text-label-mono font-bold">--</span>
+</td>
+<td class="p-4">
+<span class="px-2 py-1 bg-secondary-container/10 text-secondary-container text-xs rounded-sm font-label-mono">Review</span>
+</td>
+<td class="p-4 text-right">
+<button class="text-outline hover:text-primary transition-colors p-1"><span class="material-symbols-outlined text-sm" data-icon="edit">edit</span></button>
+<button class="text-outline hover:text-error transition-colors p-1 ml-1"><span class="material-symbols-outlined text-sm" data-icon="delete">delete</span></button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-4 border-t border-outline-variant/30 bg-surface-container-lowest flex justify-between items-center text-xs text-on-surface-variant font-label-mono">
+<span>Showing 1-3 of 12,482</span>
+<div class="flex gap-2">
+<button class="px-2 py-1 border border-outline-variant rounded hover:bg-surface-variant transition-colors disabled:opacity-50" disabled="">&lt;</button>
+<button class="px-2 py-1 border border-outline-variant rounded hover:bg-surface-variant transition-colors">&gt;</button>
+</div>
+</div>
+</section>
+<!-- Recent Activity (Takes up 1/3) -->
+<aside class="bg-surface-container-lowest border border-outline-variant/50 rounded-xl p-6 h-fit">
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm" data-icon="history">history</span>
+                    Recent Activity
+                </h3>
+<div class="relative border-l border-outline-variant/30 ml-3 pl-4 flex flex-col gap-6">
+<!-- Event 1 -->
+<div class="relative">
+<div class="absolute -left-[21px] top-1 w-2 h-2 rounded-full bg-primary ring-4 ring-surface-container-lowest"></div>
+<p class="text-sm text-on-surface mb-1">Product <span class="font-medium">"Smart Thermostat V3"</span> status changed to Draft.</p>
+<div class="flex justify-between items-center mt-1">
+<span class="text-xs font-label-mono text-on-surface-variant">System</span>
+<span class="text-xs font-label-mono text-on-surface-variant">2 mins ago</span>
+</div>
+</div>
+<!-- Event 2 -->
+<div class="relative">
+<div class="absolute -left-[21px] top-1 w-2 h-2 rounded-full bg-tertiary-container ring-4 ring-surface-container-lowest"></div>
+<p class="text-sm text-on-surface mb-1">New user <span class="font-medium">alex_dev</span> registered.</p>
+<div class="flex justify-between items-center mt-1">
+<span class="text-xs font-label-mono text-on-surface-variant">Auth Auth</span>
+<span class="text-xs font-label-mono text-on-surface-variant">45 mins ago</span>
+</div>
+</div>
+<!-- Event 3 -->
+<div class="relative">
+<div class="absolute -left-[21px] top-1 w-2 h-2 rounded-full bg-error ring-4 ring-surface-container-lowest"></div>
+<p class="text-sm text-on-surface mb-1">Media reported on <span class="font-medium">"Vintage Lamp"</span>.</p>
+<div class="flex justify-between items-center mt-1">
+<span class="text-xs font-label-mono text-on-surface-variant">User Flag</span>
+<span class="text-xs font-label-mono text-on-surface-variant">2 hrs ago</span>
+</div>
+</div>
+<!-- Event 4 -->
+<div class="relative">
+<div class="absolute -left-[21px] top-1 w-2 h-2 rounded-full bg-outline-variant ring-4 ring-surface-container-lowest"></div>
+<p class="text-sm text-on-surface mb-1">Batch import <span class="font-mono text-xs bg-surface-variant px-1 rounded">batch_x89</span> completed.</p>
+<div class="flex justify-between items-center mt-1">
+<span class="text-xs font-label-mono text-on-surface-variant">Admin Job</span>
+<span class="text-xs font-label-mono text-on-surface-variant">5 hrs ago</span>
+</div>
+</div>
+</div>
+<button class="mt-6 w-full text-center text-sm font-label-mono text-primary hover:underline">View All Logs</button>
+</aside>
+</div>
+</main>
+</body></html>

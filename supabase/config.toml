@@ -1,0 +1,61 @@
+project_id = "pickdforyou"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+# Hard cap on PostgREST rows. Our API paginates anyway, but this stops an
+# unbounded query from ever being possible.
+max_rows = 100
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
+
+[studio]
+enabled = true
+port = 54323
+
+# Catches outbound mail locally so confirmation and reset flows can be tested
+# without sending anything to a real address.
+[inbucket]
+enabled = true
+port = 54324
+
+[storage]
+enabled = true
+file_size_limit = "50MiB"
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["http://localhost:3000/auth/callback"]
+
+# Short-lived access tokens; refresh rotation limits the value of a stolen one.
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+
+# Public signup is for shoppers only. Admins are never created this way —
+# see docs/05-admin-setup.md.
+enable_signup = true
+enable_anonymous_sign_ins = false
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+double_confirm_changes = true
+# Supabase minimum is 6; the API enforces a longer minimum on top of this.
+max_frequency = "60s"
+
+[auth.mfa]
+max_enrolled_factors = 3
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
+[analytics]
+enabled = false
