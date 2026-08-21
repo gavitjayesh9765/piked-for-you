@@ -113,14 +113,39 @@ export function Gallery({ images, title }: { images: MediaAsset[]; title: string
   }
 
   if (!count) {
-    return <div className="plate dot-matrix aspect-[4/3] w-full rounded-lg border border-line" />;
+    return (
+      <div className="plate dot-matrix grid aspect-[4/3] w-full place-items-center rounded-lg border border-line">
+        <div className="text-center">
+          <ImageGlyph />
+          <p className="mt-3 font-label text-label-xs uppercase tracking-[0.1em] text-ink-faint">
+            No images yet
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return (
     // `min-w-0`: as a grid item this column defaults to `min-width: auto`, so
     // the filmstrip's intrinsic width (one 96px thumbnail per image) would set
     // the column's floor and push the whole product page wider than a phone.
-    <div className="flex min-w-0 flex-col gap-3">
+    //
+    // From `lg` the filmstrip becomes a vertical rail beside the frame rather
+    // than a strip under it (the Amazon/Flipkart pattern): every alternate view
+    // is then visible without a scroll, and the frame keeps the height it was
+    // going to have anyway. `flex-row-reverse` puts the rail on the left while
+    // leaving the frame first in the DOM, so reading and tab order still reach
+    // the product before the list of other angles at it.
+    //
+    // `sticky` is the other half of this. The decision column beside it is
+    // usually the taller of the two, and a product image that scrolls away
+    // while you are still reading the price is the thing that left dead space
+    // under the gallery in the first place. Capped to the visible area below
+    // the nav, because an element taller than the viewport cannot stick.
+    <div
+      className="flex min-w-0 flex-col gap-3 lg:sticky lg:flex-row-reverse lg:items-start
+                 lg:self-start lg:top-[calc(var(--nav-h)_+_var(--subnav-h)_+_1.5rem)]"
+    >
       {/* --- Main frame --- */}
       <div
         role="group"
@@ -134,7 +159,9 @@ export function Gallery({ images, title }: { images: MediaAsset[]; title: string
           swipe.current = null;
         }}
         className="plate group relative aspect-[4/3] w-full overflow-hidden rounded-lg border border-line
-                   focus-visible:outline-2 focus-visible:outline-offset-2"
+                   focus-visible:outline-2 focus-visible:outline-offset-2
+                   lg:min-w-0 lg:flex-1
+                   lg:max-h-[calc(100vh_-_var(--nav-h)_-_var(--subnav-h)_-_5rem)]"
         style={{ outlineColor: "var(--c-focus)" }}
       >
         {isVideo && playing && current.embedUrl ? (
@@ -218,9 +245,15 @@ export function Gallery({ images, title }: { images: MediaAsset[]; title: string
         )}
       </div>
 
-      {/* --- Filmstrip: images and videos together --- */}
+      {/* --- Filmstrip: images and videos together. Horizontal under the frame
+             on a phone, a vertical rail beside it from `lg`. --- */}
       {count > 1 && (
-        <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div
+          className="flex gap-3 overflow-x-auto pb-1 lg:w-[4.5rem] lg:shrink-0 lg:flex-col
+                     lg:overflow-x-hidden lg:overflow-y-auto lg:pb-0
+                     lg:max-h-[calc(100vh_-_var(--nav-h)_-_var(--subnav-h)_-_5rem)]
+                     [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        >
           {images.map((m, i) => {
             const video = m.kind === "video_link" || m.kind === "video";
             const src = video ? m.thumbnailUrl : m.url;
@@ -241,7 +274,7 @@ export function Gallery({ images, title }: { images: MediaAsset[]; title: string
                 }
                 aria-current={i === active}
                 className={cn(
-                  "plate relative h-20 w-24 shrink-0 overflow-hidden rounded-sm border-2 transition-colors duration-fast",
+                  "plate relative h-20 w-24 shrink-0 overflow-hidden rounded-sm border-2 transition-colors duration-fast lg:h-[4.5rem] lg:w-full",
                   i === active ? "border-brand-vivid" : "border-line hover:border-line-strong",
                 )}
               >
@@ -250,7 +283,7 @@ export function Gallery({ images, title }: { images: MediaAsset[]; title: string
                     src={src}
                     alt=""
                     fill
-                    sizes="96px"
+                    sizes="(min-width: 1024px) 72px, 96px"
                     className={video ? "object-cover" : "object-contain p-2"}
                   />
                 ) : (
@@ -307,6 +340,27 @@ function ZoomGlyph() {
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
       <circle cx="10.5" cy="10.5" r="6.5" />
       <path d="m20 20-4.7-4.7M10.5 8v5M8 10.5h5" />
+    </svg>
+  );
+}
+
+function ImageGlyph() {
+  return (
+    <svg
+      width="28"
+      height="28"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="mx-auto text-ink-faint"
+    >
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <circle cx="8.5" cy="9.5" r="1.5" />
+      <path d="m3 16.5 4.5-4.5 4 4 3-3L21 18" />
     </svg>
   );
 }
