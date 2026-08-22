@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { adminGet } from "@/lib/admin-api";
 import { AdminPage } from "@/components/admin/Shell";
-import { ResourceManager, boolCell } from "@/components/admin/ResourceManager";
+import { ResourceManager } from "@/components/admin/ResourceManager";
 
 export const metadata: Metadata = { title: "Brands", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -37,7 +37,7 @@ export default async function AdminBrandsPage() {
           { key: "name", label: "Brand" },
           { key: "slug", label: "Slug", mono: true },
           { key: "productCount", label: "Products", mono: true },
-          { key: "isPinned", label: "Pinned", render: (r) => boolCell(r.isPinned, "Pinned") },
+          { key: "isPinned", label: "Pinned", cell: "bool", yes: "Pinned" },
           { key: "displayOrder", label: "Order", mono: true },
         ]}
       />

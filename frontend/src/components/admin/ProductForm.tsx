@@ -15,8 +15,13 @@ import {
 /**
  * Product create / edit form (spec §37).
  *
- * All eight spec sections: Basic · Pricing · Media · Recommendation · Badges ·
- * Retailers · SEO · Publication.
+ * Six sections, numbered 01-06: Basics · Pricing · The verdict ·
+ * Specifications · Badges · SEO.
+ *
+ * Media, retailer links, price history and the score are NOT here, and the
+ * list above used to claim they were. They all key off a product id, so they
+ * live on the edit screen as sections 07-11 and only exist once a draft has
+ * been saved.
  *
  * Three deliberate behaviours:
  *
@@ -424,7 +429,7 @@ export function ProductForm({
         </div>
       </Section>
 
-      {/* --- 5. SEO --- */}
+      {/* --- 6. SEO --- */}
       <Section n="06" title="SEO" hint="Falls back to the title and tagline when blank (spec §47).">
         <Grid>
           <Field label="Meta title" span={2}>

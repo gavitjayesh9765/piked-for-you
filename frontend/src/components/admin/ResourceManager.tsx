@@ -30,8 +30,26 @@ export interface FieldSpec {
 export interface ColumnSpec {
   key: string;
   label: string;
-  render?: (row: Record<string, unknown>) => React.ReactNode;
   mono?: boolean;
+  /**
+   * How the cell draws itself, named rather than supplied.
+   *
+   * This was a `render?: (row) => ReactNode` callback. Both callers are Server
+   * Components, and a function cannot cross the server/client prop boundary —
+   * every render of /admin/brands and /admin/badges threw before it reached
+   * the table. A token survives serialisation; a closure does not.
+   */
+  cell?: "badge" | "bool";
+  /** Label `cell: "bool"` shows for a truthy value. */
+  yes?: string;
+  /** Label `cell: "bool"` shows for a falsy one. */
+  no?: string;
+}
+
+function renderCell(c: ColumnSpec, row: Record<string, unknown>): React.ReactNode {
+  if (c.cell === "badge") return badgePreview(row);
+  if (c.cell === "bool") return boolCell(row[c.key], c.yes ?? "Yes", c.no);
+  return String(row[c.key] ?? "—");
 }
 
 export function ResourceManager({
@@ -179,7 +197,7 @@ export function ResourceManager({
                       key={c.key}
                       className={cn("px-4 py-3 text-body-sm text-ink", c.mono && "font-mono")}
                     >
-                      {c.render ? c.render(r) : String(r[c.key] ?? "—")}
+                      {renderCell(c, r)}
                     </td>
                   ))}
                   <td className="whitespace-nowrap px-4 py-3 text-right">
@@ -357,7 +375,7 @@ const inputCls =
   "outline-none transition-colors duration-fast focus:border-brand-vivid";
 
 /** Live preview of a badge, so the style token's effect is visible while editing. */
-export function badgePreview(row: Record<string, unknown>) {
+function badgePreview(row: Record<string, unknown>) {
   return (
     <BadgeChip
       badge={{
@@ -370,7 +388,7 @@ export function badgePreview(row: Record<string, unknown>) {
   );
 }
 
-export function boolCell(value: unknown, yes: string, no = "—") {
+function boolCell(value: unknown, yes: string, no = "—") {
   return value ? (
     <span className="font-label text-label-xs uppercase tracking-[0.1em] text-value">{yes}</span>
   ) : (

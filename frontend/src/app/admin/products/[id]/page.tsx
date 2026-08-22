@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { PriceHistory, SpecTemplateGroup } from "@/lib/types";
+import type { Badge, PriceHistory, SpecTemplateGroup } from "@/lib/types";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -46,7 +46,7 @@ export default async function EditProductPage({
   const product = await safe(() => getProduct(id), null);
   if (!product) notFound();
 
-  const [categories, brands, check, retailers, taxonomy, history] = await Promise.all([
+  const [categories, brands, check, retailers, taxonomy, history, badgeList] = await Promise.all([
     getCategories(),
     getBrands(),
     safe(() => publishCheck(id), { canPublish: false, missing: [] }),
@@ -64,7 +64,22 @@ export default async function EditProductPage({
       { points: [], summary: { count: 0, lowest: null, highest: null, latest: null, windowDays: 180 } },
       { days: 180 },
     ),
+    // The full catalogue, not `product.badges`. Passing the attached ones as
+    // the available ones meant the picker could only ever *remove* a badge —
+    // there was no way to add one to an existing product.
+    adminGet<{ items: Badge[] }>("/badges", { items: [] }),
   ]);
+
+  // Active badges, plus any this product already carries even if since
+  // retired. A badge that is attached but absent from the picker would be
+  // invisible in the UI yet still submitted on save.
+  const attached = new Set((product.badges ?? []).map((b) => b.id));
+  const badges = [
+    ...(badgeList.items ?? []).filter((b) => b.isActive || attached.has(b.id)),
+    ...(product.badges ?? []).filter(
+      (b) => !(badgeList.items ?? []).some((x) => x.id === b.id),
+    ),
+  ];
 
   const criteria =
     (taxonomy.items ?? []).find((c) => c.id === product.category.id)?.scoreCriteria ?? [];
@@ -117,11 +132,22 @@ export default async function EditProductPage({
         </div>
       )}
 
-      {/* Media and retailer links are edit-only: a product must exist before
-          an image can attach to it. Both are required to publish (spec §62). */}
+      <ProductForm
+        product={product}
+        categories={categories}
+        brands={brands}
+        badges={badges}
+        specTemplates={specTemplates}
+      />
+
+      {/* Media, retailer links and the score are edit-only: a product must
+          exist before an image or an outbound link can attach to it. They sit
+          after the form so the numbering reads 01 → 11 down the page; they
+          used to render first, which opened the screen on "Images 06" and
+          then repeated 06 further down for SEO. */}
       <section className="panel mb-6 p-6 lg:p-8">
         <div className="mb-6 flex items-baseline gap-4 border-b border-line pb-4">
-          <span className="font-mono text-label-xs tabular-nums text-brand">06</span>
+          <span className="font-mono text-label-xs tabular-nums text-brand">07</span>
           <div>
             <h2 className="font-display text-headline-sm text-ink">Images</h2>
             <p className="mt-1 text-body-sm text-ink-muted">
@@ -134,7 +160,7 @@ export default async function EditProductPage({
 
       <section className="panel mb-6 p-6 lg:p-8">
         <div className="mb-6 flex items-baseline gap-4 border-b border-line pb-4">
-          <span className="font-mono text-label-xs tabular-nums text-brand">07</span>
+          <span className="font-mono text-label-xs tabular-nums text-brand">08</span>
           <div>
             <h2 className="font-display text-headline-sm text-ink">Videos</h2>
             <p className="mt-1 text-body-sm text-ink-muted">
@@ -148,7 +174,7 @@ export default async function EditProductPage({
 
       <section className="panel mb-6 p-6 lg:p-8">
         <div className="mb-6 flex items-baseline gap-4 border-b border-line pb-4">
-          <span className="font-mono text-label-xs tabular-nums text-brand">08</span>
+          <span className="font-mono text-label-xs tabular-nums text-brand">09</span>
           <div>
             <h2 className="font-display text-headline-sm text-ink">Where to buy</h2>
             <p className="mt-1 text-body-sm text-ink-muted">
@@ -166,7 +192,7 @@ export default async function EditProductPage({
       <section className="panel mb-6 p-6 lg:p-8">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-line pb-4">
           <div className="flex items-baseline gap-4">
-            <span className="font-mono text-label-xs tabular-nums text-brand">09</span>
+            <span className="font-mono text-label-xs tabular-nums text-brand">10</span>
             <div>
               <h2 className="font-display text-headline-sm text-ink">Price history</h2>
               <p className="mt-1 max-w-xl text-body-sm text-ink-muted">
@@ -187,7 +213,7 @@ export default async function EditProductPage({
 
       <section className="panel mb-6 p-6 lg:p-8">
         <div className="mb-6 flex items-baseline gap-4 border-b border-line pb-4">
-          <span className="font-mono text-label-xs tabular-nums text-brand">10</span>
+          <span className="font-mono text-label-xs tabular-nums text-brand">11</span>
           <div>
             <h2 className="font-display text-headline-sm text-ink">PickD Score</h2>
             <p className="mt-1 text-body-sm text-ink-muted">
@@ -207,13 +233,6 @@ export default async function EditProductPage({
         />
       </section>
 
-      <ProductForm
-        product={product}
-        categories={categories}
-        brands={brands}
-        badges={product.badges}
-        specTemplates={specTemplates}
-      />
     </AdminPage>
   );
 }

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import { adminGet } from "@/lib/admin-api";
 import { AdminPage } from "@/components/admin/Shell";
-import { ResourceManager, badgePreview, boolCell } from "@/components/admin/ResourceManager";
+import { ResourceManager } from "@/components/admin/ResourceManager";
 
 export const metadata: Metadata = { title: "Badges", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -45,11 +45,11 @@ export default async function AdminBadgesPage() {
           { key: "isActive", label: "Active", type: "checkbox" },
         ]}
         columns={[
-          { key: "preview", label: "Preview", render: badgePreview },
+          { key: "preview", label: "Preview", cell: "badge" },
           { key: "name", label: "Name" },
           { key: "slug", label: "Slug", mono: true },
           { key: "style", label: "Style", mono: true },
-          { key: "isActive", label: "Active", render: (r) => boolCell(r.isActive, "Active") },
+          { key: "isActive", label: "Active", cell: "bool", yes: "Active" },
         ]}
       />
     </AdminPage>

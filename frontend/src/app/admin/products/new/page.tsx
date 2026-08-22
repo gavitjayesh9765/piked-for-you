@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { SpecTemplateGroup } from "@/lib/types";
+import type { Badge, SpecTemplateGroup } from "@/lib/types";
 import Link from "next/link";
 
 import { getBrands, getCategories } from "@/lib/api";
@@ -23,18 +23,26 @@ export const dynamic = "force-dynamic";
  * form cannot accidentally push half-written content live (spec §38).
  */
 export default async function NewProductPage() {
-  const [categories, brands, taxonomy] = await Promise.all([
+  const [categories, brands, taxonomy, badgeList] = await Promise.all([
     getCategories(),
     getBrands(),
     // Specification fields are configured per category and resolved up the
     // tree (spec §41). Fetched for every category so the form's category
     // select can swap the fields without a round trip.
     adminGet<{ items: CategoryRow[] }>("/categories", { items: [] }),
+    // The badge catalogue. This page used to pass `badges={[]}`, so the
+    // Badges section permanently read "No badges defined yet" and a product
+    // could never be given one at creation however many existed.
+    adminGet<{ items: Badge[] }>("/badges", { items: [] }),
   ]);
 
   const specTemplates: Record<string, SpecTemplateGroup[]> = Object.fromEntries(
     (taxonomy.items ?? []).map((c) => [c.id, c.specTemplate ?? []]),
   );
+
+  // Inactive badges stay out of the picker: a retired marker should not be
+  // attachable to something new.
+  const badges = (badgeList.items ?? []).filter((b) => b.isActive);
 
   const blocked = categories.length === 0 || brands.length === 0;
 
@@ -64,12 +72,43 @@ export default async function NewProductPage() {
           </p>
         </div>
       ) : (
-        <ProductForm
-          categories={categories}
-          brands={brands}
-          badges={[]}
-          specTemplates={specTemplates}
-        />
+        <>
+          {/* The create endpoint takes the product's own fields only —
+              `ProductCreate` has no `retailers`, and images, videos and the
+              score all key off a product id that does not exist yet. So they
+              genuinely cannot be on this screen. What was missing was saying
+              so: editors filled the form looking for somewhere to put the
+              Amazon and Flipkart prices, found "Range — low/high", and
+              assumed the page was out of date. */}
+          <div className="panel mb-6 border-brand-soft p-6 lg:p-8">
+            <h2 className="font-display text-headline-sm text-ink">
+              Where the retailer prices go
+            </h2>
+            <p className="mt-3 max-w-2xl text-body-md text-ink-muted">
+              The <strong className="text-ink">Pricing</strong> section below is the
+              headline price and the range you have seen it sell in. The per-retailer
+              links and prices — Amazon, Flipkart, the official site — are added on the
+              next screen, under <strong className="text-ink">Where to buy</strong>,
+              because each one attaches to a product that has to exist first.
+            </p>
+            <p className="mt-4 max-w-2xl text-body-sm text-ink-subtle">
+              Save this as a draft and you land straight on it. Waiting there:
+            </p>
+            <ul className="mt-3 grid gap-2 text-body-sm text-ink-muted sm:grid-cols-2">
+              <li>Images &amp; videos</li>
+              <li>Where to buy — Amazon / Flipkart / official, with a price each</li>
+              <li>Price history, and a button to re-check it</li>
+              <li>PickD Score, against this category&apos;s criteria</li>
+            </ul>
+          </div>
+
+          <ProductForm
+            categories={categories}
+            brands={brands}
+            badges={badges}
+            specTemplates={specTemplates}
+          />
+        </>
       )}
     </AdminPage>
   );
