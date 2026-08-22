@@ -4,6 +4,16 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
+import type { ScoreCriterionDef, SpecTemplateGroup } from "@/lib/types";
+import {
+  CategoryTemplateEditor,
+  criteriaPayload,
+  templatePayload,
+  toCriterionRows,
+  toGroupRows,
+  type CriterionRow,
+  type GroupRow,
+} from "@/components/admin/CategoryTemplateEditor";
 
 export interface AdminCategory {
   id: string;
@@ -18,6 +28,15 @@ export interface AdminCategory {
   isActive: boolean;
   showOnHomepage: boolean;
   productCount: number;
+  /** Effective template — after inheritance. What products here actually get. */
+  scoreCriteria?: ScoreCriterionDef[];
+  specTemplate?: SpecTemplateGroup[];
+  /** What this row itself defines. Empty means "inherit from my parent". */
+  ownScoreCriteria?: ScoreCriterionDef[];
+  ownSpecTemplate?: SpecTemplateGroup[];
+  /** Which category an inherited template came from. */
+  scoreCriteriaSource?: string | null;
+  specTemplateSource?: string | null;
 }
 
 const ICONS = [
@@ -265,6 +284,24 @@ function CategoryEditor({
     showOnHomepage: category?.showOnHomepage ?? false,
   });
 
+  // Seeded from what this category *owns*, never from what it inherits — see
+  // the note in CategoryTemplateEditor. A new category starts empty, which is
+  // the same thing as "inherit from my parent".
+  const [criteria, setCriteria] = useState<CriterionRow[]>(() =>
+    toCriterionRows(category?.ownScoreCriteria),
+  );
+  const [groups, setGroups] = useState<GroupRow[]>(() =>
+    toGroupRows(category?.ownSpecTemplate),
+  );
+
+  // What a new sub-category will inherit is its parent's effective template,
+  // not the whole tree's — resolve that from the currently selected parent so
+  // the summary stays honest while the parent select is being changed.
+  const inheritedFrom = useMemo(
+    () => (category ? category : parents.find((p) => p.id === f.parentId) ?? null),
+    [category, parents, f.parentId],
+  );
+
   // A category cannot be moved under itself or its own descendant — the
   // database refuses it, but offering the option would be a trap.
   const descendantIds = useMemo(() => {
@@ -297,6 +334,10 @@ function CategoryEditor({
             displayOrder: Number(f.displayOrder) || 0,
             isActive: f.isActive,
             showOnHomepage: f.showOnHomepage,
+            // Sent as [] when cleared, which the API reads as "go back to
+            // inheriting" rather than "no template at all".
+            scoreCriteria: criteriaPayload(criteria),
+            specTemplate: templatePayload(groups),
           },
           category?.id,
         );
@@ -385,6 +426,22 @@ function CategoryEditor({
           />
         </div>
       </div>
+
+      <CategoryTemplateEditor
+        criteria={criteria}
+        onCriteriaChange={setCriteria}
+        groups={groups}
+        onGroupsChange={setGroups}
+        inheritedCriteria={inheritedFrom?.scoreCriteria ?? []}
+        inheritedGroups={inheritedFrom?.specTemplate ?? []}
+        criteriaSource={
+          category ? category.scoreCriteriaSource : inheritedFrom?.scoreCriteriaSource ?? inheritedFrom?.name
+        }
+        groupsSource={
+          category ? category.specTemplateSource : inheritedFrom?.specTemplateSource ?? inheritedFrom?.name
+        }
+        categoryName={category?.name}
+      />
 
       <div className="mt-5 flex items-center gap-4">
         <button

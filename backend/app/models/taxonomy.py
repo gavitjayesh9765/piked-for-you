@@ -39,10 +39,18 @@ class Category(UUIDMixin, TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
     show_on_homepage: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
-    # Which filters this category exposes, and which criteria its PickD Score
-    # uses (spec §17, §24). Genuinely variable per category, so JSONB is right.
+    # Which filters this category exposes, which criteria its PickD Score uses,
+    # and which specification fields its products may carry (spec §17, §24,
+    # §41). Genuinely variable per category, so JSONB is right.
+    #
+    # `score_criteria` and `spec_template` are both *inherited*: an empty array
+    # means "use the parent's". A mouse and a pair of headphones share an
+    # ancestor but nothing else, so the resolution walks up the tree rather
+    # than falling back to a single site-wide default — see
+    # app/modules/admin/templates.py.
     filter_config: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict, nullable=False)
     score_criteria: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
+    spec_template: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
 
     parent: Mapped[Optional["Category"]] = relationship(remote_side="Category.id", back_populates="children")
     children: Mapped[list["Category"]] = relationship(back_populates="parent", cascade="all")

@@ -31,6 +31,7 @@ from app.models import (
     ProductMedia,
     ProductScore,
 )
+from app.modules.admin import templates
 from app.schemas.product import ProductCreate, ProductUpdate, ScoreUpsert
 
 # Fields a publish check requires (spec §62). A product missing any of these is
@@ -78,6 +79,23 @@ async def _assert_refs(db: AsyncSession, brand_id: uuid.UUID, category_id: uuid.
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Unknown category")
 
 
+async def _validated_specs(
+    db: AsyncSession, category_id: uuid.UUID, raw: list[dict] | None
+) -> list[dict]:
+    """Specifications, checked against the category's template (spec §41).
+
+    Which fields a product may carry is a property of its category, resolved up
+    the tree. Without this a mouse could be given a frequency response, and the
+    first product filed under a category would silently define the shape every
+    later one copied.
+    """
+    category = await db.get(Category, category_id)
+    if category is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Unknown category")
+    resolved = await templates.resolve_for_category(db, category)
+    return templates.validate_specifications(raw, resolved.spec_template, category.name)
+
+
 async def create_product(
     db: AsyncSession, payload: ProductCreate, actor_id: uuid.UUID, ip: str | None
 ) -> Product:
@@ -87,6 +105,8 @@ async def create_product(
     schema as well — "save" can never push a half-written product live (§38).
     """
     await _assert_refs(db, payload.brand_id, payload.category_id)
+
+    specifications = await _validated_specs(db, payload.category_id, payload.specifications)
 
     slug = await unique_slug(db, payload.slug or slugify(payload.title))
 
@@ -108,7 +128,7 @@ async def create_product(
         not_ideal_for=payload.not_ideal_for,
         pros=payload.pros,
         cons=payload.cons,
-        specifications=payload.specifications,
+        specifications=specifications,
         meta_title=payload.meta_title,
         meta_description=payload.meta_description,
         status="draft",
@@ -152,6 +172,14 @@ async def update_product(
 
     before = _snapshot(product)
     badge_ids = data.pop("badge_ids", None)
+
+    # Validated against the *incoming* category, not the current one: moving a
+    # mouse from Accessories to Mice changes which fields are legal, and the
+    # check has to follow the move rather than the row it started on.
+    if "specifications" in data:
+        data["specifications"] = await _validated_specs(
+            db, data.get("category_id", product.category_id), data["specifications"]
+        )
 
     if "slug" in data and data["slug"]:
         data["slug"] = await unique_slug(db, slugify(data["slug"]), exclude_id=product.id)
@@ -271,7 +299,15 @@ async def set_score(
     category (spec §24), so an unknown key is rejected rather than stored.
     """
     category = await db.get(Category, product.category_id)
-    allowed = {c.get("key") for c in (category.score_criteria or [])} if category else set()
+    # Resolved up the tree: a product filed under Mice is scored on the Mice
+    # criteria, and one filed under a category nobody has configured falls back
+    # to its parent's rather than to nothing (spec §24).
+    resolved = (
+        await templates.resolve_for_category(db, category)
+        if category
+        else templates.ResolvedTemplate()
+    )
+    allowed = {c.get("key") for c in resolved.score_criteria}
 
     if allowed:
         unknown = [c.key for c in payload.criteria if c.key not in allowed]

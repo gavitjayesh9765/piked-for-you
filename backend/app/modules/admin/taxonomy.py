@@ -26,6 +26,7 @@ from app.core.deps import CurrentAdmin, DbSession, client_ip
 from app.core.video_links import InvalidVideoLink
 from app.core.video_links import parse as parse_video
 from app.models import Badge, Brand, Category, Product, ProductMedia
+from app.modules.admin import templates
 
 router = APIRouter()
 
@@ -88,6 +89,12 @@ class CategoryIn(Strict):
     is_active: bool = True
     show_on_homepage: bool = False
 
+    # The category's own template. Left empty, it inherits its parent's — which
+    # is the right default for a new sub-category, so neither field is
+    # required to create one.
+    score_criteria: list[dict] | None = None
+    spec_template: list[dict] | None = None
+
 
 class CategoryPatch(Strict):
     name: str | None = Field(default=None, min_length=1, max_length=120)
@@ -98,9 +105,34 @@ class CategoryPatch(Strict):
     display_order: int | None = None
     is_active: bool | None = None
     show_on_homepage: bool | None = None
+    score_criteria: list[dict] | None = None
+    spec_template: list[dict] | None = None
 
 
-def _cat_row(c: Category, product_count: int = 0, direct: int = 0) -> dict:
+def _cat_row(
+    c: Category,
+    product_count: int = 0,
+    direct: int = 0,
+    resolved: templates.ResolvedTemplate | None = None,
+) -> dict:
+    """One admin category row.
+
+    Templates are returned twice on purpose. `scoreCriteria` / `specTemplate`
+    are the *effective* ones — what a product in this category may actually
+    carry, after inheritance — and are what the product and score editors
+    render. `ownScoreCriteria` / `ownSpecTemplate` are what this row itself
+    defines, and are what the category editor edits: showing an inherited
+    template in an edit field would turn "leave it alone" into "copy the
+    parent's, permanently", and the branch would stop tracking its parent the
+    first time anyone saved an unrelated change.
+    """
+    effective = resolved or templates.ResolvedTemplate(
+        score_criteria=list(c.score_criteria or []),
+        spec_template=list(c.spec_template or []),
+        score_source=c.name if (c.score_criteria or []) else None,
+        spec_source=c.name if (c.spec_template or []) else None,
+    )
+
     return {
         "id": str(c.id),
         "name": c.name,
@@ -115,12 +147,17 @@ def _cat_row(c: Category, product_count: int = 0, direct: int = 0) -> dict:
         "showOnHomepage": c.show_on_homepage,
         "productCount": product_count,
         "directProductCount": direct,
-        # Read-only. The scoring editor needs to know which criteria this
-        # category actually allows — `set_score` rejects any other key
-        # (spec §24), and without this the UI could only guess at them.
-        # Deliberately absent from CategoryIn: these are seeded, not authored
-        # through the panel, so exposing them here adds no write surface.
-        "scoreCriteria": list(c.score_criteria or []),
+        # Effective — the scoring editor needs to know which criteria this
+        # category allows, because `set_score` rejects any other key (§24),
+        # and the product form needs the spec fields for the same reason (§41).
+        "scoreCriteria": effective.score_criteria,
+        "specTemplate": effective.spec_template,
+        # Own, plus where an inherited template came from, so the admin can say
+        # "inherited from Computers" instead of leaving an editor to wonder.
+        "ownScoreCriteria": list(c.score_criteria or []),
+        "ownSpecTemplate": list(c.spec_template or []),
+        "scoreCriteriaSource": effective.score_source,
+        "specTemplateSource": effective.spec_source,
     }
 
 
@@ -144,7 +181,21 @@ async def list_categories(admin: CurrentAdmin, db: DbSession) -> dict:
         ).all()
     }
 
-    return {"items": [_cat_row(c, counts.get(c.id, 0), counts.get(c.id, 0)) for c in rows]}
+    # Resolved from the rows already in hand — one pass over the tree beats a
+    # per-category ancestor query for each of ~36 categories.
+    chains = templates.build_chains(rows)
+
+    return {
+        "items": [
+            _cat_row(
+                c,
+                counts.get(c.id, 0),
+                counts.get(c.id, 0),
+                templates.resolve_from_chain(chains.get(c.id, [c])),
+            )
+            for c in rows
+        ]
+    }
 
 
 @router.post("/categories", status_code=status.HTTP_201_CREATED)
@@ -167,6 +218,10 @@ async def create_category(
         display_order=payload.display_order,
         is_active=payload.is_active,
         show_on_homepage=payload.show_on_homepage,
+        # Empty means "inherit". A new sub-category of Mice should score like a
+        # mouse until someone says otherwise (spec §24, §41).
+        score_criteria=templates.normalise_score_criteria(payload.score_criteria),
+        spec_template=templates.normalise_spec_template(payload.spec_template),
         path=[],
         depth=0,
     )
@@ -182,7 +237,7 @@ async def create_category(
         entity_id=category.id, summary=f"Created category “{category.name}”",
         ip_address=client_ip(request),
     )
-    return _cat_row(category)
+    return _cat_row(category, resolved=await templates.resolve_for_category(db, category))
 
 
 @router.patch("/categories/{category_id}")
@@ -218,6 +273,14 @@ async def update_category(
         if field in data:
             setattr(category, field, data[field])
 
+    # Normalised on the way in, so nothing downstream has to defend against a
+    # criterion with no label or a field with no key. Sending an empty list is
+    # a deliberate "go back to inheriting from my parent".
+    if "score_criteria" in data:
+        category.score_criteria = templates.normalise_score_criteria(data["score_criteria"])
+    if "spec_template" in data:
+        category.spec_template = templates.normalise_spec_template(data["spec_template"])
+
     try:
         await db.flush()
     except Exception as exc:
@@ -238,9 +301,13 @@ async def update_category(
     await audit.record(
         db, actor_id=admin.id, action="category.update", entity_type="category",
         entity_id=category.id, summary=f"Updated category “{category.name}”",
-        meta={"reparented": moved}, ip_address=client_ip(request),
+        meta={
+            "reparented": moved,
+            "templateChanged": "score_criteria" in data or "spec_template" in data,
+        },
+        ip_address=client_ip(request),
     )
-    return _cat_row(category)
+    return _cat_row(category, resolved=await templates.resolve_for_category(db, category))
 
 
 @router.delete("/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)

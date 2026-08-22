@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { PriceHistory } from "@/lib/types";
+import type { PriceHistory, SpecTemplateGroup } from "@/lib/types";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -17,10 +17,13 @@ import { VideoLinks } from "@/components/admin/VideoLinks";
 import { ScoreEditor, type Criterion } from "@/components/admin/ScoreEditor";
 import { listRetailers } from "@/lib/admin-api";
 
-/** Only the fields the score editor needs off an admin category row. */
+/** The template fields the score and specification editors need. */
 interface CategoryRow {
   id: string;
+  name?: string;
   scoreCriteria?: Criterion[] | null;
+  specTemplate?: SpecTemplateGroup[] | null;
+  specTemplateSource?: string | null;
 }
 
 export const metadata: Metadata = { title: "Edit product", robots: { index: false } };
@@ -48,9 +51,11 @@ export default async function EditProductPage({
     getBrands(),
     safe(() => publishCheck(id), { canPublish: false, missing: [] }),
     safe(() => listRetailers(), [] as { id: string; name: string; slug: string }[]),
-    // Scoring criteria are configured per category (spec §24) and the API
-    // rejects any key the category does not list, so the editor has to read
-    // them rather than guess.
+    // Scoring criteria and specification fields are configured per category
+    // (spec §24, §41) and the API rejects any key the category does not list,
+    // so the editors have to read them rather than guess. The admin route
+    // returns them already resolved up the tree, so a product filed under Mice
+    // gets the Mice template rather than nothing.
     adminGet<{ items: CategoryRow[] }>("/categories", { items: [] }),
     // Six months is long enough to show a launch-price decline and short
     // enough that the chart is still readable at this width.
@@ -63,6 +68,13 @@ export default async function EditProductPage({
 
   const criteria =
     (taxonomy.items ?? []).find((c) => c.id === product.category.id)?.scoreCriteria ?? [];
+
+  // Keyed by every category, not just this product's: the form's category
+  // select can change mid-edit and the fields have to follow it without a
+  // round trip.
+  const specTemplates: Record<string, SpecTemplateGroup[]> = Object.fromEntries(
+    (taxonomy.items ?? []).map((c) => [c.id, c.specTemplate ?? []]),
+  );
 
   return (
     <AdminPage
@@ -200,6 +212,7 @@ export default async function EditProductPage({
         categories={categories}
         brands={brands}
         badges={product.badges}
+        specTemplates={specTemplates}
       />
     </AdminPage>
   );

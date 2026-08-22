@@ -1,9 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
-import type { Badge, Brand, Category, Product } from "@/lib/types";
+import type { Badge, Brand, Category, Product, SpecTemplateGroup } from "@/lib/types";
+import {
+  SpecEditor,
+  specPayload,
+  specValuesFrom,
+  unmappedSpecs,
+  type SpecValues,
+} from "@/components/admin/SpecEditor";
 
 /**
  * Product create / edit form (spec §37).
@@ -11,7 +18,7 @@ import type { Badge, Brand, Category, Product } from "@/lib/types";
  * All eight spec sections: Basic · Pricing · Media · Recommendation · Badges ·
  * Retailers · SEO · Publication.
  *
- * Two deliberate behaviours:
+ * Three deliberate behaviours:
  *
  *  - **Save never publishes.** Creating always yields a draft; publishing is a
  *    separate, audited action (spec §38). The API enforces this too —
@@ -19,17 +26,29 @@ import type { Badge, Brand, Category, Product } from "@/lib/types";
  *  - **String-list fields are one-per-line textareas**, not a bespoke tag
  *    widget. Pros, cons and audience fit are written in prose by an editor;
  *    a chip input would slow that down for no gain.
+ *  - **Specification fields come from the category** (spec §41), and change
+ *    live when the category select changes — picking Mice swaps a driver and
+ *    a frequency response for a sensor and a polling rate. Values already
+ *    typed are kept in state rather than discarded, so flipping the category
+ *    to check something does not cost the editor their work.
  */
 export function ProductForm({
   product,
   categories,
   brands,
   badges,
+  specTemplates = {},
 }: {
   product?: Product;
   categories: Category[];
   brands: Brand[];
   badges: Badge[];
+  /**
+   * Category id → its effective specification template, already resolved up
+   * the tree by the API. Keyed by every category so switching the select does
+   * not need a round trip mid-form.
+   */
+  specTemplates?: Record<string, SpecTemplateGroup[]>;
 }) {
   const router = useRouter();
   const isEdit = Boolean(product);
@@ -57,6 +76,22 @@ export function ProductForm({
 
   const [badgeIds, setBadgeIds] = useState<string[]>(
     (product?.badges ?? []).map((b) => b.id),
+  );
+  const [specs, setSpecs] = useState<SpecValues>(() =>
+    specValuesFrom(product?.specifications),
+  );
+
+  const specTemplate = useMemo(
+    () => specTemplates[f.categoryId] ?? [],
+    [specTemplates, f.categoryId],
+  );
+  const categoryName = useMemo(
+    () => categories.find((c) => c.id === f.categoryId)?.name,
+    [categories, f.categoryId],
+  );
+  const unmapped = useMemo(
+    () => unmappedSpecs(product?.specifications, specTemplate),
+    [product?.specifications, specTemplate],
   );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -98,6 +133,17 @@ export function ProductForm({
       metaDescription: f.metaDescription.trim() || null,
     };
     if (f.slug.trim()) body.slug = f.slug.trim();
+
+    // Only sent when the category actually has a template. Without this guard
+    // a category with no template would PATCH `specifications: []` on every
+    // save and silently wipe any free-form specs the product already had —
+    // the editor has no field to retype them into, so the save would destroy
+    // content it never showed. Built from the *current* category's template,
+    // so moving a product between categories cannot smuggle the old
+    // category's fields along.
+    if (specTemplate.length > 0) {
+      body.specifications = specPayload(specTemplate, specs);
+    }
 
     try {
       const res = await fetch(
@@ -327,8 +373,27 @@ export function ProductForm({
         </Grid>
       </Section>
 
-      {/* --- 4. Badges --- */}
-      <Section n="04" title="Badges" hint="Created in the admin panel, never hard-coded (spec §21).">
+      {/* --- 4. Specifications --- */}
+      <Section
+        n="04"
+        title="Specifications"
+        hint={
+          categoryName
+            ? `The fields ${categoryName} allows. Change the category above and these change with it.`
+            : "Fields come from the category (spec §41)."
+        }
+      >
+        <SpecEditor
+          template={specTemplate}
+          values={specs}
+          onChange={setSpecs}
+          categoryName={categoryName}
+          unmapped={unmapped}
+        />
+      </Section>
+
+      {/* --- 5. Badges --- */}
+      <Section n="05" title="Badges" hint="Created in the admin panel, never hard-coded (spec §21).">
         <div className="flex flex-wrap gap-2">
           {badges.length === 0 && (
             <p className="text-body-sm text-ink-muted">No badges defined yet.</p>
@@ -360,7 +425,7 @@ export function ProductForm({
       </Section>
 
       {/* --- 5. SEO --- */}
-      <Section n="05" title="SEO" hint="Falls back to the title and tagline when blank (spec §47).">
+      <Section n="06" title="SEO" hint="Falls back to the title and tagline when blank (spec §47).">
         <Grid>
           <Field label="Meta title" span={2}>
             <input

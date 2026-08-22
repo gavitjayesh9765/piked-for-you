@@ -31,6 +31,41 @@ export interface Category {
   isActive: boolean;
   showOnHomepage: boolean;
   productCount?: number;
+  /**
+   * Effective templates — after inheritance from ancestors. A mouse under
+   * Computers → Mice is scored and specified as a mouse, never as a headphone
+   * (spec §24, §41). Present on admin reads; the public category endpoint
+   * omits them because no public surface authors against them.
+   */
+  scoreCriteria?: ScoreCriterionDef[];
+  specTemplate?: SpecTemplateGroup[];
+}
+
+/* ------------------------------------------------------------------ */
+/* Category templates (spec §24, §41)                                  */
+/* ------------------------------------------------------------------ */
+
+/** One scoring criterion a category allows. The *definition*, not a score. */
+export interface ScoreCriterionDef {
+  key: string;
+  label: string;
+  /** Relative weight in the overall score; absent means equal weighting. */
+  weight?: number | null;
+}
+
+/** One specification field a category's products may carry. */
+export interface SpecTemplateField {
+  key: string;
+  label: string;
+  /** Shown beside the input as a hint — not appended to the stored value. */
+  unit?: string | null;
+  placeholder?: string | null;
+}
+
+export interface SpecTemplateGroup {
+  key: string;
+  label: string;
+  fields: SpecTemplateField[];
 }
 
 export interface Brand {
@@ -240,7 +275,9 @@ export interface Product extends ProductSummary {
 
 export interface SpecGroup {
   label: string;
-  items: { label: string; value: string }[];
+  /** Template group key. Absent on free-form specs authored before templates. */
+  key?: string;
+  items: { key?: string; label: string; value: string }[];
 }
 
 /* ------------------------------------------------------------------ */

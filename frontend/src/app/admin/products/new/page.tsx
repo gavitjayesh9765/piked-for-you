@@ -1,9 +1,17 @@
 import type { Metadata } from "next";
+import type { SpecTemplateGroup } from "@/lib/types";
 import Link from "next/link";
 
 import { getBrands, getCategories } from "@/lib/api";
+import { adminGet } from "@/lib/admin-api";
 import { AdminPage } from "@/components/admin/Shell";
 import { ProductForm } from "@/components/admin/ProductForm";
+
+/** Only the template field the specification editor needs. */
+interface CategoryRow {
+  id: string;
+  specTemplate?: SpecTemplateGroup[] | null;
+}
 
 export const metadata: Metadata = { title: "New product", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -15,7 +23,18 @@ export const dynamic = "force-dynamic";
  * form cannot accidentally push half-written content live (spec §38).
  */
 export default async function NewProductPage() {
-  const [categories, brands] = await Promise.all([getCategories(), getBrands()]);
+  const [categories, brands, taxonomy] = await Promise.all([
+    getCategories(),
+    getBrands(),
+    // Specification fields are configured per category and resolved up the
+    // tree (spec §41). Fetched for every category so the form's category
+    // select can swap the fields without a round trip.
+    adminGet<{ items: CategoryRow[] }>("/categories", { items: [] }),
+  ]);
+
+  const specTemplates: Record<string, SpecTemplateGroup[]> = Object.fromEntries(
+    (taxonomy.items ?? []).map((c) => [c.id, c.specTemplate ?? []]),
+  );
 
   const blocked = categories.length === 0 || brands.length === 0;
 
@@ -45,7 +64,12 @@ export default async function NewProductPage() {
           </p>
         </div>
       ) : (
-        <ProductForm categories={categories} brands={brands} badges={[]} />
+        <ProductForm
+          categories={categories}
+          brands={brands}
+          badges={[]}
+          specTemplates={specTemplates}
+        />
       )}
     </AdminPage>
   );
