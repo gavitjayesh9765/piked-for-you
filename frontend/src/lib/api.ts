@@ -33,7 +33,7 @@ const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS !== "0";
 const REVALIDATE = 300;
 
 /**
- * Upper bound on a single API call.
+ * Upper bound on a single API call **at request time**.
  *
  * Sized to CLEAR a Render Free cold start, not to cut one off. That instance
  * spins down after 15 minutes idle and takes ~1 minute to answer the first
@@ -44,6 +44,30 @@ const REVALIDATE = 300;
  */
 const TIMEOUT_MS = 75_000;
 
+/**
+ * Upper bound on a single API call **during `next build`**.
+ *
+ * The reasoning above is about a user waiting on a request. At build time
+ * nobody is waiting, and the surrounding budget is completely different:
+ * Next allows `staticPageGenerationTimeout` seconds per page (we set 120 in
+ * next.config.mjs, up from a 60s default) and retries a page three times
+ * before failing the whole build.
+ *
+ * Applying the 75s request-time bound here is what broke the Vercel build —
+ * it exceeded the 60s page budget, so every page that touched a sleeping API
+ * was killed by Next before its own timeout could fire, three times over.
+ * Twenty pages waiting 75s each is also 25 minutes of build time spent
+ * discovering the same outage twenty times.
+ *
+ * So: fail fast at build, and let the callers that treat this data as page
+ * chrome fall back (see `safe` in ./admin-api). Anything prerendered with a
+ * fallback is corrected by the next revalidation, REVALIDATE seconds later.
+ */
+const BUILD_TIMEOUT_MS = 20_000;
+
+/** True only inside `next build`; Next sets this itself. */
+const IS_BUILD = process.env.NEXT_PHASE === "phase-production-build";
+
 async function get<T>(path: string, init?: RequestInit): Promise<T> {
   let res: Response;
   try {
@@ -51,7 +75,7 @@ async function get<T>(path: string, init?: RequestInit): Promise<T> {
       ...init,
       headers: { Accept: "application/json", ...init?.headers },
       next: { revalidate: REVALIDATE },
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(IS_BUILD ? BUILD_TIMEOUT_MS : TIMEOUT_MS),
     });
   } catch (cause) {
     // DNS failure, connection refused, or the timeout above. `fetch` reports
@@ -113,6 +137,29 @@ export async function getTopPicks(): Promise<HomepageSection | null> {
 export async function getCategories(): Promise<Category[]> {
   if (USE_MOCKS) return mock.categories;
   return get<Category[]>("/categories");
+}
+
+/**
+ * The taxonomy, for callers that use it as navigation *chrome* rather than as
+ * the content of the page — the header rail, the 404's suggestions, the
+ * document-page footer nav.
+ *
+ * Those pages have their own reason to exist. `/privacy` is static prose; it
+ * should not go down, or fail a deploy, because a category list was slow. An
+ * empty rail renders a smaller page, never a wrong one — the same trade
+ * `safe()` makes in ./admin-api, and a prerender that lands here is corrected
+ * by the next revalidation REVALIDATE seconds later.
+ *
+ * Pages whose *content* is the taxonomy — /c, /b — keep calling
+ * `getCategories()` and let the error surface, because for them an empty list
+ * is a lie rather than a smaller page.
+ */
+export async function getCategoriesForChrome(): Promise<Category[]> {
+  try {
+    return await getCategories();
+  } catch {
+    return [];
+  }
 }
 
 /**

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { getCategories } from "@/lib/api";
+import { getCategoriesForChrome } from "@/lib/api";
 import { categoryHref } from "@/lib/format";
 
 import { SiteHeader } from "@/components/layout/SiteHeader";
@@ -21,7 +21,7 @@ import { SearchField } from "@/components/ui/SearchField";
 export default async function NotFound() {
   // The taxonomy is live, so the suggestions stay correct as categories change
   // instead of rotting into links that 404 from the 404 page.
-  const categories = await getCategories();
+  const categories = await getCategoriesForChrome();
   const suggestions = categories
     .filter((c) => c.isActive && (c.productCount ?? 0) > 0)
     .sort((a, b) => (b.productCount ?? 0) - (a.productCount ?? 0))

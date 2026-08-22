@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { getCategories } from "@/lib/api";
+import { getCategoriesForChrome } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 
 import { SiteHeader } from "@/components/layout/SiteHeader";
@@ -43,7 +43,9 @@ export async function DocumentPage({
   sections: DocSection[];
   footnote?: React.ReactNode;
 }) {
-  const categories = await getCategories();
+  // Chrome, not content: these pages are static prose and must render even
+  // when the API is asleep. See getCategoriesForChrome.
+  const categories = await getCategoriesForChrome();
 
   return (
     <>
