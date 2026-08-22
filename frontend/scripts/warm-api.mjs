@@ -20,7 +20,11 @@
  */
 
 const RAW = process.env.NEXT_PUBLIC_API_URL;
-const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS !== "0";
+// Mocks are opt-in — same rule as src/lib/env.ts, restated because a plain
+// node script cannot import the TypeScript module. Keep the two in step.
+const USE_MOCKS =
+  process.env.NEXT_PUBLIC_USE_MOCKS === "1" ||
+  process.env.NEXT_PUBLIC_USE_MOCKS === "true";
 
 /** Long enough to sit through a Render Free cold start, then give up. */
 const TIMEOUT_MS = 90_000;
@@ -30,7 +34,7 @@ const skip = (why) => {
   process.exit(0);
 };
 
-if (USE_MOCKS) skip("NEXT_PUBLIC_USE_MOCKS is not 0, nothing to warm");
+if (USE_MOCKS) skip("NEXT_PUBLIC_USE_MOCKS is on, nothing to warm");
 if (!RAW) skip("NEXT_PUBLIC_API_URL is not set");
 
 let origin;

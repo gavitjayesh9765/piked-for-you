@@ -13,21 +13,56 @@ import type {
   Review,
   SortOption,
 } from "./types";
-import * as mock from "./mock/data";
+import { API_URL } from "./env";
 
 /**
  * The single seam between the UI and the backend.
  *
- * Every page imports from here and nothing else. Flipping
- * NEXT_PUBLIC_USE_MOCKS=0 swaps the transport without touching a component,
- * which is what keeps spec §54 honest — the frontend renders structured data
- * and holds no product-specific logic.
+ * Every page imports from here and nothing else, which is what keeps spec §54
+ * honest — the frontend renders structured data and holds no product-specific
+ * logic. Setting NEXT_PUBLIC_USE_MOCKS=1 swaps the transport for the fixtures
+ * in ./mock/data without touching a component.
+ *
+ * Note the shape of every branch below:
+ *
+ *     if (USE_MOCKS) {
+ *       const mock = await import("./mock/data");
+ *       ...
+ *     }
+ *
+ * The `await import` is deliberate and must not be hoisted back to a static
+ * top-level import for tidiness. `USE_MOCKS` folds to a literal at build time
+ * (see ./env), so when mocks are off the bundler deletes the whole branch and
+ * never follows the import — which is what keeps 41 KB of fabricated products
+ * out of a production bundle rather than merely unreferenced inside it. This
+ * module is reachable from client components, so "unreferenced" would still
+ * mean "downloaded by every visitor".
  *
  * Public endpoints return published content only; that filtering is enforced
  * server-side (spec §42), never here.
  */
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
-const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCKS !== "0";
+
+/**
+ * Re-derived from `process.env` here rather than imported from ./env, and that
+ * is not duplication for its own sake — it is the difference between fixtures
+ * being absent from the bundle and merely unreferenced in it.
+ *
+ * Importing `USE_MOCKS` across a module boundary was tried first and measurably
+ * failed: `scripts/assert-no-mocks.mjs` found the full fixture module in both
+ * `.next/server` and `.next/static` on a clean build. Turbopack inlines
+ * `process.env.NEXT_PUBLIC_*` where it is written, but does not propagate the
+ * resulting constant into another module, so `if (USE_MOCKS)` stayed opaque and
+ * every `await import()` below kept its chunk.
+ *
+ * Written at the point of use, the expression folds to `false`, the branches
+ * die, and the fixtures never enter the graph. ./env remains the source of
+ * truth for the RULE and for validating it; this is the same rule stated where
+ * the compiler can see it. The postbuild check fails the build if the two ever
+ * disagree, which is what keeps the restatement honest.
+ */
+const USE_MOCKS =
+  process.env.NEXT_PUBLIC_USE_MOCKS === "1" ||
+  process.env.NEXT_PUBLIC_USE_MOCKS === "true";
 
 /** Public content is cacheable and revalidated on a short window (spec §48). */
 const REVALIDATE = 300;
@@ -111,7 +146,10 @@ export class ApiError extends Error {
 /* ------------------------------------------------------------------ */
 
 export async function getHomepage(): Promise<HomepageSection[]> {
-  if (USE_MOCKS) return mock.homepageSections.filter((s) => s.isActive).sort((a, b) => a.displayOrder - b.displayOrder);
+  if (USE_MOCKS) {
+    const mock = await import("./mock/data");
+    return mock.homepageSections.filter((s) => s.isActive).sort((a, b) => a.displayOrder - b.displayOrder);
+  }
   return get<HomepageSection[]>("/homepage");
 }
 
@@ -124,6 +162,7 @@ export async function getHomepage(): Promise<HomepageSection[]> {
  */
 export async function getTopPicks(): Promise<HomepageSection | null> {
   if (USE_MOCKS) {
+    const mock = await import("./mock/data");
     return mock.homepageSections.find((s) => s.kind === "top_picks") ?? null;
   }
   const sections = await get<HomepageSection[]>("/homepage/top-picks");
@@ -135,7 +174,10 @@ export async function getTopPicks(): Promise<HomepageSection | null> {
 /* ------------------------------------------------------------------ */
 
 export async function getCategories(): Promise<Category[]> {
-  if (USE_MOCKS) return mock.categories;
+  if (USE_MOCKS) {
+    const mock = await import("./mock/data");
+    return mock.categories;
+  }
   return get<Category[]>("/categories");
 }
 
@@ -185,6 +227,7 @@ function isSlug(value: string | undefined | null): value is string {
 
 export async function getCategory(path: string[]): Promise<Category | null> {
   if (USE_MOCKS) {
+    const mock = await import("./mock/data");
     const slug = path[path.length - 1];
     return mock.categories.find((c) => c.slug === slug) ?? null;
   }
@@ -202,12 +245,18 @@ export async function getCategory(path: string[]): Promise<Category | null> {
 }
 
 export async function getBrands(opts: { pinnedOnly?: boolean } = {}): Promise<Brand[]> {
-  if (USE_MOCKS) return opts.pinnedOnly ? mock.brands.filter((b) => b.isPinned) : mock.brands;
+  if (USE_MOCKS) {
+    const mock = await import("./mock/data");
+    return opts.pinnedOnly ? mock.brands.filter((b) => b.isPinned) : mock.brands;
+  }
   return get<Brand[]>(`/brands${opts.pinnedOnly ? "?pinned=true" : ""}`);
 }
 
 export async function getBrand(slug: string): Promise<Brand | null> {
-  if (USE_MOCKS) return mock.brands.find((b) => b.slug === slug) ?? null;
+  if (USE_MOCKS) {
+    const mock = await import("./mock/data");
+    return mock.brands.find((b) => b.slug === slug) ?? null;
+  }
   if (!isSlug(slug)) return null;
   try {
     return await get<Brand>(`/brands/${slug}`);
@@ -235,6 +284,7 @@ export interface ProductQuery {
 
 export async function listProducts(q: ProductQuery = {}): Promise<Paginated<ProductSummary>> {
   if (USE_MOCKS) {
+    const mock = await import("./mock/data");
     let items = q.category ? mock.productsByCategory(q.category) : mock.products;
     if (q.brand?.length) items = items.filter((p) => q.brand!.includes(p.brand.slug));
     if (q.minScore) items = items.filter((p) => (p.score?.overall ?? 0) >= q.minScore!);
@@ -284,7 +334,10 @@ function sortMock(items: ProductSummary[], sort: SortOption): ProductSummary[] {
 }
 
 export async function getProduct(categorySlug: string, slug: string): Promise<Product | null> {
-  if (USE_MOCKS) return mock.productDetail(slug);
+  if (USE_MOCKS) {
+    const mock = await import("./mock/data");
+    return mock.productDetail(slug);
+  }
   if (!isSlug(categorySlug) || !isSlug(slug)) return null;
   try {
     return await get<Product>(`/products/${categorySlug}/${slug}`);
@@ -295,7 +348,10 @@ export async function getProduct(categorySlug: string, slug: string): Promise<Pr
 }
 
 export async function getAlternatives(productId: string, limit = 4): Promise<ProductSummary[]> {
-  if (USE_MOCKS) return mock.products.filter((p) => p.id !== productId).slice(0, limit);
+  if (USE_MOCKS) {
+    const mock = await import("./mock/data");
+    return mock.products.filter((p) => p.id !== productId).slice(0, limit);
+  }
   // productId comes from data we rendered rather than from the URL, but it is
   // still interpolated into a path — encode rather than assume.
   return get<ProductSummary[]>(
@@ -305,6 +361,7 @@ export async function getAlternatives(productId: string, limit = 4): Promise<Pro
 
 export async function getFacets(categorySlug?: string): Promise<FilterFacet[]> {
   if (USE_MOCKS) {
+    const mock = await import("./mock/data");
     const pool = categorySlug ? mock.productsByCategory(categorySlug) : mock.products;
     const brandCounts = new Map<string, { label: string; count: number }>();
     pool.forEach((p) => {
@@ -340,6 +397,7 @@ export async function getFacets(categorySlug?: string): Promise<FilterFacet[]> {
 
 export async function getReviews(productId: string): Promise<Paginated<Review>> {
   if (USE_MOCKS) {
+    const mock = await import("./mock/data");
     const items = mock.reviews.filter((r) => r.productId === productId && r.status === "approved");
     return { items, total: items.length, page: 1, pageSize: 20, hasMore: false };
   }
@@ -367,6 +425,7 @@ export async function search(q: string): Promise<SearchResults> {
   if (!needle) return { products: [], categories: [], brands: [], total: 0 };
 
   if (USE_MOCKS) {
+    const mock = await import("./mock/data");
     const products = mock.products.filter(
       (p) =>
         p.title.toLowerCase().includes(needle) ||

@@ -1,3 +1,7 @@
+// Single source of truth, and validated there: an unset NEXT_PUBLIC_API_URL
+// fails the build rather than silently resolving to a loopback address no
+// deployed instance can reach.
+import { API_URL } from "@/lib/env";
 import { getAdminSession } from "@/lib/supabase/server";
 import { isProductSort } from "@/lib/product-sort";
 import type { Paginated, Product, ProductSummary } from "@/lib/types";
@@ -17,7 +21,6 @@ import type { Paginated, Product, ProductSummary } from "@/lib/types";
  * Every call is `no-store`: admin data includes unpublished content and must
  * never be cached.
  */
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
 /** A hung API should fail the render, not hold a server worker open. */
 const TIMEOUT_MS = 15_000;

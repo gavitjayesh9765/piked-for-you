@@ -1,3 +1,7 @@
+// Single source of truth, and validated there: an unset NEXT_PUBLIC_API_URL
+// fails the build rather than silently resolving to a loopback address no
+// deployed instance can reach.
+import { API_URL } from "@/lib/env";
 import { getAccessToken } from "@/lib/supabase/server";
 import type { Paginated, ProductSummary } from "@/lib/types";
 
@@ -11,7 +15,6 @@ import type { Paginated, ProductSummary } from "@/lib/types";
  * All calls are `no-store`: a cached shortlist served to the next visitor
  * would be a data leak.
  */
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = await getAccessToken();

@@ -6,6 +6,7 @@
     "dev": "next dev",
     "prebuild": "node scripts/warm-api.mjs",
     "build": "next build",
+    "postbuild": "node scripts/assert-no-mocks.mjs",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
