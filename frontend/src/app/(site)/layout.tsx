@@ -1,0 +1,56 @@
+import { getCategoriesForChrome } from "@/lib/api";
+import { SiteHeader } from "@/components/layout/SiteHeader";
+import { SiteFooter } from "@/components/layout/SiteFooter";
+
+/**
+ * The public site shell.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS FILE EXISTS
+ *
+ * Every public page used to render `<SiteHeader>` and `<SiteFooter>` itself —
+ * twenty pages, twenty copies, each fetching the category taxonomy and
+ * resolving the session before it could render a single byte.
+ *
+ * The cost was not the duplication. It was that **a page does not survive a
+ * navigation and a layout does.** Because the header lived in the page, every
+ * click tore down the wordmark, the search field, the account control and the
+ * category rail, then rebuilt all of them from a server response — after
+ * waiting on the API and the auth server first. Nothing on screen could move
+ * until all of that finished, which is precisely the "laggy" feeling: not slow
+ * animation, but a UI with nothing to show and no way to say so.
+ *
+ * With the chrome hoisted here, a navigation between any two public routes
+ * re-renders only what is genuinely different: the content below this layout.
+ * The header is not re-fetched, not re-rendered, and not remounted. The sub-nav
+ * keeps its scroll position and its underline slides rather than reappearing.
+ *
+ * This is also what makes the Suspense boundaries inside the pages useful. As
+ * the Next.js instant-navigation guide puts it, a client navigation only
+ * re-renders below the layout the two routes share — so a fallback declared
+ * *above* that point can never be shown during the transition. Putting the
+ * chrome in the shared layout is what moves every page's Suspense boundary
+ * below it, where it can actually do its job.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY `getCategoriesForChrome` AND NOT `getCategories`
+ *
+ * Here the taxonomy is navigation, not content. This layout wraps `/privacy`
+ * and `/login` as well as `/c` — pages that have nothing to do with the
+ * catalogue and must not fail, or fail a deploy, because a category list was
+ * slow. The safe variant degrades to an empty rail, which renders a smaller
+ * page rather than a wrong one. Pages whose *subject* is the taxonomy keep
+ * calling `getCategories()` themselves and let the error surface; the request
+ * is deduplicated, so asking twice costs one call.
+ */
+export default async function SiteLayout({ children }: { children: React.ReactNode }) {
+  const categories = await getCategoriesForChrome();
+
+  return (
+    <>
+      <SiteHeader categories={categories} />
+      {children}
+      <SiteFooter />
+    </>
+  );
+}

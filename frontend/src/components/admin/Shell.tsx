@@ -111,7 +111,11 @@ export function DataTable({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-line">{children}</tbody>
+          {/* `stagger` is what gives every table in the panel the same
+              arrival: rows fade and rise in sequence rather than snapping in
+              as a block. Applied once, here, so no admin screen has to
+              remember to do it — and so they cannot drift apart. */}
+          <tbody className="stagger divide-y divide-line">{children}</tbody>
         </table>
       </div>
       {empty && <EmptyRowsNotice />}

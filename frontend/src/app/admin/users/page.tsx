@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { listUsers, safe } from "@/lib/admin-api";
 import { formatDate } from "@/lib/format";
 import { AdminPage, DataTable, Td } from "@/components/admin/Shell";
 import { AdminSearch } from "@/components/admin/AdminSearch";
+import { TableArriving, ValueArriving } from "@/components/ui/Arriving";
 
 export const metadata: Metadata = { title: "Users", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -15,6 +17,12 @@ export const dynamic = "force-dynamic";
  * Security grants admins no policy on those tables at all, so this screen
  * *cannot* show them even if someone added the column. Browsing an
  * individual's shortlist is not an operational need.
+ *
+ * ---------------------------------------------------------------------------
+ * The search field is driven by the query string and renders instantly; only
+ * the count and the table stream, keyed on the query and page so a new search
+ * replaces the old rows rather than appearing to amend them. The fallback
+ * holds the table's height and is invisible for its first 420ms.
  */
 export default async function AdminUsersPage({
   searchParams,
@@ -22,11 +30,8 @@ export default async function AdminUsersPage({
   searchParams: Promise<{ q?: string; page?: string }>;
 }) {
   const sp = await searchParams;
-  const data = await safe(() => listUsers(sp.q, Number(sp.page ?? 1)), {
-    items: [],
-    total: 0,
-    hasMore: false,
-  });
+  const q = sp.q ?? "";
+  const page = Number(sp.page ?? 1);
 
   return (
     <AdminPage
@@ -35,12 +40,43 @@ export default async function AdminUsersPage({
       description="People who registered to write reviews. Read-only."
     >
       <div className="mb-6 flex items-center justify-between gap-4">
-        <AdminSearch placeholder="Search name or email…" defaultValue={sp.q ?? ""} />
+        <AdminSearch placeholder="Search name or email…" defaultValue={q} />
         <p className="tabular shrink-0 text-body-sm text-ink-subtle">
-          {data.total} {data.total === 1 ? "user" : "users"}
+          <Suspense fallback={<ValueArriving width={9} />}>
+            <UserCount q={q} page={page} />
+          </Suspense>
         </p>
       </div>
 
+      <Suspense key={`${q}:${page}`} fallback={<TableArriving rows={10} />}>
+        <UserTable q={q} page={page} />
+      </Suspense>
+    </AdminPage>
+  );
+}
+
+/**
+ * Both halves share one memoized `listUsers` call, so the count and the table
+ * cost one request and land together.
+ */
+async function users(q: string, page: number) {
+  return safe(() => listUsers(q || undefined, page), { items: [], total: 0, hasMore: false });
+}
+
+async function UserCount({ q, page }: { q: string; page: number }) {
+  const data = await users(q, page);
+  return (
+    <>
+      {data.total} {data.total === 1 ? "user" : "users"}
+    </>
+  );
+}
+
+async function UserTable({ q, page }: { q: string; page: number }) {
+  const data = await users(q, page);
+
+  return (
+    <>
       <DataTable
         columns={["Name", "Email", "Reviews", "Joined", "Status"]}
         empty={data.items.length === 0}
@@ -78,6 +114,6 @@ export default async function AdminUsersPage({
         see docs/05-admin-setup.md. There is no way to grant the admin role from this panel, by
         design.
       </p>
-    </AdminPage>
+    </>
   );
 }

@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
 import { adminGet } from "@/lib/admin-api";
 import { AdminPage, FilterTabs } from "@/components/admin/Shell";
+import { TableArriving } from "@/components/ui/Arriving";
 
 export const metadata: Metadata = { title: "Media library", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -31,21 +33,19 @@ function kb(bytes: number | null) {
     : `${Math.round(bytes / 1024)} KB`;
 }
 
-/** Everything attached to a product, newest first. */
+/** Everything attached to a product, newest first. *
+ * ---------------------------------------------------------------------------
+ * The filter tabs come from the query string and respond instantly; only the
+ * count and the grid stream, keyed on the filter so a new tab replaces the old
+ * items rather than appearing to amend them. The fallback holds the height and
+ * is invisible for its first 420ms, so a warm switch shows nothing at all.
+ */
 export default async function AdminMediaPage({
   searchParams,
 }: {
   searchParams: Promise<{ status?: string }>;
 }) {
   const { status = "all" } = await searchParams;
-  // `kind` came straight off the URL and was interpolated into the query
-  // string unescaped, so `?status=all%26limit=99999` became a second parameter.
-  // Checked against the tabs this page actually offers.
-  const data = await adminGet<{ items: Item[]; total: number }>(
-    "/media",
-    { items: [], total: 0 },
-    { kind: KINDS.has(status) ? status : "all" },
-  );
 
   return (
     <AdminPage
@@ -63,6 +63,25 @@ export default async function AdminMediaPage({
         ]}
       />
 
+      <Suspense key={status} fallback={<TableArriving rows={6} />}>
+        <Library status={status} />
+      </Suspense>
+    </AdminPage>
+  );
+}
+
+async function Library({ status }: { status: string }) {
+  // `kind` came straight off the URL and was interpolated into the query
+  // string unescaped, so `?status=all%26limit=99999` became a second parameter.
+  // Checked against the tabs this page actually offers.
+  const data = await adminGet<{ items: Item[]; total: number }>(
+    "/media",
+    { items: [], total: 0 },
+    { kind: KINDS.has(status) ? status : "all" },
+  );
+
+  return (
+    <>
       <p className="tabular my-6 text-body-sm text-ink-subtle">{data.total} files</p>
 
       {data.items.length === 0 ? (
@@ -111,6 +130,6 @@ export default async function AdminMediaPage({
           ))}
         </ul>
       )}
-    </AdminPage>
+    </>
   );
 }

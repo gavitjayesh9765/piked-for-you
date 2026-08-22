@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 
 import { listReviews, safe } from "@/lib/admin-api";
@@ -6,6 +7,7 @@ import { relativeTime } from "@/lib/format";
 import { StatusPill } from "@/components/ui/Badge";
 import { AdminPage, FilterTabs } from "@/components/admin/Shell";
 import { ModerateActions } from "@/components/admin/ModerateActions";
+import { TableArriving } from "@/components/ui/Arriving";
 
 export const metadata: Metadata = { title: "Reviews", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -16,6 +18,14 @@ export const dynamic = "force-dynamic";
  * A card list rather than a table: a moderator has to *read* the review to
  * judge it, and a table row truncates the one thing the decision depends on.
  * Oldest first, so nothing waits indefinitely.
+ *
+ * ---------------------------------------------------------------------------
+ * The filter tabs come from the query string, so they render and respond
+ * instantly — switching a tab must never wait on the rows it is about to
+ * fetch. Only the count and the queue stream, keyed on the filter so a new tab
+ * replaces the old rows rather than appearing to amend them. The fallback holds
+ * the height and is invisible for its first 420ms, so a warm switch shows no
+ * loading state at all.
  */
 export default async function AdminReviewsPage({
   searchParams,
@@ -23,11 +33,6 @@ export default async function AdminReviewsPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const { status = "pending" } = await searchParams;
-  const data = await safe(() => listReviews(status), {
-    items: [],
-    total: 0,
-    hasMore: false,
-  });
 
   return (
     <AdminPage
@@ -47,6 +52,22 @@ export default async function AdminReviewsPage({
         ]}
       />
 
+      <Suspense key={status} fallback={<TableArriving rows={5} />}>
+        <Queue status={status} />
+      </Suspense>
+    </AdminPage>
+  );
+}
+
+async function Queue({ status }: { status: string }) {
+  const data = await safe(() => listReviews(status), {
+    items: [],
+    total: 0,
+    hasMore: false,
+  });
+
+  return (
+    <>
       <p className="tabular my-6 text-body-sm text-ink-subtle">
         {data.total} {data.total === 1 ? "review" : "reviews"}
       </p>
@@ -92,6 +113,6 @@ export default async function AdminReviewsPage({
           ))}
         </ul>
       )}
-    </AdminPage>
+    </>
   );
 }

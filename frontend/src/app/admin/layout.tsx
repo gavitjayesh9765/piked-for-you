@@ -6,6 +6,7 @@ import { AdminNav, type NavGroup } from "@/components/admin/AdminNav";
 import { AdminNavDrawer } from "@/components/admin/AdminNavDrawer";
 import { AdminSearch } from "@/components/admin/AdminSearch";
 import { AdminUserMenu } from "@/components/admin/AdminUserMenu";
+import { AdminProgress } from "@/components/admin/AdminProgress";
 import { getAdminGate } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -110,7 +111,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
       {/* --- Canvas --- */}
       <div className="dot-matrix flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-sticky flex h-16 items-center justify-between gap-3 border-b border-line bg-surface-0/90 px-4 backdrop-blur-md sm:gap-4 sm:px-6">
+        <header className="sticky top-0 z-sticky flex h-16 items-center justify-between gap-3 overflow-hidden border-b border-line bg-surface-0/90 px-4 backdrop-blur-md sm:gap-4 sm:px-6">
           {/* Below `lg` the sidebar is hidden and this is the only way back to
               it — without it the panel has no navigation at all on a tablet. */}
           <AdminNavDrawer groups={nav} />
@@ -137,6 +138,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <AdminUserMenu email={gate.email} />
             </div>
           </div>
+
+          <AdminProgress />
         </header>
 
         <main className="flex-1 p-4 sm:p-6 xl:p-8">{children}</main>

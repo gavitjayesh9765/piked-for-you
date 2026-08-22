@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Image from "next/image";
 
 import { adminGet } from "@/lib/admin-api";
 import { AdminPage, FilterTabs } from "@/components/admin/Shell";
 import { MediaModerateActions } from "@/components/admin/MediaModerateActions";
+import { TableArriving } from "@/components/ui/Arriving";
 
 export const metadata: Metadata = { title: "User media", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -29,6 +31,12 @@ interface Item {
  * Moderated separately from the review text: a thoughtful review can carry a
  * photo that should not be published, and rejecting the whole review for that
  * would be the wrong call.
+ *
+ * ---------------------------------------------------------------------------
+ * The filter tabs come from the query string and respond instantly; only the
+ * count and the grid stream, keyed on the filter so a new tab replaces the old
+ * items rather than appearing to amend them. The fallback holds the height and
+ * is invisible for its first 420ms, so a warm switch shows nothing at all.
  */
 export default async function AdminUserMediaPage({
   searchParams,
@@ -36,13 +44,6 @@ export default async function AdminUserMediaPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const { status = "pending" } = await searchParams;
-  // Constrained to the tabs on this page: the raw value was interpolated
-  // into the query string, so it could append parameters of its own.
-  const data = await adminGet<{ items: Item[]; total: number }>(
-    "/user-media",
-    { items: [], total: 0 },
-    { moderation: STATES.has(status) ? status : "pending" },
-  );
 
   return (
     <AdminPage
@@ -61,6 +62,24 @@ export default async function AdminUserMediaPage({
         ]}
       />
 
+      <Suspense key={status} fallback={<TableArriving rows={6} />}>
+        <Queue status={status} />
+      </Suspense>
+    </AdminPage>
+  );
+}
+
+async function Queue({ status }: { status: string }) {
+  // Constrained to the tabs on this page: the raw value was interpolated
+  // into the query string, so it could append parameters of its own.
+  const data = await adminGet<{ items: Item[]; total: number }>(
+    "/user-media",
+    { items: [], total: 0 },
+    { moderation: STATES.has(status) ? status : "pending" },
+  );
+
+  return (
+    <>
       <p className="tabular my-6 text-body-sm text-ink-subtle">{data.total} files</p>
 
       {data.items.length === 0 ? (
@@ -105,6 +124,6 @@ export default async function AdminUserMediaPage({
           ))}
         </ul>
       )}
-    </AdminPage>
+    </>
   );
 }

@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { adminGet } from "@/lib/admin-api";
 import { AdminPage } from "@/components/admin/Shell";
+import { TableArriving } from "@/components/ui/Arriving";
 import { CategoryTree, type AdminCategory } from "@/components/admin/CategoryTree";
 
 export const metadata: Metadata = { title: "Categories", robots: { index: false } };
@@ -12,16 +14,32 @@ export const dynamic = "force-dynamic";
  *
  * A real tree, because browsing needs depth: Electronics → Audio → Headphones,
  * not one flat "Audio" bucket holding earbuds, soundbars and turntables.
+ *
+ * ---------------------------------------------------------------------------
+ * The screen's own copy — its title, its standing explanation — is not waiting
+ * on anything, so it renders with the click. Only the list behind it streams,
+ * behind a fallback that is invisible for its first 420ms and therefore never
+ * seen on a warm navigation. Same shape on every admin list screen.
  */
-export default async function AdminCategoriesPage() {
-  const { items = [] } = await adminGet<{ items: AdminCategory[] }>("/categories", { items: [] });
-
+export default function AdminCategoriesPage() {
   return (
     <AdminPage
       title="Categories"
       eyebrow="Content"
       description="The category tree. Products are filed against these, the site sub-nav is built from them, and the URL path follows the hierarchy."
     >
+      <Suspense fallback={<TableArriving rows={10} />}>
+        <Tree />
+      </Suspense>
+    </AdminPage>
+  );
+}
+
+async function Tree() {
+  const { items = [] } = await adminGet<{ items: AdminCategory[] }>("/categories", { items: [] });
+
+  return (
+    <>
       <CategoryTree initial={items} />
 
       <div className="panel mt-6 p-6">
@@ -41,6 +59,6 @@ export default async function AdminCategoriesPage() {
           </li>
         </ul>
       </div>
-    </AdminPage>
+    </>
   );
 }

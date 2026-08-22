@@ -381,3 +381,174 @@
     animation: ring-draw 1s var(--ease) both;
   }
 }
+
+/* ==========================================================================
+   THE INSTANT SHELL — the motion vocabulary for navigation.
+
+   The rule this section exists to enforce: **this site never shows a loading
+   state.** Not a spinner, not a grey skeleton, not a frozen page. Three
+   primitives get us there, and every surface — public and admin — uses these
+   three and nothing else.
+
+     .enter     Content ARRIVES. A short rise and fade, staggered down a list
+                or across a grid. The eye reads a staggered entrance as
+                choreography, not as waiting, which is why a 400ms arrival
+                feels designed and a 400ms spinner feels broken.
+
+     .deferred  The trick that removes loading UI entirely. A Suspense
+                fallback wearing this class is INVISIBLE for its first
+                --defer-delay. If the data resolves inside that window — which,
+                with prefetching and a warm cache, is the overwhelming majority
+                of navigations — the fallback mounts, paints nothing, and
+                unmounts. The reader sees the destination and no intermediate
+                state at all. Only a genuinely slow request ever reveals it,
+                and then it fades rather than snaps.
+
+     .shuttle   The only progress indicator on the site, and it lives INSIDE
+                existing chrome (the sub-nav's bottom border) rather than on
+                top of the page. Also deferred, so quick navigations show
+                nothing.
+
+   Timing note: --defer-delay must stay comfortably above a warm navigation
+   and comfortably below the point where a reader decides nothing happened
+   (~1s, per Nielsen). 420ms sits in that gap.
+
+   Reduced motion is handled by the global reset in @layer base, which zeroes
+   animation-duration but NOT animation-delay — so `.deferred` keeps deferring
+   (it is a timing decision, not a decorative one) while `.enter` collapses to
+   an instant appearance. That is the correct outcome for both.
+   ========================================================================== */
+@layer components {
+  :root {
+    --d-enter: 380ms;
+    --enter-stagger: 45ms;
+    --defer-delay: 420ms;
+  }
+
+  @keyframes enter-rise {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+
+  /* Content arriving. `both` holds the from-state before the delay elapses,
+     which is what makes the stagger read as a wave instead of a flicker. */
+  .enter {
+    animation: enter-rise var(--d-enter) var(--ease) backwards;
+    animation-delay: calc(var(--i, 0) * var(--enter-stagger));
+  }
+
+  /* Auto-stagger, so a grid or list does not have to thread an index through
+     every map. Capped at 12 — past that the last card would wait half a second
+     for no benefit, and anything below the fold is scrolled to anyway. */
+  .stagger > * {
+    animation: enter-rise var(--d-enter) var(--ease) backwards;
+  }
+  .stagger > *:nth-child(1) { animation-delay: 0ms; }
+  .stagger > *:nth-child(2) { animation-delay: 45ms; }
+  .stagger > *:nth-child(3) { animation-delay: 90ms; }
+  .stagger > *:nth-child(4) { animation-delay: 135ms; }
+  .stagger > *:nth-child(5) { animation-delay: 180ms; }
+  .stagger > *:nth-child(6) { animation-delay: 225ms; }
+  .stagger > *:nth-child(7) { animation-delay: 270ms; }
+  .stagger > *:nth-child(8) { animation-delay: 315ms; }
+  .stagger > *:nth-child(9) { animation-delay: 360ms; }
+  .stagger > *:nth-child(10) { animation-delay: 405ms; }
+  .stagger > *:nth-child(11) { animation-delay: 450ms; }
+  .stagger > *:nth-child(n + 12) { animation-delay: 495ms; }
+
+  /* Invisible until the wait is long enough to be worth admitting to. */
+  .deferred {
+    animation: fade-in var(--d-base) var(--ease) var(--defer-delay) backwards;
+  }
+
+  /* The indeterminate line in the sub-nav's border. Not a bar across the top
+     of the page — a bar you have to overlay is a bar that says "the app is
+     busy". This says "this nav is fetching", which is the truth. */
+  @keyframes shuttle-run {
+    0% {
+      transform: translateX(-60%) scaleX(0.35);
+    }
+    50% {
+      transform: translateX(30%) scaleX(0.7);
+    }
+    100% {
+      transform: translateX(160%) scaleX(0.35);
+    }
+  }
+  .shuttle {
+    transform-origin: left center;
+    animation:
+      shuttle-run 1150ms var(--ease) infinite,
+      fade-in 200ms linear 250ms backwards;
+  }
+
+  /* A horizontally scrolling strip that admits when it is cut off.
+
+     The sub-nav hides its scrollbar — it is a nine-item strip, not a document,
+     and a scrollbar under it would read as chrome. The cost of hiding it was
+     that an overflowing strip simply ended mid-word: nothing on screen said
+     there were more categories a scroll away.
+
+     The mask fades whichever edge still has content behind it, and only that
+     edge. `data-edge` is written by the component from the live scroll offset,
+     so a strip that fits shows no fade at all, and one scrolled to its end
+     fades only on the left. Masking the scroller (rather than overlaying a
+     gradient) means the fade sits over the page background whatever the theme,
+     and takes the sliding underline with it.
+
+     Named `edge-fade`, NOT `rail` — `.rail` is already the horizontal
+     snap-scrolling card grid defined above, and reusing the name silently gave
+     the sub-nav `display: grid`, a second gutter of padding on top of
+     `.shell`'s, and `scroll-snap-type: x mandatory`, which fights the smooth
+     `scrollTo` that keeps the active item in view. */
+  .edge-fade {
+    -webkit-mask-image: var(--edge-mask, none);
+    mask-image: var(--edge-mask, none);
+  }
+  .edge-fade[data-edge="start"] {
+    --edge-mask: linear-gradient(90deg, transparent 0, #000 3rem);
+  }
+  .edge-fade[data-edge="end"] {
+    --edge-mask: linear-gradient(90deg, #000 calc(100% - 3rem), transparent 100%);
+  }
+  .edge-fade[data-edge="both"] {
+    --edge-mask: linear-gradient(
+      90deg,
+      transparent 0,
+      #000 3rem,
+      #000 calc(100% - 3rem),
+      transparent 100%
+    );
+  }
+
+  /* The sliding underline under the active sub-nav item. Width and offset are
+     measured in JS and written as custom properties; the transition is what
+     turns a jump into a slide. `--ink-ready` gates it so the very first paint
+     positions the mark rather than animating it in from zero. */
+  .ink {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 2px;
+    background: var(--c-brand);
+    border-radius: 2px 2px 0 0;
+    transform: translateX(var(--ink-x, 0px));
+    width: var(--ink-w, 0px);
+    opacity: var(--ink-o, 0);
+    pointer-events: none;
+  }
+  .ink[data-ready="true"] {
+    transition:
+      transform var(--d-slow) var(--ease),
+      width var(--d-slow) var(--ease),
+      opacity var(--d-base) var(--ease);
+  }
+}

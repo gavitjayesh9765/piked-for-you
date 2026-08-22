@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { listMessages, safe } from "@/lib/admin-api";
 import { relativeTime } from "@/lib/format";
 import { StatusPill } from "@/components/ui/Badge";
 import { AdminPage, FilterTabs } from "@/components/admin/Shell";
+import { TableArriving } from "@/components/ui/Arriving";
 
 export const metadata: Metadata = { title: "Messages", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -21,6 +23,14 @@ const TOPIC_LABEL: Record<string, string> = {
  * Research requests are the valuable ones — they say what the audience wants
  * covered next — so the topic is prominent and the category tags are shown as
  * chips rather than buried.
+ *
+ * ---------------------------------------------------------------------------
+ * The controls at the top of this screen are driven by the query string, so
+ * they render and respond instantly — a tab or a search must never wait on the
+ * rows it is about to fetch. Only the count and the list stream, keyed on the
+ * filter so a new view replaces the old rows rather than appearing to amend
+ * them, behind a fallback that holds the height and stays invisible for its
+ * first 420ms.
  */
 export default async function AdminMessagesPage({
   searchParams,
@@ -28,11 +38,6 @@ export default async function AdminMessagesPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const { status = "new" } = await searchParams;
-  const data = await safe(() => listMessages(status), {
-    items: [],
-    total: 0,
-    hasMore: false,
-  });
 
   return (
     <AdminPage
@@ -51,6 +56,22 @@ export default async function AdminMessagesPage({
         ]}
       />
 
+      <Suspense key={status} fallback={<TableArriving rows={5} />}>
+        <Inbox status={status} />
+      </Suspense>
+    </AdminPage>
+  );
+}
+
+async function Inbox({ status }: { status: string }) {
+  const data = await safe(() => listMessages(status), {
+    items: [],
+    total: 0,
+    hasMore: false,
+  });
+
+  return (
+    <>
       <p className="tabular my-6 text-body-sm text-ink-subtle">
         {data.total} {data.total === 1 ? "message" : "messages"}
       </p>
@@ -115,6 +136,6 @@ export default async function AdminMessagesPage({
           ))}
         </ul>
       )}
-    </AdminPage>
+    </>
   );
 }

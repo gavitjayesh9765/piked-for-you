@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 
 import { adminGet } from "@/lib/admin-api";
 import { AdminPage, FilterTabs } from "@/components/admin/Shell";
 import { StatusPill } from "@/components/ui/Badge";
 import { ResolveReports } from "@/components/admin/ResolveReports";
+import { TableArriving } from "@/components/ui/Arriving";
 
 export const metadata: Metadata = { title: "Reports", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -33,6 +35,12 @@ const REASON: Record<string, string> = {
  * Grouped by the review they target: three reports on one review is one
  * decision, not three. An approved review stays visible until a human rules on
  * it — otherwise a single report becomes a censorship button.
+ *
+ * ---------------------------------------------------------------------------
+ * The filter tabs come from the query string and respond instantly; only the
+ * count and the grid stream, keyed on the filter so a new tab replaces the old
+ * items rather than appearing to amend them. The fallback holds the height and
+ * is invisible for its first 420ms, so a warm switch shows nothing at all.
  */
 export default async function AdminReportsPage({
   searchParams,
@@ -40,11 +48,6 @@ export default async function AdminReportsPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const { status = "open" } = await searchParams;
-  const data = await adminGet<{ items: Group[]; total: number }>(
-    "/reports",
-    { items: [], total: 0 },
-    { resolved: String(status === "resolved") },
-  );
 
   return (
     <AdminPage
@@ -61,6 +64,22 @@ export default async function AdminReportsPage({
         ]}
       />
 
+      <Suspense key={status} fallback={<TableArriving rows={4} />}>
+        <Queue status={status} />
+      </Suspense>
+    </AdminPage>
+  );
+}
+
+async function Queue({ status }: { status: string }) {
+  const data = await adminGet<{ items: Group[]; total: number }>(
+    "/reports",
+    { items: [], total: 0 },
+    { resolved: String(status === "resolved") },
+  );
+
+  return (
+    <>
       <p className="tabular my-6 text-body-sm text-ink-subtle">
         {data.total} reported {data.total === 1 ? "review" : "reviews"}
       </p>
@@ -111,6 +130,6 @@ export default async function AdminReportsPage({
           ))}
         </ul>
       )}
-    </AdminPage>
+    </>
   );
 }

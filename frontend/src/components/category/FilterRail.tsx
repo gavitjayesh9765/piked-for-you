@@ -1,9 +1,10 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { cn } from "@/lib/cn";
 import type { FilterFacet } from "@/lib/types";
+import { Shuttle } from "@/components/ui/Shuttle";
 
 /**
  * Faceted filters (spec §17). Facets are configured per category and arrive
@@ -24,6 +25,15 @@ import type { FilterFacet } from "@/lib/types";
 export function FilterRail({ facets, basePath }: { facets: FilterFacet[]; basePath: string }) {
   const router = useRouter();
   const params = useSearchParams();
+  // Refining keeps the current grid on screen rather than blanking it (see the
+  // category page's Suspense key), so the rail is the only place that can
+  // acknowledge the request. Same shuttle as the sub-nav, in the rail's own
+  // rule — deferred, so a fast refine shows nothing at all.
+  const [pending, startTransition] = useTransition();
+
+  function push(href: string) {
+    startTransition(() => router.push(href, { scroll: false }));
+  }
 
   function toggle(key: string, value: string, multi: boolean) {
     const next = new URLSearchParams(params.toString());
@@ -38,7 +48,7 @@ export function FilterRail({ facets, basePath }: { facets: FilterFacet[]; basePa
       if (next.get(key) === value) next.delete(key);
       else next.set(key, value);
     }
-    router.push(`${basePath}?${next.toString()}`, { scroll: false });
+    push(`${basePath}?${next.toString()}`);
   }
 
   const activeCount = [...params.keys()].filter((k) => k !== "sort").length;
@@ -56,7 +66,7 @@ export function FilterRail({ facets, basePath }: { facets: FilterFacet[]; basePa
 
   return (
     <aside aria-label="Filters" className="lg:sticky lg:top-[calc(var(--nav-h)+var(--subnav-h)+1.5rem)] lg:self-start">
-      <div className="flex items-center justify-between border-b border-line pb-4">
+      <div className="relative flex items-center justify-between overflow-hidden border-b border-line pb-4">
         {/* A control on touch, a heading on desktop — the same line of type
             either way, so the rail reads identically at both sizes. */}
         <button
@@ -76,12 +86,16 @@ export function FilterRail({ facets, basePath }: { facets: FilterFacet[]; basePa
         </button>
         {activeCount > 0 && (
           <button
-            onClick={() => router.push(basePath, { scroll: false })}
+            onClick={() => push(basePath)}
             className="font-label text-label-xs uppercase tracking-[0.1em] text-brand hover:underline"
           >
             Clear all
           </button>
         )}
+
+        {pending ? (
+          <Shuttle />
+        ) : null}
       </div>
 
       <div id="filter-facets" className={cn("divide-y divide-line lg:block", open ? "block" : "hidden")}>

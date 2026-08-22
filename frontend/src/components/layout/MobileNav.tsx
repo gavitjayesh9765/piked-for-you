@@ -6,8 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { cn } from "@/lib/cn";
-import { categoryHref } from "@/lib/format";
-import type { Category } from "@/lib/types";
+import type { NavItem } from "./CategoryNav";
 import { createClient } from "@/lib/supabase/client";
 import { SearchField } from "@/components/ui/SearchField";
 import { ThemeToggle } from "./ThemeToggle";
@@ -32,14 +31,21 @@ import { ThemeToggle } from "./ThemeToggle";
  *
  * `isAdmin` is presentation only — the same rule as <AccountMenu>. Forcing it
  * true reveals a link the proxy redirects away from.
+ *
+ * The category list here is the SAME list the desktop sub-nav shows — the
+ * taxonomy's top-level sections, in the order an admin set. It used to be every
+ * active category, flat: 36 rows on a phone, mixing the root of the tree with
+ * leaves three levels down and offering no clue which was which. A menu that
+ * long is not a menu, it is the index — and the index already exists, one tap
+ * away under "See all".
  */
 export function MobileNav({
-  categories,
+  sections,
   email,
   name,
   isAdmin,
 }: {
-  categories: Category[];
+  sections: NavItem[];
   email: string | null;
   name: string | null;
   isAdmin: boolean;
@@ -150,8 +156,6 @@ export function MobileNav({
     router.refresh();
   }
 
-  const activeCategories = categories.filter((c) => c.isActive);
-
   const sheet = (
     <>
       {/* Scrim. Kept mounted for the fade, but pointer-events-none while closed
@@ -210,7 +214,7 @@ export function MobileNav({
             </ul>
           </nav>
 
-          {activeCategories.length > 0 && (
+          {sections.length > 0 && (
             <nav aria-label="Categories" className="mt-7 border-t border-line pt-6">
               <div className="mb-3 flex items-baseline justify-between gap-3">
                 <h2 className="t-eyebrow">Categories</h2>
@@ -222,9 +226,9 @@ export function MobileNav({
                 </Link>
               </div>
               <ul className="space-y-0.5">
-                {activeCategories.map((c) => (
-                  <SheetLink key={c.id} href={categoryHref(c)} muted>
-                    {c.name}
+                {sections.map((section) => (
+                  <SheetLink key={section.href} href={section.href} muted>
+                    {section.label}
                   </SheetLink>
                 ))}
               </ul>

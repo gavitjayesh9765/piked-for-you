@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 
 import { adminGet } from "@/lib/admin-api";
 import { cn } from "@/lib/cn";
 import { formatDuration, timeAgo, type PriceRun, type PricingOverview, type PricingSettings, type RetailerScrapeConfig, type ScopeFilters } from "@/lib/pricing";
 import { AdminPage, FilterTabs } from "@/components/admin/Shell";
+import { TableArriving, ValueArriving } from "@/components/ui/Arriving";
 import { PriceRunControl } from "@/components/admin/pricing/PriceRunControl";
 import { PricingSettingsForm } from "@/components/admin/pricing/PricingSettingsForm";
 import { RetailerScrapeForm } from "@/components/admin/pricing/RetailerScrapeForm";
@@ -46,14 +48,6 @@ export default async function PricingPage({
   const sp = await searchParams;
   const tab = TABS.has(sp.tab ?? "") ? sp.tab! : "run";
 
-  const [overview, filters, settings, retailers, runs] = await Promise.all([
-    adminGet<PricingOverview>("/pricing/overview", EMPTY_OVERVIEW),
-    adminGet<ScopeFilters>("/pricing/filters", EMPTY_FILTERS),
-    adminGet<PricingSettings | null>("/pricing/settings", null),
-    adminGet<RetailerScrapeConfig[]>("/pricing/retailers", []),
-    adminGet<{ items: PriceRun[] }>("/pricing/runs", { items: [] }),
-  ]);
-
   return (
     <AdminPage
       title="Pricing"
@@ -70,29 +64,9 @@ export default async function PricingPage({
         </p>
       </div>
 
-      <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <Metric label="Retailer links" value={overview.links.total} />
-        <Metric
-          label="In price runs"
-          value={overview.links.scrapable}
-          hint={
-            overview.links.scrapable < overview.links.total
-              ? `${overview.links.total - overview.links.scrapable} excluded`
-              : undefined
-          }
-        />
-        <Metric
-          label={`Stale (>${overview.staleAfterHours}h)`}
-          value={overview.links.stale}
-          tone={overview.links.stale > 0 ? "warn" : undefined}
-        />
-        <Metric
-          label="Failing"
-          value={overview.links.failing}
-          tone={overview.links.failing > 0 ? "danger" : undefined}
-        />
-        <Metric label="History points" value={overview.historyPoints} />
-      </div>
+      <Suspense fallback={<MetricsArriving />}>
+        <Metrics />
+      </Suspense>
 
       <FilterTabs
         basePath="/admin/pricing"
@@ -106,44 +80,9 @@ export default async function PricingPage({
         ]}
       />
 
-      <div className="mt-6">
-        {tab === "run" && (
-          <PriceRunControl
-            filters={filters}
-            activeRun={overview.activeRun}
-            lastRun={overview.lastRun}
-            defaultStaleHours={overview.staleAfterHours}
-          />
-        )}
-
-        {tab === "retailers" && (
-          <div className="grid gap-6">
-            <p className="max-w-3xl text-body-sm text-ink-muted">
-              Selectors live in the database, not in the code, so a retailer changing its
-              markup is an edit here rather than a deploy. Use <strong>Test</strong> against
-              a real product page before saving — it fetches the page and reports which
-              strategy found the price, without writing anything.
-            </p>
-            {retailers.length === 0 ? (
-              <p className="text-body-sm text-ink-faint">No retailers configured.</p>
-            ) : (
-              retailers.map((r) => <RetailerScrapeForm key={r.id} retailer={r} />)
-            )}
-          </div>
-        )}
-
-        {tab === "settings" &&
-          (settings ? (
-            <PricingSettingsForm settings={settings} />
-          ) : (
-            <p className="text-body-sm text-danger">
-              Pricing settings could not be loaded. Check that the pricing migration has
-              been applied.
-            </p>
-          ))}
-
-        {tab === "history" && <RunHistory runs={runs.items ?? []} />}
-      </div>
+      <Suspense key={tab} fallback={<TableArriving rows={4} />}>
+        <TabPanel tab={tab} />
+      </Suspense>
     </AdminPage>
   );
 }
@@ -286,4 +225,122 @@ function describeScope(run: PriceRun): string {
   if (scope.status && scope.status !== "published") parts.push(scope.status);
 
   return parts.length ? parts.join(" · ") : "Everything published";
+}
+
+/**
+ * Five endpoints back this screen and they used to be awaited together, in
+ * front of everything — so switching between Run, Retailers, Settings and Past
+ * runs waited on all five every time, including the four the chosen tab does
+ * not use. The notice and the tabs are now synchronous, and the two parts that
+ * need data stream independently.
+ */
+async function Metrics() {
+  const overview = await adminGet<PricingOverview>("/pricing/overview", EMPTY_OVERVIEW);
+
+  return (
+    <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <Metric label="Retailer links" value={overview.links.total} />
+        <Metric
+          label="In price runs"
+          value={overview.links.scrapable}
+          hint={
+            overview.links.scrapable < overview.links.total
+              ? `${overview.links.total - overview.links.scrapable} excluded`
+              : undefined
+          }
+        />
+        <Metric
+          label={`Stale (>${overview.staleAfterHours}h)`}
+          value={overview.links.stale}
+          tone={overview.links.stale > 0 ? "warn" : undefined}
+        />
+        <Metric
+          label="Failing"
+          value={overview.links.failing}
+          tone={overview.links.failing > 0 ? "danger" : undefined}
+        />
+        <Metric label="History points" value={overview.historyPoints} />
+    </div>
+  );
+}
+
+function MetricsArriving() {
+  return (
+    <div className="mb-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-5" aria-hidden="true">
+      {Array.from({ length: 5 }, (_, i) => (
+        <div key={i} className="rounded-lg border border-line bg-surface-0 px-4 py-3.5">
+          <p className="font-label text-[10px] font-semibold uppercase tracking-[0.12em] text-ink-faint">
+            <ValueArriving width={9} />
+          </p>
+          <p className="tabular mt-1.5 font-display text-headline-sm font-bold text-ink-faint">
+            <ValueArriving width={3} />
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+async function TabPanel({ tab }: { tab: string }) {
+  // Only what the visible tab actually needs. `overview` is memoized with the
+  // request <Metrics> already made, so the Run tab costs one extra call rather
+  // than two.
+  const [overview, filters, settings, retailers, runs] = await Promise.all([
+    tab === "run"
+      ? adminGet<PricingOverview>("/pricing/overview", EMPTY_OVERVIEW)
+      : Promise.resolve(EMPTY_OVERVIEW),
+    tab === "run"
+      ? adminGet<ScopeFilters>("/pricing/filters", EMPTY_FILTERS)
+      : Promise.resolve(EMPTY_FILTERS),
+    tab === "settings"
+      ? adminGet<PricingSettings | null>("/pricing/settings", null)
+      : Promise.resolve(null),
+    tab === "retailers"
+      ? adminGet<RetailerScrapeConfig[]>("/pricing/retailers", [])
+      : Promise.resolve([] as RetailerScrapeConfig[]),
+    tab === "history"
+      ? adminGet<{ items: PriceRun[] }>("/pricing/runs", { items: [] })
+      : Promise.resolve({ items: [] as PriceRun[] }),
+  ]);
+
+  return (
+    <div className="mt-6">
+        {tab === "run" && (
+          <PriceRunControl
+            filters={filters}
+            activeRun={overview.activeRun}
+            lastRun={overview.lastRun}
+            defaultStaleHours={overview.staleAfterHours}
+          />
+        )}
+
+        {tab === "retailers" && (
+          <div className="grid gap-6">
+            <p className="max-w-3xl text-body-sm text-ink-muted">
+              Selectors live in the database, not in the code, so a retailer changing its
+              markup is an edit here rather than a deploy. Use <strong>Test</strong> against
+              a real product page before saving — it fetches the page and reports which
+              strategy found the price, without writing anything.
+            </p>
+            {retailers.length === 0 ? (
+              <p className="text-body-sm text-ink-faint">No retailers configured.</p>
+            ) : (
+              retailers.map((r) => <RetailerScrapeForm key={r.id} retailer={r} />)
+            )}
+          </div>
+        )}
+
+        {tab === "settings" &&
+          (settings ? (
+            <PricingSettingsForm settings={settings} />
+          ) : (
+            <p className="text-body-sm text-danger">
+              Pricing settings could not be loaded. Check that the pricing migration has
+              been applied.
+            </p>
+          ))}
+
+        {tab === "history" && <RunHistory runs={runs.items ?? []} />}
+    </div>
+  );
 }
