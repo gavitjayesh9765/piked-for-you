@@ -146,3 +146,39 @@ services:
         value: "180/minute"
       - key: RATE_LIMIT_WRITE
         value: "20/minute"
+
+      # --- Public site ---
+      # Where the BROWSER lives, which is not where this API lives. Email
+      # links must point at the frontend: /newsletter/confirm on this service
+      # answers with JSON, so a subscriber who clicks a link to it gets a
+      # brace on a white page and does not confirm. Set it to the Vercel
+      # origin, no trailing slash (config.py strips one if you leave it).
+      - key: SITE_URL
+        sync: false
+
+      # --- Email delivery (app/core/mail.py) ---
+      #
+      # ⚠ FLIP THIS TO `brevo` ONCE THE BREVO SETUP IN docs/10-newsletter-email.md
+      #   IS DONE. `disabled` is the honest default for a first deploy: the
+      #   service boots, signups are recorded, and nothing is sent — which is
+      #   exactly what this codebase did before the transport existed.
+      #
+      # Do NOT set `console` here. config.py rejects it in production and the
+      # deploy will fail to boot, deliberately: it writes single-use
+      # confirmation links to the log, where they outlive the 24 hours they
+      # are meant to be valid for.
+      #
+      # With `brevo`, BREVO_API_KEY must be set or the process refuses to
+      # start. That is on purpose — the alternative is a service that looks
+      # healthy and drops every confirmation mail.
+      - key: MAIL_PROVIDER
+        value: disabled
+      - key: BREVO_API_KEY
+        sync: false
+      # Must be an address on a domain you have authenticated in Brevo
+      # (SPF/DKIM). An unverified sender is rejected at the API, not silently
+      # delivered to spam, so this fails loudly if it is wrong.
+      - key: MAIL_FROM_EMAIL
+        sync: false
+      - key: MAIL_FROM_NAME
+        value: PickDForYou

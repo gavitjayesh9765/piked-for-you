@@ -66,6 +66,7 @@ alembic upgrade head
 | [Architecture](docs/03-architecture.md) | Stack, topology, data model, API design, security, performance |
 | [Roadmap](docs/04-roadmap.md) | Build order and current status |
 | [Price scraping](docs/06-price-scraping.md) | How retailer prices are checked, judged and recorded |
+| [Newsletter email](docs/10-newsletter-email.md) | Mail transport, why Brevo, and how double opt-in completes |
 | [Master spec](PickDForYou_Master_Product_Architecture_Specification.md) | The original product specification |
 
 ---

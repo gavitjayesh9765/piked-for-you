@@ -472,6 +472,30 @@ export async function subscribeToNewsletter(
   return res.json() as Promise<NewsletterSubscribeResponse>;
 }
 
+/**
+ * Complete double opt-in with the token from the confirmation email.
+ *
+ * The 404 is meaningful and the only one that is: the API returns it for a
+ * token that is unknown, already used, or malformed, deliberately without
+ * distinguishing them. Anything else is a transport or server problem and
+ * should read as "try again", not "your link is dead" — telling someone their
+ * confirmation link expired when the API was simply down loses a subscriber
+ * who was one click from confirmed.
+ */
+export async function confirmNewsletterSubscription(token: string): Promise<void> {
+  if (USE_MOCKS) {
+    await new Promise((r) => setTimeout(r, 500));
+    if (token === "expired") throw new ApiError("That link is no longer valid.", 404);
+    return;
+  }
+
+  const res = await fetch(
+    `${API_URL}/newsletter/confirm?${new URLSearchParams({ token }).toString()}`,
+    { headers: { Accept: "application/json" } },
+  );
+  if (!res.ok) throw new ApiError("Confirmation failed", res.status);
+}
+
 /* ------------------------------------------------------------------ */
 /* Contact / research requests                                         */
 /* ------------------------------------------------------------------ */

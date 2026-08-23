@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Builds every Supabase auth email from one layout.
+ * Builds every branded email from one layout.
  *
  * WHY A BUILD STEP
  * ----------------
@@ -10,6 +10,11 @@
  * same table shell means a brand tweak is thirteen edits and one of them is
  * silently wrong. So the shell lives here once, each template contributes only
  * its content, and the .html files beside this script are generated output.
+ *
+ * Thirteen of the fourteen are Supabase auth mails. The fourteenth is
+ * `newsletter_confirmation`, which our own API sends — it is here so the brand
+ * has one home, and it is generated into backend/app/emails/ so the service
+ * that sends it owns the file. See the `kind: "transactional"` block below.
  *
  *   node supabase/templates/build.mjs            # write templates + manifest
  *   node supabase/templates/build.mjs --check    # verify only, non-zero on drift
@@ -24,7 +29,7 @@
  * against. When the brand moves, move it here deliberately.
  */
 
-import { writeFileSync, readFileSync, existsSync } from "node:fs";
+import { writeFileSync, readFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -749,6 +754,40 @@ const templates = [
       },
     },
   },
+
+  /* ── Transactional ──────────────────────────────────────────────────────
+     Not an auth mail. Supabase never sees this one: our own API sends it,
+     from app/core/mail.py, and substitutes the variables itself. It lives
+     here anyway because the alternative is a second copy of the brand shell
+     in Python that drifts the first time the palette moves.
+
+     `out` routes the generated file into the backend package instead of
+     beside the auth templates. render.yaml sets `rootDir: backend`, so a
+     runtime read of ../../supabase/templates is a bet on the deploy shipping
+     a sibling directory the service does not otherwise need. Generating into
+     app/emails/ makes the file part of the thing that gets installed. */
+  {
+    key: "newsletter_confirmation",
+    kind: "transactional",
+    out: "../../backend/app/emails/newsletter_confirmation.html",
+    subject: "Confirm your PickDForYou newsletter subscription",
+    vars: ["ConfirmURL", "Frequency"],
+    content: {
+      title: "Confirm your newsletter subscription",
+      preheader: "One click confirms your PickDForYou newsletter subscription.",
+      eyebrow: "Newsletter",
+      heading: "Confirm your subscription",
+      lede: `Someone &mdash; we hope you &mdash; asked for the PickDForYou newsletter at this address,
+                        on the <span style="color:${c.ink};">{{ .Frequency }}</span> cadence. Confirm it
+                        below and the next one comes to you.`,
+      cta: { label: "Confirm subscription", url: "{{ .ConfirmURL }}" },
+      notice: {
+        text: `This link works once and expires in ${LINK_LIFETIME}. If you did not ask for this,
+                              ignore this email &mdash; nothing further is sent to an address that
+                              never confirms, and we do not email you again to ask.`,
+      },
+    },
+  },
 ];
 
 /* ── Verify ────────────────────────────────────────────────────────────── */
@@ -827,15 +866,20 @@ if (broken.length) {
   process.exit(1);
 }
 
-const manifest = built.map(({ t }) => ({
-  key: t.key,
-  kind: t.kind,
-  file: `${t.key}.html`,
-  subject: t.subject,
-  subjectKey: t.subjectKey,
-  contentKey: t.contentKey,
-  ...(t.enabledKey ? { enabledKey: t.enabledKey } : {}),
-}));
+// The manifest describes what the push script sends to Supabase, so a
+// template we deliver ourselves must not appear in it — a key of `undefined`
+// in the PATCH body is a silent no-op at best.
+const manifest = built
+  .filter(({ t }) => t.contentKey)
+  .map(({ t }) => ({
+    key: t.key,
+    kind: t.kind,
+    file: `${t.key}.html`,
+    subject: t.subject,
+    subjectKey: t.subjectKey,
+    contentKey: t.contentKey,
+    ...(t.enabledKey ? { enabledKey: t.enabledKey } : {}),
+  }));
 const manifestPath = join(HERE, "manifest.json");
 const manifestJson = `${JSON.stringify(manifest, null, 2)}\n`;
 
@@ -844,6 +888,7 @@ const manifestJson = `${JSON.stringify(manifest, null, 2)}\n`;
 if (PAYLOAD) {
   const body = {};
   for (const { t, html } of built) {
+    if (!t.contentKey) continue;  // ours to send, not Supabase's
     body[t.subjectKey] = t.subject;
     body[t.contentKey] = html;
     // Enablement is opt-in: pushing a template must never, on its own, start
@@ -874,6 +919,9 @@ if (PREVIEW) {
     OldPhone: "+91 91234 56780",
     Provider: "Google",
     FactorType: "TOTP",
+    ConfirmURL:
+      "https://piked-for-you.vercel.app/newsletter/confirm?token=preview-3f9a2c7e14b8d05a6c3f8e21",
+    Frequency: "weekly",
   };
   const fill = (s) =>
     s.replace(/\{\{\s*\.([A-Za-z]+)\s*\}\}/g, (m, v) => samples[v] ?? m);
@@ -916,6 +964,7 @@ if (PREVIEW) {
   .kind { font-size:10px; letter-spacing:.1em; text-transform:uppercase; padding:3px 8px; border-radius:999px;
           background:#e7e4f6; color:#3a2ba8; }
   .kind.notification { background:#f1e5d2; color:#7c4306; }
+  .kind.transactional { background:#d8ede2; color:#1f5c42; }
   .size { margin-left:auto; font-family:ui-monospace,monospace; font-size:11px; color:var(--mut); }
   .subject { margin:0; padding:10px 16px; border-bottom:1px solid var(--line); font-size:13px; }
   .subject span { font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--mut); margin-right:8px; }
@@ -946,7 +995,10 @@ if (PREVIEW) {
 
 let drifted = false;
 for (const { t, html, bytes } of built) {
-  const file = join(HERE, `${t.key}.html`);
+  // `out` lets a template land outside this directory — see the transactional
+  // block in the template list for why the newsletter mail is generated into
+  // the backend package rather than here.
+  const file = t.out ? join(HERE, t.out) : join(HERE, `${t.key}.html`);
   const stale = !existsSync(file) || readFileSync(file, "utf8") !== html;
   if (CHECK_ONLY) {
     if (stale) {
@@ -956,7 +1008,10 @@ for (const { t, html, bytes } of built) {
       log(`ok    ${t.key.padEnd(22)} ${String(bytes).padStart(6)}B`);
     }
   } else {
-    if (stale) writeFileSync(file, html, "utf8");
+    if (stale) {
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(file, html, "utf8");
+    }
     log(`${stale ? "write" : "same "} ${t.key.padEnd(22)} ${String(bytes).padStart(6)}B`);
   }
 }

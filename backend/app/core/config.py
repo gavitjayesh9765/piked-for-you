@@ -80,6 +80,25 @@ class Settings(BaseSettings):
     # --- Data retention ---
     IP_RETENTION_DAYS: int = 90
 
+    # --- Public site ---
+    # Where the browser lives, which is NOT where this API lives. Confirmation
+    # and unsubscribe links in email must point at the frontend, so this
+    # cannot be derived from the request: the request that creates the link
+    # arrives at the API's own host, and a link to the API host is a JSON
+    # response in a subscriber's browser.
+    SITE_URL: str = "http://localhost:3000"
+
+    # --- Email delivery (app/core/mail.py) ---
+    # brevo   — the free plan, 300/day shared between transactional and campaigns
+    # console — log the message and its links instead of sending; development only
+    # disabled— accept and drop, an explicit off switch
+    MAIL_PROVIDER: Literal["brevo", "console", "disabled"] = "console"
+    BREVO_API_KEY: str = ""
+    MAIL_FROM_EMAIL: str = "hello@pickdforyou.com"
+    MAIL_FROM_NAME: str = "PickDForYou"
+    # Empty means Brevo omits the header and replies go to the sender address.
+    MAIL_REPLY_TO: str = ""
+
     @property
     def is_production(self) -> bool:
         return self.ENVIRONMENT == "production"
@@ -119,6 +138,40 @@ class Settings(BaseSettings):
                 ) from exc
 
         return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+    @field_validator("SITE_URL")
+    @classmethod
+    def _site_url_has_no_trailing_slash(cls, v: str) -> str:
+        """Normalised once here so every link builder can concatenate without
+        each one deciding whether to strip — the bug that produces
+        `https://site.com//newsletter/confirm`, which some mail scanners
+        rewrite and some retailers' proxies reject."""
+        return v.rstrip("/")
+
+    @field_validator("MAIL_PROVIDER")
+    @classmethod
+    def _no_console_transport_in_production(cls, v: str, info) -> str:
+        """`console` logs confirmation URLs, and those URLs are single-use
+        credentials. In production that is a token in a log aggregator with a
+        much longer retention than the 24 hours the link is meant to live.
+
+        `disabled` is still allowed in production — silence is a defensible
+        state, and it is what the code already does today."""
+        if v == "console" and info.data.get("ENVIRONMENT") == "production":
+            raise ValueError(
+                "MAIL_PROVIDER=console writes confirmation links to the log and "
+                "must not be used in production. Set `brevo` (with BREVO_API_KEY) "
+                "or `disabled`."
+            )
+        return v
+
+    @field_validator("BREVO_API_KEY")
+    @classmethod
+    def _brevo_key_present_when_selected(cls, v: str, info) -> str:
+        """Fail at startup, not at the first person who tries to subscribe."""
+        if info.data.get("MAIL_PROVIDER") == "brevo" and not v.strip():
+            raise ValueError("MAIL_PROVIDER=brevo requires BREVO_API_KEY")
+        return v
 
     @field_validator("SUPABASE_JWT_SECRET")
     @classmethod
