@@ -16,7 +16,7 @@ signature?" Useful for hydrating a UI; never a source of authority on its own.
 from __future__ import annotations
 
 from fastapi import APIRouter, Request, Response, status
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 from pydantic.alias_generators import to_camel
 from sqlalchemy import select
 
@@ -87,6 +87,50 @@ class ProfileUpdate(Wire):
     display_name: str | None = None
     avatar_url: str | None = None
 
+    @field_validator("display_name")
+    @classmethod
+    def _check_display_name(cls, v: str | None) -> str | None:
+        """Enforce the CHECK constraint here, where it can be a 422.
+
+        `profiles_display_name_len` requires 2-80 characters. Without this the
+        boundary is discovered by INSERT, which raises inside the transaction
+        and surfaces as an opaque 500 -- the caller is told the server broke
+        when in fact they sent a name that was too long.
+        """
+        if v is None:
+            return None
+        name = v.strip()
+        if not 2 <= len(name) <= 80:
+            raise ValueError("display_name must be 2-80 characters")
+        return name
+
+    @field_validator("avatar_url")
+    @classmethod
+    def _check_avatar_url(cls, v: str | None) -> str | None:
+        """https, or nothing.
+
+        This column is served to every reader of a review as the author's
+        avatar, so its contents end up in an image URL in someone else's
+        browser. It was accepting any string at all: `javascript:...`,
+        `data:text/html,...`, or 4KB of anything (the column is String(500), so
+        that last one was another 500-shaped bug).
+
+        The check tightened when Google sign-in landed, because the auth
+        trigger now seeds this column from the provider's `picture` claim --
+        which arrives inside user-writable metadata. Validating on the way in
+        beats hoping every future render path remembers to escape it.
+        """
+        if v is None:
+            return None
+        url = v.strip()
+        if not url:
+            return None
+        if len(url) > 500:
+            raise ValueError("avatar_url is too long")
+        if not url.startswith("https://"):
+            raise ValueError("avatar_url must be an https URL")
+        return url
+
 
 @router.patch("/profile", response_model=SessionOut)
 async def update_profile(
@@ -113,10 +157,12 @@ async def update_profile(
 
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Profile not found")
 
+    # Both values arrive already trimmed and already checked against the
+    # column's constraints -- see the validators on ProfileUpdate.
     if payload.display_name is not None:
-        profile.display_name = payload.display_name.strip()
+        profile.display_name = payload.display_name
     if payload.avatar_url is not None:
-        profile.avatar_url = payload.avatar_url.strip() or None
+        profile.avatar_url = payload.avatar_url
 
     await db.flush()
 

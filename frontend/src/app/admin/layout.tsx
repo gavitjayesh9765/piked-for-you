@@ -7,6 +7,7 @@ import { AdminNavDrawer } from "@/components/admin/AdminNavDrawer";
 import { AdminSearch } from "@/components/admin/AdminSearch";
 import { AdminUserMenu } from "@/components/admin/AdminUserMenu";
 import { AdminProgress } from "@/components/admin/AdminProgress";
+import { IdleLogout } from "@/components/admin/IdleLogout";
 import { getAdminGate } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
@@ -82,6 +83,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="flex min-h-screen bg-bg">
+      {/* Mounted only past the gate, so it never runs on the login or
+          enrolment screens — there is no session to time out there, and a
+          countdown over a sign-in form would be nonsense. */}
+      <IdleLogout />
       {/* --- Sidebar --- */}
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-line bg-surface-0 lg:flex">
         <div className="flex h-16 items-center gap-3 border-b border-line px-5">

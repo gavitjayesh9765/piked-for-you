@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { forYou, listSaved, safe } from "@/lib/me-api";
 import { getAuthedUser } from "@/lib/supabase/server";
+import { resolveDisplayName } from "@/lib/display-name";
 import { ProductCard } from "@/components/product/ProductCard";
 import { EmptyState } from "@/components/admin/Shell";
 
@@ -23,10 +24,11 @@ export default async function AccountPage() {
     safe(() => forYou(8), []),
   ]);
 
-  const name =
-    (user?.user_metadata as Record<string, string> | undefined)?.display_name ??
-    user?.email?.split("@")[0] ??
-    "there";
+  // Shared with the header and the settings page, and with the Postgres
+  // trigger that names the profile row — see lib/display-name.ts. Reading
+  // user_metadata.display_name directly greeted every Google account as the
+  // front half of their email address.
+  const name = resolveDisplayName(user) ?? "there";
 
   return (
     <div>

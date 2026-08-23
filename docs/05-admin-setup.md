@@ -163,6 +163,66 @@ Worth running periodically. Two things to look for:
    content to a public site. Enrol at creation time — an unenrolled admin
    account is a password-only admin account (see the warning in step 4).
 5. **Revoke on departure**, and delete the session as shown above.
+6. **Admins sign in with a password, never with Google.** Enforced by two
+   database triggers, not by convention — see below.
+
+---
+
+## Admins and federated sign-in
+
+An account holding the admin role has exactly one identity: `email`. Two
+triggers added in `…_separate_admin_and_federated_identities.sql` enforce it
+in both directions, and both will make an operation *fail* rather than warn:
+
+| Attempt | Result |
+|---|---|
+| Google sign-in on an account that is already an admin | Refused. The admin sees a generic sign-in failure. |
+| Granting the admin role to an account with a Google identity | The `UPDATE` above raises `insufficient_privilege`. |
+
+**Why.** Supabase links a federated identity into an existing account whenever
+the provider asserts the same *verified* email. That is what makes "sign up
+with Google" and "sign up with a password" converge on one shopper profile
+instead of forking into two — correct there, and wrong here. If an admin's
+address is a Gmail or Workspace one, control of that Google account becomes a
+route into the admin row that never touches the admin's password. TOTP still
+blocks the dashboard, but two independent factors have silently collapsed into
+one, and if that admin has not yet enrolled a factor then `/admin/security` is
+reachable at aal1 by design so the enrolment can happen — which closes the gap
+completely.
+
+**What this means for step 2.** Promote a *freshly created* user, as the steps
+above describe. Promoting an existing shopper who signed up with Google will
+fail. If you need to make that person an admin, create them a separate admin
+account rather than removing their Google identity — rule 3 above wants one
+human to one account, but an admin account and a shopping account are two
+different roles for the same human, and the audit trail is clearer when the
+staff actions are the only thing on the staff account.
+
+---
+
+## Sessions and automatic sign-out
+
+Sessions used to last forever: the access token expired hourly but the refresh
+token renewed it indefinitely, so nothing ever ended a session. Three bounds
+now apply, and they stop different things.
+
+| Bound | Value | Where | Stops |
+|---|---|---|---|
+| Inactivity | 14 days | `[auth.sessions]`, project-wide | The shared or lost device nobody signed out of. |
+| Timebox | 30 days | `[auth.sessions]`, project-wide | A stolen refresh token that *is* being used — the case inactivity never catches. |
+| Admin idle | 30 minutes | `components/admin/IdleLogout.tsx` | An admin console left open and unattended. |
+
+The first two are deliberately shopper-length, because they are project-wide
+and being logged out of a shopping site every day is a reason to stop using it.
+The admin console layers its own much shorter bound on top, warns at two
+minutes remaining, and then calls `signOut({ scope: "global" })` — a real
+revocation at Supabase, not a screen lock. It is applied against a wall-clock
+deadline shared across tabs rather than a `setTimeout`, because background tabs
+throttle timers and a sleeping laptop suspends them entirely.
+
+Push the project-wide values with
+`bash supabase/scripts/push-google-provider.sh`; they are part of the same auth
+config object.
 
 ---
 

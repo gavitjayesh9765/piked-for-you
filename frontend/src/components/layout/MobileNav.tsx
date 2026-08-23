@@ -149,8 +149,20 @@ export function MobileNav({
       : "/login";
 
   async function signOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
+    // Wrapped, because an unhandled rejection here left the person signed in
+    // on a page that had just told them they were signing out. `signOut()`
+    // rejects on any network blip, and the two lines below — the ones that
+    // actually take them off the account UI — never ran.
+    //
+    // The redirect is the right outcome either way: supabase-js clears the
+    // local session before it calls the server, so the browser is signed out
+    // regardless of whether the revocation request landed.
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut({ scope: "global" });
+    } catch {
+      // Nothing useful to tell them, and nothing they could do about it.
+    }
     setOpen(false);
     router.replace("/");
     router.refresh();

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
 import { safeInternalPath } from "@/lib/safe-path";
+import { asError, authErrorMessage } from "@/lib/auth-errors";
 import { recordAdminSignIn } from "@/lib/sign-in-event";
 
 /**
@@ -37,6 +38,17 @@ export function AdminLoginForm() {
   const [factorId, setFactorId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /**
+   * Why they were sent here. The proxy redirects with `?error=unconfigured`
+   * and the idle timer with `?error=timeout`, and neither was ever rendered —
+   * so an admin returning to a laptop found a bare login form and no reason
+   * for it, which reads as a bug rather than as the security control it is.
+   *
+   * A live `error` from an attempt on this page always wins: it is about what
+   * just happened, not about how they arrived.
+   */
+  const notice = asError(error) ?? authErrorMessage(params.get("error"));
 
   /** Only same-origin paths survive. */
   function safeNext(): string {
@@ -181,7 +193,7 @@ export function AdminLoginForm() {
             />
           </label>
 
-          {error && <Alert>{error}</Alert>}
+          {notice && <Alert tone={notice.tone}>{notice.message}</Alert>}
 
           <button type="submit" disabled={busy || !email || !password} className={submitCls}>
             {busy ? "Checking…" : "Continue"}
@@ -213,7 +225,7 @@ export function AdminLoginForm() {
             />
           </label>
 
-          {error && <Alert>{error}</Alert>}
+          {notice && <Alert tone={notice.tone}>{notice.message}</Alert>}
 
           <button type="submit" disabled={busy || code.length !== 6} className={submitCls}>
             {busy ? "Verifying…" : "Verify"}
@@ -246,11 +258,23 @@ const submitCls =
   "transition-all duration-fast ease-ease hover:brightness-110 " +
   "disabled:pointer-events-none disabled:opacity-45";
 
-function Alert({ children }: { children: React.ReactNode }) {
+function Alert({
+  children,
+  tone = "error",
+}: {
+  children: React.ReactNode;
+  tone?: "info" | "error";
+}) {
+  // An automatic sign-out is the control working, not a failure. Announcing it
+  // in red as `role="alert"` tells a returning admin that something broke.
   return (
     <p
-      role="alert"
-      className="mt-5 rounded-md border border-danger-soft bg-danger-soft px-4 py-3 text-body-sm text-danger-on-soft"
+      role={tone === "error" ? "alert" : "status"}
+      className={
+        tone === "error"
+          ? "mt-5 rounded-md border border-danger-soft bg-danger-soft px-4 py-3 text-body-sm text-danger-on-soft"
+          : "mt-5 rounded-md border border-line bg-surface-2 px-4 py-3 text-body-sm text-ink-muted"
+      }
     >
       {children}
     </p>

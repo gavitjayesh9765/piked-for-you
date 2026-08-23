@@ -4,6 +4,11 @@ import Link from "next/link";
 import { getAuthedUser } from "@/lib/supabase/server";
 import { formatDate } from "@/lib/format";
 import { AccountSettings } from "@/components/account/AccountSettings";
+import {
+  isOAuthOnly,
+  resolveDisplayName,
+  resolveSignInMethods,
+} from "@/lib/display-name";
 
 export const metadata: Metadata = { title: "Settings", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -22,13 +27,16 @@ export const dynamic = "force-dynamic";
 export default async function AccountSettingsPage() {
   const user = await getAuthedUser();
 
-  const meta = (user?.user_metadata ?? {}) as Record<string, string | undefined>;
-  const provider =
-    (user?.app_metadata as Record<string, unknown> | undefined)?.provider === "email"
-      ? "Email and password"
-      : String(
-          (user?.app_metadata as Record<string, unknown> | undefined)?.provider ?? "Email",
-        ).replace(/^\w/, (c) => c.toUpperCase());
+  // All three of these were read straight off `user_metadata.display_name` and
+  // `app_metadata.provider`, which is right for a password account and wrong
+  // for a Google one — see lib/display-name.ts.
+  const displayName = resolveDisplayName(user);
+  const methods = resolveSignInMethods(user);
+  // `providers` is a list, not a single value: linking Google onto an existing
+  // password account leaves both live, and this page is the one place that has
+  // to say so.
+  const provider = methods.length > 0 ? methods.join(", ") : "Email and password";
+  const passwordless = isOAuthOnly(user);
 
   return (
     <div>
@@ -47,7 +55,7 @@ export default async function AccountSettingsPage() {
 
         <dl className="mt-1">
           <Row label="Email" value={user?.email ?? "—"} />
-          <Row label="Display name" value={meta.display_name || "Not set"} />
+          <Row label="Display name" value={displayName || "Not set"} />
           <Row label="Sign-in method" value={provider} />
           <Row
             label="Member since"
@@ -55,20 +63,35 @@ export default async function AccountSettingsPage() {
           />
         </dl>
 
-        <p className="mt-5 max-w-prose text-body-sm text-ink-muted">
-          To change your email address or password we send a verification link to your inbox —
-          neither can be changed from this page, because a hijacked session should not be able to
-          lock you out of your own account.
-        </p>
+        {/* An account that only ever signed in with Google has no password,
+            so "reset your password" is an instruction it cannot follow. Offer
+            the thing that is actually true for it instead: the password lives
+            at Google, and so does the way to change it. */}
+        {passwordless ? (
+          <p className="mt-5 max-w-prose text-body-sm text-ink-muted">
+            You sign in with Google, so there is no PickDForYou password to change — your
+            Google account controls access, and you change it there. Signing in with the same
+            address and a password would attach that password to this same account rather than
+            creating a second one.
+          </p>
+        ) : (
+          <>
+            <p className="mt-5 max-w-prose text-body-sm text-ink-muted">
+              To change your email address or password we send a verification link to your inbox —
+              neither can be changed from this page, because a hijacked session should not be able to
+              lock you out of your own account.
+            </p>
 
-        <Link
-          href="/forgot-password"
-          className="mt-4 inline-flex items-center gap-2 font-label text-label font-semibold
-                     uppercase tracking-[0.08em] text-brand transition-colors duration-fast hover:text-ink"
-        >
-          Send me a password reset link
-          <span aria-hidden="true">→</span>
-        </Link>
+            <Link
+              href="/forgot-password"
+              className="mt-4 inline-flex items-center gap-2 font-label text-label font-semibold
+                         uppercase tracking-[0.08em] text-brand transition-colors duration-fast hover:text-ink"
+            >
+              Send me a password reset link
+              <span aria-hidden="true">→</span>
+            </Link>
+          </>
+        )}
       </section>
 
       {/* --- Interactive: theme, consent, export, delete --------------- */}

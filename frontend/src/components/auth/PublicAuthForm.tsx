@@ -6,6 +6,7 @@ import { useState } from "react";
 import { cn } from "@/lib/cn";
 import { createClient } from "@/lib/supabase/client";
 import { safePublicPath } from "@/lib/safe-path";
+import { asError, authErrorMessage } from "@/lib/auth-errors";
 
 /**
  * Public sign-in / sign-up for shoppers (spec §27).
@@ -18,6 +19,13 @@ import { safePublicPath } from "@/lib/safe-path";
  * account" from "wrong password", and sign-up reports success even for an
  * address already registered. Otherwise either form becomes an oracle for
  * testing whether someone has an account here.
+ *
+ * Google sign-in sits alongside the password form and is the same door: it
+ * lands on `/auth/callback` and produces an ordinary shopper session with no
+ * `app_metadata` role, exactly like a password signup. Supabase links a Google
+ * identity to an existing account only when the provider asserts the *same
+ * verified email*, so "sign up with Google" and "sign up with a password" on
+ * one address converge on one profile rather than forking into two.
  */
 type Mode = "login" | "register";
 
@@ -29,8 +37,20 @@ export function PublicAuthForm({ mode }: { mode: Mode }) {
   const [password, setPassword] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [oauthBusy, setOauthBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+
+  /**
+   * Why they were sent here, if something sent them.
+   *
+   * `/auth/callback` redirects to `/login?error=invalid_link` when a
+   * confirmation link is spent or expired, and nothing rendered it — so the
+   * most common recoverable failure in the whole flow arrived as a blank sign-in
+   * form. Not held in state: it describes how this page was reached, and a
+   * failed submit below should replace it rather than stack under it.
+   */
+  const notice = asError(error) ?? authErrorMessage(params.get("error"));
 
   const isRegister = mode === "register";
 
@@ -46,6 +66,43 @@ export function PublicAuthForm({ mode }: { mode: Mode }) {
    */
   function safeNext(): string {
     return safePublicPath(params.get("next"), "/");
+  }
+
+  /**
+   * Hand off to Google.
+   *
+   * The provider returns to `/auth/callback`, the same route the email
+   * confirmation link already uses — it exchanges the one-time `code` for a
+   * session **server-side** and re-validates `next` before redirecting. So the
+   * only new surface here is the button; the landing side was already built
+   * and already hardened.
+   *
+   * `prompt: "select_account"` stops Google silently reusing whichever account
+   * the browser signed into last. On a shared machine that quietly attaches a
+   * review to the wrong person, and there is no obvious way back from it.
+   */
+  async function signInWithGoogle() {
+    setOauthBusy(true);
+    setError(null);
+
+    const supabase = createClient();
+    const { error: err } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(
+          safeNext(),
+        )}`,
+        queryParams: { prompt: "select_account" },
+      },
+    });
+
+    if (err) {
+      setError("Could not start sign-in with Google. Try again, or use your email address.");
+      setOauthBusy(false);
+      return;
+    }
+    // On success the browser is navigating to Google. Leave `oauthBusy` set so
+    // the button stays disabled for however long that takes.
   }
 
   async function submit(e: React.FormEvent) {
@@ -130,7 +187,28 @@ export function PublicAuthForm({ mode }: { mode: Mode }) {
           : "Sign in to write reviews and manage your review history."}
       </p>
 
-      <form onSubmit={submit} noValidate className="mt-8">
+      {/* Google first: for most shoppers it is one tap and no password to
+          choose, and burying it under the form makes them type one anyway. */}
+      <button
+        type="button"
+        onClick={signInWithGoogle}
+        disabled={busy || oauthBusy}
+        className="mt-8 inline-flex h-12 w-full items-center justify-center gap-3 rounded-full
+                   border border-line bg-surface-0 text-body-md font-medium text-ink
+                   transition-colors duration-fast ease-ease
+                   hover:border-ink-faint disabled:pointer-events-none disabled:opacity-45"
+      >
+        <GoogleMark />
+        {oauthBusy ? "Redirecting…" : isRegister ? "Sign up with Google" : "Continue with Google"}
+      </button>
+
+      <div className="mt-6 flex items-center gap-4" aria-hidden="true">
+        <span className="h-px flex-1 bg-line" />
+        <span className="text-label-xs uppercase tracking-[0.08em] text-ink-faint">or</span>
+        <span className="h-px flex-1 bg-line" />
+      </div>
+
+      <form onSubmit={submit} noValidate className="mt-6">
         {isRegister && (
           <label className="block">
             <span className="t-eyebrow">Display name</span>
@@ -188,19 +266,54 @@ export function PublicAuthForm({ mode }: { mode: Mode }) {
           )}
         </label>
 
-        {error && (
-          <p role="alert" className="mt-5 rounded-md border border-danger-soft bg-danger-soft px-4 py-3 text-body-sm text-danger-on-soft">
-            {error}
+        {notice && (
+          <p
+            // `alert` only for failures. An informational notice announced as
+            // an alert interrupts a screen-reader user to tell them nothing is
+            // wrong, which is its own small harm.
+            role={notice.tone === "error" ? "alert" : "status"}
+            className={cn(
+              "mt-5 rounded-md border px-4 py-3 text-body-sm",
+              notice.tone === "error"
+                ? "border-danger-soft bg-danger-soft text-danger-on-soft"
+                : "border-line bg-surface-2 text-ink-muted",
+            )}
+          >
+            {notice.message}
+          </p>
+        )}
+
+        {/* The account creation flow linked neither document. Both the terms
+            and the privacy policy exist, the settings page points people at
+            them as "the rules that apply to this account", and the one moment
+            that actually forms the agreement said nothing. Shown for Google
+            signup too — that path has no other step in which to say it. */}
+        {isRegister && (
+          <p className="mt-6 text-body-sm text-ink-subtle">
+            By creating an account you agree to our{" "}
+            <Link href="/terms" className="text-brand hover:underline">
+              terms of service
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="text-brand hover:underline">
+              privacy policy
+            </Link>
+            .
           </p>
         )}
 
         <button
           type="submit"
-          disabled={busy || !email || !password || (isRegister && displayName.trim().length < 2)}
-          className="mt-8 inline-flex h-12 w-full items-center justify-center rounded-full
+          disabled={
+            busy || oauthBusy || !email || !password || (isRegister && displayName.trim().length < 2)
+          }
+          className={cn(
+            isRegister ? "mt-5" : "mt-8",
+            `inline-flex h-12 w-full items-center justify-center rounded-full
                      bg-brand-fill font-label text-label font-semibold uppercase tracking-[0.08em]
                      text-brand-on shadow-brand transition-all duration-fast ease-ease
-                     hover:brightness-110 disabled:pointer-events-none disabled:opacity-45"
+                     hover:brightness-110 disabled:pointer-events-none disabled:opacity-45`,
+          )}
         >
           {busy ? "Please wait…" : isRegister ? "Create account" : "Sign in"}
         </button>
@@ -224,6 +337,25 @@ export function PublicAuthForm({ mode }: { mode: Mode }) {
         )}
       </p>
     </div>
+  );
+}
+
+/**
+ * Google's four-colour "G", inlined.
+ *
+ * Their branding terms require the official mark rather than a redrawn or
+ * recoloured one, and it must keep its own colours — so this is the one icon
+ * on the site that deliberately ignores `currentColor`. Inlined rather than
+ * fetched so a blocked request cannot leave the button wordless.
+ */
+function GoogleMark() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" focusable="false">
+      <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62Z" />
+      <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.8.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18Z" />
+      <path fill="#FBBC05" d="M3.97 10.72a5.4 5.4 0 0 1 0-3.44V4.95H.96a9 9 0 0 0 0 8.1l3.01-2.33Z" />
+      <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.46 3.44 1.35l2.58-2.58C13.46.9 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58Z" />
+    </svg>
   );
 }
 

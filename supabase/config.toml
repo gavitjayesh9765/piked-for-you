@@ -38,10 +38,52 @@ jwt_expiry = 3600
 enable_refresh_token_rotation = true
 refresh_token_reuse_interval = 10
 
+# --- Session lifetime --------------------------------------------------------
+#
+# Without these a session never ends. The access token expires hourly, but the
+# refresh token renews it indefinitely, so "signed in" meant signed in forever
+# — a stolen refresh token was good until someone noticed, and an abandoned
+# account stayed live for years.
+#
+# Two independent bounds, because they stop different things:
+#
+#   inactivity_timeout  the session dies if it goes unused. Covers the shared
+#                       or lost device nobody signs out of.
+#   timebox             the session dies at a fixed age no matter how active
+#                       it is. Covers the stolen token that IS being used --
+#                       the case inactivity alone never catches.
+#
+# Values are set for shoppers, because these settings are project-wide and
+# shoppers are almost all of the sessions. Being logged out of a shopping site
+# every day is a reason to stop using it. The admin console does NOT rely on
+# these: it applies its own 30-minute idle sign-out on top, in
+# components/admin/IdleLogout.tsx, since a console that can unpublish products
+# and read the moderation queue should not sit open for two weeks.
+[auth.sessions]
+inactivity_timeout = "336h"  # 14 days unused
+timebox = "720h"             # 30 days absolute, active or not
+
 # Public signup is for shoppers only. Admins are never created this way —
 # see docs/05-admin-setup.md.
 enable_signup = true
 enable_anonymous_sign_ins = false
+
+# Match what the signup form asks for. It sets `minLength={10}`, but that is a
+# browser-side attribute and the stack's own floor was Supabase's default of 6
+# — so the rule the product states was not the rule the server enforced, and
+# anything that did not go through our form could sit under it.
+#
+# Deliberately NOT paired with a character-class requirement: the form tells
+# people "longer is better than complicated" and that is the correct advice.
+# Forcing a digit and a capital reliably produces `Password1`.
+minimum_password_length = 10
+
+# Identity linking happens automatically when a provider asserts an email
+# address it has verified — that is what merges a Google sign-in into an
+# existing password account. `link_identity()` on top of that is a *client*
+# call, and we have no flow that needs it, so it stays off rather than standing
+# open as a way to attach an identity to an account from the browser.
+enable_manual_linking = false
 
 [auth.email]
 enable_signup = true
@@ -49,6 +91,37 @@ enable_confirmations = true
 double_confirm_changes = true
 # Supabase minimum is 6; the API enforces a longer minimum on top of this.
 max_frequency = "60s"
+
+# --- Google sign-in ----------------------------------------------------------
+#
+# Shoppers only, same as the password door — a Google account cannot carry an
+# `app_metadata` role, so no one arrives here as an admin.
+#
+# Credentials come from the environment, never from this file: config.toml is
+# committed, and a client secret in git is a client secret to rotate. Put them
+# in `supabase/.env` (gitignored) — the CLI reads it, and `env(...)` below
+# resolves from there.
+#
+# Left DISABLED for the same reason the notifications below are, and with a
+# sharper edge: `enabled` has to be a literal, so it cannot key off whether the
+# secret is present, and `supabase start` fails outright on an enabled provider
+# with an empty client_id. Flip this to true once you have credentials in
+# supabase/.env; leave it false and the button simply reports that sign-in
+# could not start, which is the correct thing for a dev who has not set it up.
+#
+# Like the templates above, this drives the LOCAL stack only. The hosted
+# project's providers are dashboard state — see docs/09-google-sign-in.md for
+# the console and dashboard steps, which have to be done by hand once.
+#
+# `skip_nonce_check` stays false. It is only needed for native/iOS ID-token
+# flows; ours is the browser redirect through /auth/callback, where the nonce
+# is a replay defence worth keeping.
+[auth.external.google]
+enabled = false
+client_id = "env(SUPABASE_AUTH_GOOGLE_CLIENT_ID)"
+secret = "env(SUPABASE_AUTH_GOOGLE_SECRET)"
+redirect_uri = "http://localhost:54321/auth/v1/callback"
+skip_nonce_check = false
 
 # --- Branded auth emails -----------------------------------------------------
 #

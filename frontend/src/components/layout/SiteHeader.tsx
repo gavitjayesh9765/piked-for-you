@@ -9,6 +9,7 @@ import { AccountMenu } from "./AccountMenu";
 import { MobileNav } from "./MobileNav";
 import { CategoryNav, type NavItem } from "./CategoryNav";
 import { getAuthedUser, hasAdminRole } from "@/lib/supabase/server";
+import { resolveDisplayName } from "@/lib/display-name";
 
 /**
  * Sticky glass header (spec §12) + dynamic category sub-nav (spec §13).
@@ -221,8 +222,10 @@ const identity = cache(async () => {
   // Role only, deliberately not the MFA-verified gate: an admin who has not
   // enrolled yet still needs the link, and the proxy routes them to enrolment.
   const admin = user ? await hasAdminRole() : false;
-  const name =
-    (user?.user_metadata as Record<string, string> | undefined)?.display_name ?? null;
+  // Not user_metadata.display_name directly: that key is written by our own
+  // signup form, so it is null for every Google account and the menu rendered
+  // nameless. lib/display-name.ts holds the full order.
+  const name = resolveDisplayName(user);
 
   return { email: user?.email ?? null, name, admin };
 });
