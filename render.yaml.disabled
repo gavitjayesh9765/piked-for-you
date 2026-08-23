@@ -182,3 +182,22 @@ services:
         sync: false
       - key: MAIL_FROM_NAME
         value: PickDForYou
+
+# ---------------------------------------------------------------------------
+# DISABLED — renamed from render.yaml on 2026-08-23.
+#
+# Render only reads a file named exactly `render.yaml` at the repo root, so
+# with this name nothing here syncs. Rename it back to re-enable.
+#
+# ⚠ THE RENAME ALONE DOES NOT STOP DEPLOYS. `autoDeploy` is a property of the
+#   service once it has been created, not of this file — an existing service
+#   keeps deploying on every push to main regardless of what this file is
+#   called. To actually stop that: Render dashboard → the service → Settings →
+#   Build & Deploy → Auto-Deploy → Off. Or suspend the service.
+#
+# Nothing in the newsletter work needs this file. MAIL_PROVIDER defaults to
+# `disabled` in app/core/config.py, so a service that has never heard of these
+# variables boots and sends nothing — the behaviour this codebase had before
+# the mail transport existed. Set them in the dashboard when you turn Brevo
+# on; docs/10-newsletter-email.md lists them.
+# ---------------------------------------------------------------------------

@@ -68,8 +68,13 @@ mail sent from `subscribe()` spends from the same budget a campaign would.
 | `MAIL_REPLY_TO` | Optional | Empty means replies go to the sender |
 | `SITE_URL` | The **frontend** origin | Not this API — see below |
 
-`render.yaml` ships `MAIL_PROVIDER=disabled`. Flip it to `brevo` once the
-above is done; that is the one deliberate step.
+`MAIL_PROVIDER` defaults to **`disabled`** — a host that has never heard of
+these variables boots and sends nothing, which is what this codebase did
+before the transport existed. Flip it to `brevo` once the above is done; that
+is the one deliberate step.
+
+> The blueprint is currently parked at `render.yaml.disabled`, so Render is
+> not reading it. Set these in the dashboard, or rename the file back.
 
 ### Local
 
@@ -80,6 +85,9 @@ SITE_URL=http://localhost:3000
 
 `console` logs the message and its links instead of sending. Reading the
 confirm URL out of the log is how you exercise double opt-in without a key.
+It is opt-in rather than the development default, because a default that is
+unsafe in production is a default that eventually reaches production — see
+the note on `MAIL_PROVIDER` in `config.py`.
 
 ## Three decisions worth knowing about
 

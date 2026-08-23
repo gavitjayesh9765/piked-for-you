@@ -92,7 +92,19 @@ class Settings(BaseSettings):
     # brevo   — the free plan, 300/day shared between transactional and campaigns
     # console — log the message and its links instead of sending; development only
     # disabled— accept and drop, an explicit off switch
-    MAIL_PROVIDER: Literal["brevo", "console", "disabled"] = "console"
+    #
+    # The default is `disabled`, and it has to be. A default of `console` is
+    # the friendlier one locally, but the variable is unset on every host that
+    # has not been told about it yet — including a production service that was
+    # deployed before this setting existed. Combined with the validator below
+    # refusing `console` in production, that default turned an unset variable
+    # into a process that raises during import and never binds a port: a
+    # deploy that crash-loops over a feature the host was not using.
+    #
+    # `disabled` is also what this codebase did before the transport existed,
+    # so an untouched host keeps its old behaviour. Local development opts in
+    # with MAIL_PROVIDER=console in .env — see docs/10-newsletter-email.md.
+    MAIL_PROVIDER: Literal["brevo", "console", "disabled"] = "disabled"
     BREVO_API_KEY: str = ""
     MAIL_FROM_EMAIL: str = "hello@pickdforyou.com"
     MAIL_FROM_NAME: str = "PickDForYou"

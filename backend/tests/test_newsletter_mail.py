@@ -306,6 +306,19 @@ def _settings(**overrides: object) -> Settings:
     return Settings(**{**base, **overrides})  # type: ignore[arg-type]
 
 
+def test_production_boots_with_no_mail_settings_at_all() -> None:
+    """The regression that matters most here.
+
+    Every host deployed before this setting existed has MAIL_PROVIDER unset.
+    When the default was `console`, that plus the production validator below
+    meant Settings() raised during import — the process never bound a port and
+    the deploy crash-looped, over a feature the host was not using. An unset
+    variable must leave a running service that sends nothing.
+    """
+    s = _settings(ENVIRONMENT="production")
+    assert s.MAIL_PROVIDER == "disabled"
+
+
 def test_console_transport_is_refused_in_production() -> None:
     """It writes single-use confirmation links to the log, and a production
     log outlives the 24 hours those links are meant to."""
