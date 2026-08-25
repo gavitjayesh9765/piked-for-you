@@ -45,6 +45,16 @@ export function Hero() {
               Start deciding.
             </h1>
 
+            {/* Trust line. Sits inside the copy column's normal flow — no panel,
+                no border — so it reads as part of the headline block rather than
+                a badge bolted onto it. One step down the body scale from the
+                paragraph below it, which keeps the order of the page's voice:
+                headline, promise, then the detail. */}
+            <p className="mt-3 max-w-lg text-body-sm text-ink-muted sm:mt-4 sm:text-body-md">
+              We test products ourselves, give you a clear yes or no, and never take money to
+              change that.
+            </p>
+
             <p className="mt-4 max-w-xl text-body-md text-ink-muted sm:mt-5 sm:text-body-lg">
               We read the reviews, compare the specs that actually matter, and tell you which
               products are worth your money — and which are not. Then you buy wherever you like.
