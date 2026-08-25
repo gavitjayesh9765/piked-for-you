@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { cache } from "react";
 
 /**
  * Server-side Supabase client for Server Components, Route Handlers and
@@ -52,7 +53,18 @@ export async function createClient() {
  * cookie without validating it, so a tampered cookie would be believed —
  * `getUser()` verifies against the auth server.
  */
-export async function getAuthedUser() {
+/*
+ * Wrapped in `cache()` so the request pays for at most ONE `getUser()` round
+ * trip however many callers ask. The site layout and the header both need the
+ * caller now — the header via its own `identity()` cache, the layout to arm
+ * <SessionExpiry> — and without this that is two network calls to the auth
+ * server on every public page render, which is precisely the cost the header
+ * was restructured to avoid (see the comment in SiteHeader.tsx).
+ *
+ * Per-render, not cross-request: React clears it between requests, so no
+ * caller can ever be handed another visitor's session.
+ */
+export const getAuthedUser = cache(async function getAuthedUser() {
   // The public site must render without auth configured — browsing needs no
   // session. Returning null (rather than throwing) means "signed out", which
   // is the correct and safe interpretation: it grants nothing.
@@ -72,7 +84,7 @@ export async function getAuthedUser() {
     // session" is safe; degrading to "assume admin" would not be.
     return null;
   }
-}
+});
 
 /**
  * The outcome of the admin gate.

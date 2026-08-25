@@ -1,4 +1,8 @@
+import { Suspense } from "react";
+
 import { getCategoriesForChrome } from "@/lib/api";
+import { getAuthedUser } from "@/lib/supabase/server";
+import { SessionExpiry } from "@/components/auth/SessionExpiry";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 
@@ -48,9 +52,40 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
 
   return (
     <>
+      {/* Renders nothing. Behind its own boundary because resolving the
+          caller is a round trip to the auth server, and the shell must not
+          wait on it — the same reason the header account slot is suspended
+          rather than awaited inline. */}
+      <Suspense fallback={null}>
+        <SessionGuard />
+      </Suspense>
       <SiteHeader categories={categories} />
       {children}
       <SiteFooter />
     </>
+  );
+}
+
+/** Mirrors `timebox = "720h"` in supabase/config.toml. */
+const TIMEBOX_MS = 30 * 24 * 60 * 60 * 1000;
+
+/**
+ * Arms the shopper session bound, or renders nothing for a signed-out visitor.
+ *
+ * The absolute deadline is derived here rather than in the browser because
+ * `last_sign_in_at` comes from the verified user — a timebox the client could
+ * rewrite would not be a timebox. See SessionExpiry for why the hosted project
+ * cannot enforce either bound on the Free plan.
+ */
+async function SessionGuard() {
+  const user = await getAuthedUser();
+  if (!user) return null;
+
+  const signedInAt = user.last_sign_in_at ? Date.parse(user.last_sign_in_at) : NaN;
+
+  return (
+    <SessionExpiry
+      hardDeadline={Number.isFinite(signedInAt) ? signedInAt + TIMEBOX_MS : null}
+    />
   );
 }
