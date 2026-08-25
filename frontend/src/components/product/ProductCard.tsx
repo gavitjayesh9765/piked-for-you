@@ -182,7 +182,19 @@ export function ProductCardWide({ product }: { product: ProductSummary }) {
         {primaryImage ? (
           <Image
             src={primaryImage.url}
-            alt=""
+            /* Named, unlike the compact card's image.
+
+               In <ProductCard> the image sits inside a link that is explicitly
+               `aria-hidden`, with the product name carried by the adjacent
+               title link — so an empty alt is correct there: announcing the
+               name twice is worse than not announcing it here.
+
+               This card has no such wrapper. Its image is the lead element of a
+               feature slot on the homepage and at the top of Top Picks, and an
+               empty alt makes the largest image on those pages invisible to
+               both a screen reader and Google Images. The editor's own alt text
+               wins where one was written. */
+            alt={primaryImage.alt ?? `${brand.name} ${title}`}
             fill
             sizes="(max-width: 640px) 100vw, 40vw"
             className="object-contain p-8 transition-transform duration-slow ease-ease group-hover:scale-[1.03]"

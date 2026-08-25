@@ -11,6 +11,7 @@ import { discountPercent, formatPrice, formatPriceRange } from "@/lib/format";
 import { Section, SectionHeader } from "@/components/layout/Section";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { jsonLd } from "@/lib/json-ld";
+import { absoluteUrl } from "@/lib/site";
 import { Badge, CommunityRating } from "@/components/ui/Badge";
 import { RetailButton } from "@/components/ui/Button";
 import { Gallery } from "@/components/product/Gallery";
@@ -30,11 +31,52 @@ import { RowsArriving } from "@/components/ui/Arriving";
 
 type Params = { category: string; slug: string };
 
+/**
+ * Aggregate stock state for the structured-data offer block.
+ *
+ * `RetailerLink.inStock` is three-valued and the third value carries real
+ * meaning: `null` is "the retailer's page did not say", which the type's own
+ * comment is careful to distinguish from "available". That distinction has to
+ * survive into the markup. Asserting `InStock` from an unknown would put a
+ * claim in front of Google that we never observed — and the reader clicking it
+ * lands on a dead listing, which is the specific failure this site exists to
+ * prevent.
+ *
+ * The field is also documented as absent from cached public reads, so the
+ * common case at render time is that we know nothing. Hence:
+ *
+ *   - any retailer observed in stock  → InStock
+ *   - every retailer observed out     → OutOfStock
+ *   - nothing observed either way     → emit no `availability` at all
+ *
+ * Returns a spreadable fragment rather than a value so the third case adds no
+ * key, instead of adding a key set to undefined.
+ *
+ * `priceValidUntil` is deliberately not emitted alongside this. Google lists it
+ * as recommended, but nothing in the pricing model records when a price expires
+ * — the scraper records when a price was *observed*, which is a different fact.
+ * A guessed expiry is a fabricated one, and the cost of omitting it is a
+ * non-blocking warning in Search Console rather than an invalid offer.
+ */
+function availability(retailers: Product["retailers"]): { availability?: string } {
+  const known = retailers.filter((r) => typeof r.inStock === "boolean");
+  if (known.length === 0) return {};
+
+  return {
+    availability: known.some((r) => r.inStock)
+      ? "https://schema.org/InStock"
+      : "https://schema.org/OutOfStock",
+  };
+}
+
 /** SEO per spec §47 — title, description, canonical, OG, structured data. */
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { category, slug } = await params;
   const product = await getProduct(category, slug);
-  if (!product) return { title: "Product not found" };
+  // A product that does not exist must not be indexable under the URL that was
+  // guessed to reach it. Without this the 404 page inherits the site-wide
+  // `robots: index` and every mistyped slug becomes an indexable empty page.
+  if (!product) return { title: "Product not found", robots: { index: false, follow: false } };
 
   const title = product.seo?.metaTitle ?? `${product.brand.name} ${product.title}`;
   // The recommendation summary is the better description when there is one: it
@@ -43,15 +85,51 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const description =
     product.seo?.metaDescription ?? product.verdictSummary ?? product.tagline;
 
+  /**
+   * The admin panel has always offered a canonical URL override (spec §46,
+   * `seo.canonicalUrl` in lib/types.ts) and this page has always ignored it.
+   * It exists for the one case the computed path cannot express: the same
+   * product legitimately reachable under two categories, where one of them has
+   * to be declared the original.
+   *
+   * Trusted as authored, including its origin — an editor setting this is
+   * deliberately pointing somewhere, occasionally off-site at a manufacturer's
+   * page. `metadataBase` resolves it if it is relative and leaves it alone if
+   * it is absolute, so both forms work.
+   */
+  const canonical = product.seo?.canonicalUrl ?? `/p/${category}/${slug}`;
+
+  /**
+   * Social card, in preference order: the editor's chosen OG image, then the
+   * product photograph, then nothing — at which point app/opengraph-image.tsx
+   * supplies the generic site card, so a share is never blank.
+   *
+   * `seo.ogImageUrl` was the other admin field this page ignored. It matters
+   * most for products whose primary image is a cut-out on white, which is
+   * correct on the page and looks like a rendering failure in a chat client.
+   */
+  const ogImage = product.seo?.ogImageUrl ?? product.primaryImage?.url;
+
   return {
     title,
     description,
-    alternates: { canonical: `/p/${category}/${slug}` },
+    alternates: { canonical },
     openGraph: {
       title,
       description,
-      images: product.primaryImage ? [product.primaryImage.url] : undefined,
+      url: canonical,
+      images: ogImage ? [ogImage] : undefined,
+      // "article" rather than "product": the page's subject is our review of
+      // the thing, not an offer to sell it. We do not sell anything, and
+      // og:type=product invites clients to look for price and availability
+      // properties a research page has no business asserting as a merchant.
       type: "article",
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ogImage ? [ogImage] : undefined,
     },
   };
 }
@@ -370,6 +448,37 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
               lowPrice: product.pricing.min ?? product.pricing.current,
               highPrice: product.pricing.max ?? product.pricing.current,
               offerCount: activeRetailers.length,
+              /**
+               * The canonical page for this offer set. Google rejects offer
+               * markup with no `url` more often than it rejects any other
+               * omission here — without it the price snippet has nothing to
+               * attribute the price to.
+               */
+              url: absoluteUrl(`/p/${category}/${slug}`),
+              ...availability(activeRetailers),
+              /**
+               * Individual retailer offers, so a result can name where the
+               * price is from rather than quoting a bare range. Only priced
+               * links are included: an offer with no price is not an offer, and
+               * emitting one drags the whole block into "invalid" in Search
+               * Console rather than merely thinning it.
+               */
+              offers: activeRetailers
+                .filter((r) => r.displayPrice != null)
+                .map((r) => ({
+                  "@type": "Offer",
+                  price: r.displayPrice,
+                  priceCurrency: product.pricing.currency,
+                  url: r.url,
+                  seller: { "@type": "Organization", name: r.retailer },
+                  ...(typeof r.inStock === "boolean"
+                    ? {
+                        availability: r.inStock
+                          ? "https://schema.org/InStock"
+                          : "https://schema.org/OutOfStock",
+                      }
+                    : {}),
+                })),
             },
           }),
         }}

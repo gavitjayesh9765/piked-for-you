@@ -1,15 +1,33 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { getHomepage } from "@/lib/api";
 import { PanelArriving, ProductGridArriving } from "@/components/ui/Arriving";
 import { categoryHref } from "@/lib/format";
 import type { HomepageSection } from "@/lib/types";
+import { jsonLd } from "@/lib/json-ld";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE, absoluteUrl } from "@/lib/site";
 
 import { Section, SectionHeader } from "@/components/layout/Section";
 import { Hero } from "@/components/home/Hero";
 import { CategoryTiles } from "@/components/home/CategoryTiles";
 import { Newsletter } from "@/components/home/Newsletter";
 import { ProductCard } from "@/components/product/ProductCard";
+
+/**
+ * The homepage inherits its title and description from the root layout, which
+ * already states them as the site defaults — repeating them here would create
+ * two places to change one string.
+ *
+ * The canonical is the reason this export exists at all. Without it the page
+ * declares no preferred URL, and `/`, `/?utm_source=newsletter` and any other
+ * tagged variant are three separate documents as far as ranking is concerned.
+ * Every share of the homepage that carries a campaign parameter currently
+ * splits the signal for the site's most important URL.
+ */
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+};
 
 /**
  * Homepage (spec §11).
@@ -20,17 +38,94 @@ import { ProductCard } from "@/components/product/ProductCard";
  */
 export default function HomePage() {
   return (
-    <main id="main">
-      {/* The homepage is entirely admin-controlled, so nothing above this can
-          be rendered without the API — but <ResearchPromise> below is our own
-          fixed copy, and it is the one thing on this page that never needs to
-          wait for anything. Keeping the page component synchronous puts it, and
-          the whole shell around it, on screen immediately. */}
-      <Suspense fallback={<HomeArriving />}>
-        <Sections />
-      </Suspense>
-      <ResearchPromise />
-    </main>
+    <>
+      <main id="main">
+        {/* The homepage is entirely admin-controlled, so nothing above this can
+            be rendered without the API — but <ResearchPromise> below is our own
+            fixed copy, and it is the one thing on this page that never needs to
+            wait for anything. Keeping the page component synchronous puts it, and
+            the whole shell around it, on screen immediately. */}
+        <Suspense fallback={<HomeArriving />}>
+          <Sections />
+        </Suspense>
+        <ResearchPromise />
+      </main>
+      <SiteStructuredData />
+    </>
+  );
+}
+
+/**
+ * Site-level structured data (spec §47, §73).
+ *
+ * Two graphs, both deliberately on the homepage only. These describe the
+ * *publisher*, not the page, and repeating them under every product would
+ * assert the same three facts a thousand times over — Google reads them once,
+ * from the site root, and duplication only adds weight to every response.
+ *
+ *   Organization — who is making these recommendations. This is what a brand
+ *     knowledge panel is assembled from, and it is also the entity the `author`
+ *     on every product Review already points at by name. Declaring it once here
+ *     gives that name something to resolve to.
+ *
+ *   WebSite + SearchAction — the sitelinks search box. It tells Google that
+ *     /search?q= is a real query endpoint, which lets a brand-name result carry
+ *     a search field straight into our own results.
+ *
+ * Both are rendered through `jsonLd()` rather than `JSON.stringify` — see the
+ * comment in lib/json-ld.ts for why that distinction is not cosmetic. Here the
+ * values are all compile-time constants, so nothing is actually interpolated
+ * from user input, but using the raw stringifier in one of three structured
+ * data blocks is exactly how the unsafe one eventually gets copied.
+ */
+function SiteStructuredData() {
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: jsonLd([
+          {
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            "@id": absoluteUrl("/#organization"),
+            name: SITE_NAME,
+            url: absoluteUrl("/"),
+            description: SITE_DESCRIPTION,
+            slogan: SITE_TAGLINE,
+            logo: {
+              "@type": "ImageObject",
+              url: absoluteUrl("/icon.png"),
+            },
+            // The trust documents, declared as the organisation's stated
+            // policies. An evaluator — human or algorithmic — assessing whether
+            // these verdicts are independent is looking for exactly this.
+            publishingPrinciples: absoluteUrl("/editorial-policy"),
+            ethicsPolicy: absoluteUrl("/affiliate-disclosure"),
+          },
+          {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "@id": absoluteUrl("/#website"),
+            name: SITE_NAME,
+            url: absoluteUrl("/"),
+            description: SITE_DESCRIPTION,
+            publisher: { "@id": absoluteUrl("/#organization") },
+            inLanguage: "en-IN",
+            potentialAction: {
+              "@type": "SearchAction",
+              target: {
+                "@type": "EntryPoint",
+                urlTemplate: absoluteUrl("/search?q={search_term_string}"),
+              },
+              // Schema.org requires this exact shape for the sitelinks search
+              // box — the property name is a literal, not a placeholder we can
+              // rename to something tidier.
+              "query-input": "required name=search_term_string",
+            },
+          },
+        ]),
+      }}
+    />
   );
 }
 

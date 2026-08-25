@@ -12,6 +12,7 @@ import { ProductCardWide } from "@/components/product/ProductCard";
 import { ScoreRing } from "@/components/product/ScoreRing";
 import { Badge } from "@/components/ui/Badge";
 import { PanelArriving, ValueArriving } from "@/components/ui/Arriving";
+import { ItemListJsonLd } from "@/components/seo/ItemListJsonLd";
 
 export const metadata: Metadata = {
   title: "Top Picks — the board",
@@ -334,6 +335,17 @@ async function Board() {
           ) : null}
 
           <MethodNote />
+
+          {/* The board IS a ranking, and this is the one page on the site whose
+              ordering is a deliberate editorial claim rather than a sort — the
+              MethodNote above says so in prose. `ItemList` says the same thing
+              in the form a crawler can read.
+
+              Note `picks`, not `rest`: the numbering here starts at the lead
+              pick, which the layout renders separately as 01. Building the list
+              from `rest` would silently declare the number two to be number
+              one. */}
+          <ItemListJsonLd products={picks} name="SortedChoice Top Picks" />
         </div>
       )}    </>
   );

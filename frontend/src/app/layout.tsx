@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { Hanken_Grotesk, Inter, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { themeInitScript } from "@/components/layout/ThemeToggle";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/site";
 
 /**
  * Three type tiers, each with a job (docs/01-design-brainstorm.md §5):
@@ -24,19 +25,75 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "sw
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://sortedchoice.com"),
+  metadataBase: new URL(SITE_URL),
   title: {
-    default: "SortedChoice — We research products so you can choose with confidence",
-    template: "%s · SortedChoice",
+    default: `${SITE_NAME} — ${SITE_TAGLINE}`,
+    template: `%s · ${SITE_NAME}`,
   },
-  description:
-    "Independent product research, comparisons and verdicts. Stop spending hours researching — see what's actually worth buying, and why.",
+  description: SITE_DESCRIPTION,
   openGraph: {
     type: "website",
-    siteName: "SortedChoice",
+    siteName: SITE_NAME,
     locale: "en_IN",
+    url: "/",
+    title: `${SITE_NAME} — ${SITE_TAGLINE}`,
+    description: SITE_DESCRIPTION,
+    // No `images` here on purpose. app/opengraph-image.tsx is picked up
+    // automatically and inherited by every route that does not declare its own,
+    // and listing an image in both places is how you end up with two og:image
+    // tags and a scraper picking whichever it saw first.
   },
-  robots: { index: true, follow: true },
+  /**
+   * Twitter reads Open Graph tags as a fallback, so the title, description and
+   * image above already carry over. What does NOT carry over is the card SIZE:
+   * absent an explicit `card`, a link unfurls as a `summary` — a thumbnail the
+   * size of a favicon beside two lines of text. `summary_large_image` is what
+   * turns the 1200×630 card we now generate into the full-width image the card
+   * was designed to be.
+   *
+   * This also applies well beyond Twitter itself. Slack, Discord, LinkedIn and
+   * several messaging clients read `twitter:card` to decide layout even when
+   * they take their content from Open Graph.
+   */
+  twitter: {
+    card: "summary_large_image",
+    title: `${SITE_NAME} — ${SITE_TAGLINE}`,
+    description: SITE_DESCRIPTION,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    /**
+     * Explicit Googlebot directives. `max-image-preview: large` is the one that
+     * matters commercially: without it Google renders product results with a
+     * thumbnail rather than a full-width image, and this catalogue is entirely
+     * photographed goods. The other two remove the default caps on snippet
+     * length and video preview, which is what allows a verdict summary to be
+     * quoted in full in a result.
+     */
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  /**
+   * ⚠ NO `alternates.canonical` HERE, deliberately.
+   *
+   * Next merges metadata down the tree, so a canonical on the root layout is
+   * inherited by every page that does not set its own — and the pages that do
+   * not set one are precisely the `noindex` ones: /login, /register, /search,
+   * /account/**. Each would then declare itself canonical to `/`, which asks
+   * Google to consolidate a noindexed document onto the homepage. That is the
+   * documented way to accidentally deindex your own root.
+   *
+   * The homepage sets `canonical: "/"` in its own metadata instead, where it
+   * applies to exactly one URL. `metadataBase` above is what normalises the
+   * origin for every relative canonical, and it is not inherited-by-accident in
+   * the same way — it is only ever a base, never a claim.
+   */
 };
 
 /**

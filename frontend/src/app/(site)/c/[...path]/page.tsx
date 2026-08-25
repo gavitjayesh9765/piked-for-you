@@ -10,18 +10,57 @@ import { ProductCard } from "@/components/product/ProductCard";
 import { FilterRail } from "@/components/category/FilterRail";
 import { SortSelect } from "@/components/category/SortSelect";
 import { PanelArriving, ProductGridArriving, ValueArriving } from "@/components/ui/Arriving";
+import { ItemListJsonLd } from "@/components/seo/ItemListJsonLd";
 
 type Params = { path: string[] };
 type Search = { sort?: string; brand?: string | string[]; minScore?: string };
 
-export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
-  const { path } = await params;
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<Params>;
+  searchParams: Promise<Search>;
+}): Promise<Metadata> {
+  const [{ path }, sp] = await Promise.all([params, searchParams]);
   const category = await getCategory(path);
-  if (!category) return { title: "Category not found" };
+  // Same reasoning as the product page: a category that does not exist must not
+  // leave an indexable page behind at the URL someone guessed.
+  if (!category) return { title: "Category not found", robots: { index: false, follow: false } };
+
+  /**
+   * Whether any facet is applied.
+   *
+   * Every filter combination renders real, useful content, so none of this is
+   * about hiding a thin page — the canonical below already points all of them
+   * at the bare category path, which is the correct consolidation signal and
+   * was in place before this change.
+   *
+   * What the canonical does not do is stop the crawl. The URL space here is the
+   * product of every brand, every score threshold and every sort order, so a
+   * category with 30 brands is thousands of distinct URLs that all resolve, all
+   * render, and all collapse onto one. Google spends the budget discovering
+   * that, once per combination, and it spends it instead of fetching the
+   * product pages we actually want indexed.
+   *
+   * `noindex, follow` is the pairing that matters: don't keep these, but do
+   * walk the product links on them, so nothing becomes less discoverable as a
+   * result. app/robots.ts declines the crawl earlier for crawlers that read it;
+   * this handles the ones that arrive anyway, from a shared filtered link.
+   */
+  const isFiltered = Boolean(sp.brand || sp.minScore || sp.sort);
+
   return {
     title: `${category.name} — researched and ranked`,
     description: category.description ?? `Our researched picks in ${category.name}.`,
     alternates: { canonical: `/c/${path.join("/")}` },
+    ...(isFiltered ? { robots: { index: false, follow: true } } : {}),
+    openGraph: {
+      title: `${category.name} — researched and ranked`,
+      description: category.description ?? `Our researched picks in ${category.name}.`,
+      url: `/c/${path.join("/")}`,
+      type: "website",
+    },
   };
 }
 
@@ -143,7 +182,7 @@ export default async function CategoryPage({
                 the grid they were already looking at, would be the single most
                 obviously "loading" thing this page could do. */}
             <Suspense key={category.slug} fallback={<ProductGridArriving />}>
-              <Results query={query} />
+              <Results query={query} categoryName={category.name} />
             </Suspense>
           </div>
         </div>
@@ -173,7 +212,7 @@ async function ResultCount({ query }: { query: Query }) {
   );
 }
 
-async function Results({ query }: { query: Query }) {
+async function Results({ query, categoryName }: { query: Query; categoryName: string }) {
   const results = await listProducts({ ...query, pageSize: 48 });
 
   if (results.items.length === 0) {
@@ -186,11 +225,20 @@ async function Results({ query }: { query: Query }) {
   }
 
   return (
-    <div className="grid-products stagger">
-      {results.items.map((p, i) => (
-        <ProductCard key={p.id} product={p} priority={i < 6} />
-      ))}
-    </div>
+    <>
+      <div className="grid-products stagger">
+        {results.items.map((p, i) => (
+          <ProductCard key={p.id} product={p} priority={i < 6} />
+        ))}
+      </div>
+
+      {/* Emitted here rather than in the page body because the ranking is what
+          it describes, and the ranking does not exist until this fetch lands.
+          Inside the same Suspense boundary as the grid, so the markup and the
+          products it enumerates are always the same list — a copy built from a
+          second call could disagree with what rendered. */}
+      <ItemListJsonLd products={results.items} name={`${categoryName} — researched and ranked`} />
+    </>
   );
 }
 
