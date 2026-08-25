@@ -23,7 +23,7 @@ import {
   TrustLinks,
   VerdictBanner,
 } from "@/components/product/Decision";
-import { BuyingOptions } from "@/components/product/BuyingOptions";
+import { BuyingOptions, PriceComparison } from "@/components/product/BuyingOptions";
 import { ProductCard } from "@/components/product/ProductCard";
 import { ReviewList } from "@/components/product/ReviewList";
 import { RowsArriving } from "@/components/ui/Arriving";
@@ -118,7 +118,14 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 
         {/* ============ 1–2. What it is, and the answer ==================
             Full-bleed two-column. The gallery gets the larger share on wide
-            displays; the decision column is capped so it never sprawls. */}
+            displays; the decision column is capped so it never sprawls.
+
+            The gallery pins itself: its own root carries `lg:self-start`,
+            `lg:sticky` and the nav-clearing offset (components/product/Gallery.tsx).
+            It must therefore stay the direct grid item — wrapping it in a
+            positioning div makes the wrapper the item, `self-start` stops
+            applying, and the wrapper's default `min-width:auto` lets the
+            column blow past the viewport on a phone. */}
         <div className="shell-wide mt-6 grid gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] xl:gap-16">
           {/* Images and linked videos share one filmstrip — to a reader
               deciding what to buy they are the same thing: another look. */}
@@ -205,7 +212,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                     argues you should decide from. This is here for the reader
                     who arrived already decided. --- */}
             {lead && (
-              <div className="mt-6 flex flex-col gap-3">
+              <div className="mt-6 flex flex-col gap-4">
                 <RetailButton
                   retailer={lead.retailer}
                   href={lead.url}
@@ -216,15 +223,24 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                   }
                   emphasis="primary"
                 />
-                {activeRetailers.length > 1 && (
-                  <Link
-                    href="#buying-options"
-                    className="font-label text-label-xs uppercase tracking-[0.12em] text-ink-subtle
-                               transition-colors duration-fast hover:text-brand"
-                  >
-                    All {activeRetailers.length} buying options ↓
-                  </Link>
-                )}
+
+                {/* Whether the price above is the best one — the question a
+                    reader is holding the moment they read it. A table, not more
+                    buttons: the hero keeps one orange exit, and this carries the
+                    comparison the exit cannot. Absent below two priced
+                    retailers, in which case the jump link stands alone. */}
+                <PriceComparison pricing={product.pricing} retailers={activeRetailers} />
+
+                {activeRetailers.length > 1 &&
+                  activeRetailers.filter((r) => r.displayPrice != null).length < 2 && (
+                    <Link
+                      href="#buying-options"
+                      className="font-label text-label-xs uppercase tracking-[0.12em] text-ink-subtle
+                                 transition-colors duration-fast hover:text-brand"
+                    >
+                      All {activeRetailers.length} buying options ↓
+                    </Link>
+                  )}
               </div>
             )}
           </div>

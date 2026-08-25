@@ -128,3 +128,102 @@ export function BuyingOptions({
     </section>
   );
 }
+
+/**
+ * The price at every retailer, at a glance — for the hero, above the fold.
+ *
+ * Not three more buttons. The hero already carries one orange exit, and the
+ * colour grammar only works while orange means "this is THE way out"; three of
+ * them side by side is three competing calls to action and no recommendation.
+ * So this is a *table*, and the rows are deliberately not links — the labelled,
+ * disclosed buttons live in <BuyingOptions> below, which is where §59 wants a
+ * clickable affiliate link to be.
+ *
+ * What it adds that the price alone cannot: whether the price you are looking
+ * at is the best one. Sorted cheapest first and stamped with the gap, so
+ * "Flipkart is ₹2,099 more" is readable without arithmetic.
+ *
+ * Sorting by price rather than by the retailer's configured order means the
+ * lead button and the top row can disagree — the CTA follows `display_order`,
+ * this follows the money. That disagreement is the honest outcome and worth
+ * showing: if the retailer we list first is not the cheapest, a reader should
+ * be able to see that on the same screen.
+ *
+ * Renders nothing below two priced retailers. A one-row comparison is not a
+ * comparison, and an empty-ish panel in the hero is worse than the whitespace
+ * it was added to fill.
+ */
+export function PriceComparison({
+  pricing,
+  retailers,
+  className,
+}: {
+  pricing: Pricing;
+  retailers: RetailerLink[];
+  className?: string;
+}) {
+  const priced = retailers
+    .filter((r) => r.displayPrice != null && Number.isFinite(Number(r.displayPrice)))
+    .map((r) => ({ ...r, amount: Number(r.displayPrice) }))
+    .sort((a, b) => a.amount - b.amount);
+
+  if (priced.length < 2) return null;
+
+  const lowest = priced[0].amount;
+
+  return (
+    <section aria-labelledby="price-compare-heading" className={cn("panel p-5 sm:p-6", className)}>
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+        <h2 id="price-compare-heading" className="t-eyebrow">
+          Price across retailers
+        </h2>
+        <Link
+          href="#buying-options"
+          className="font-label text-label-xs uppercase tracking-[0.12em] text-ink-subtle
+                     transition-colors duration-fast hover:text-brand"
+        >
+          All {retailers.length} buying options ↓
+        </Link>
+      </div>
+
+      <dl className="mt-4 divide-y divide-line-faint">
+        {priced.map((r) => {
+          const delta = r.amount - lowest;
+          return (
+            <div
+              key={r.id}
+              className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2.5"
+            >
+              <dt className="flex items-center gap-2.5 text-body-sm text-ink">
+                {r.retailer}
+                {r.inStock === false && (
+                  <span className="font-label text-label-xs uppercase tracking-[0.1em] text-danger">
+                    Out of stock
+                  </span>
+                )}
+              </dt>
+              <dd className="flex items-baseline gap-3">
+                {delta === 0 ? (
+                  <span
+                    className="rounded-xs border border-value-line bg-value-soft px-2 py-0.5
+                               font-label text-label-xs font-bold uppercase tracking-[0.1em]
+                               text-value-on-soft"
+                  >
+                    Lowest
+                  </span>
+                ) : (
+                  <span className="tabular text-body-sm text-ink-subtle">
+                    +{formatPrice(delta, pricing.currency)}
+                  </span>
+                )}
+                <span className="tabular text-body-md font-semibold text-ink">
+                  {formatPrice(r.amount, pricing.currency)}
+                </span>
+              </dd>
+            </div>
+          );
+        })}
+      </dl>
+    </section>
+  );
+}
