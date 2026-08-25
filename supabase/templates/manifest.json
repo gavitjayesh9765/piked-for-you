@@ -11,7 +11,7 @@
     "key": "recovery",
     "kind": "auth",
     "file": "recovery.html",
-    "subject": "Reset your PickDForYou password",
+    "subject": "Reset your SortedChoice password",
     "subjectKey": "mailer_subjects_recovery",
     "contentKey": "mailer_templates_recovery_content"
   },
@@ -19,7 +19,7 @@
     "key": "magic_link",
     "kind": "auth",
     "file": "magic_link.html",
-    "subject": "Your PickDForYou sign-in link",
+    "subject": "Your SortedChoice sign-in link",
     "subjectKey": "mailer_subjects_magic_link",
     "contentKey": "mailer_templates_magic_link_content"
   },
@@ -35,7 +35,7 @@
     "key": "invite",
     "kind": "auth",
     "file": "invite.html",
-    "subject": "You have been invited to PickDForYou",
+    "subject": "You have been invited to SortedChoice",
     "subjectKey": "mailer_subjects_invite",
     "contentKey": "mailer_templates_invite_content"
   },
@@ -43,7 +43,7 @@
     "key": "reauthentication",
     "kind": "auth",
     "file": "reauthentication.html",
-    "subject": "{{ .Token }} is your PickDForYou verification code",
+    "subject": "{{ .Token }} is your SortedChoice verification code",
     "subjectKey": "mailer_subjects_reauthentication",
     "contentKey": "mailer_templates_reauthentication_content"
   },
@@ -51,7 +51,7 @@
     "key": "password_changed",
     "kind": "notification",
     "file": "password_changed.html",
-    "subject": "Your PickDForYou password was changed",
+    "subject": "Your SortedChoice password was changed",
     "subjectKey": "mailer_subjects_password_changed_notification",
     "contentKey": "mailer_templates_password_changed_notification_content",
     "enabledKey": "mailer_notifications_password_changed_enabled"
@@ -60,7 +60,7 @@
     "key": "email_changed",
     "kind": "notification",
     "file": "email_changed.html",
-    "subject": "Your PickDForYou email address was changed",
+    "subject": "Your SortedChoice email address was changed",
     "subjectKey": "mailer_subjects_email_changed_notification",
     "contentKey": "mailer_templates_email_changed_notification_content",
     "enabledKey": "mailer_notifications_email_changed_enabled"
@@ -69,7 +69,7 @@
     "key": "phone_changed",
     "kind": "notification",
     "file": "phone_changed.html",
-    "subject": "Your PickDForYou phone number was changed",
+    "subject": "Your SortedChoice phone number was changed",
     "subjectKey": "mailer_subjects_phone_changed_notification",
     "contentKey": "mailer_templates_phone_changed_notification_content",
     "enabledKey": "mailer_notifications_phone_changed_enabled"
@@ -78,7 +78,7 @@
     "key": "mfa_factor_enrolled",
     "kind": "notification",
     "file": "mfa_factor_enrolled.html",
-    "subject": "A new verification method was added to your PickDForYou account",
+    "subject": "A new verification method was added to your SortedChoice account",
     "subjectKey": "mailer_subjects_mfa_factor_enrolled_notification",
     "contentKey": "mailer_templates_mfa_factor_enrolled_notification_content",
     "enabledKey": "mailer_notifications_mfa_factor_enrolled_enabled"
@@ -87,7 +87,7 @@
     "key": "mfa_factor_unenrolled",
     "kind": "notification",
     "file": "mfa_factor_unenrolled.html",
-    "subject": "A verification method was removed from your PickDForYou account",
+    "subject": "A verification method was removed from your SortedChoice account",
     "subjectKey": "mailer_subjects_mfa_factor_unenrolled_notification",
     "contentKey": "mailer_templates_mfa_factor_unenrolled_notification_content",
     "enabledKey": "mailer_notifications_mfa_factor_unenrolled_enabled"
@@ -96,7 +96,7 @@
     "key": "identity_linked",
     "kind": "notification",
     "file": "identity_linked.html",
-    "subject": "A sign-in method was linked to your PickDForYou account",
+    "subject": "A sign-in method was linked to your SortedChoice account",
     "subjectKey": "mailer_subjects_identity_linked_notification",
     "contentKey": "mailer_templates_identity_linked_notification_content",
     "enabledKey": "mailer_notifications_identity_linked_enabled"
@@ -105,7 +105,7 @@
     "key": "identity_unlinked",
     "kind": "notification",
     "file": "identity_unlinked.html",
-    "subject": "A sign-in method was removed from your PickDForYou account",
+    "subject": "A sign-in method was removed from your SortedChoice account",
     "subjectKey": "mailer_subjects_identity_unlinked_notification",
     "contentKey": "mailer_templates_identity_unlinked_notification_content",
     "enabledKey": "mailer_notifications_identity_unlinked_enabled"

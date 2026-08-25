@@ -48,7 +48,7 @@ export function SiteFooter() {
       <div className="shell grid gap-12 py-16 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,3fr)]">
         <div className="max-w-sm">
           <Link href="/" className="font-display text-[1.6rem] font-black tracking-[-0.045em] text-ink">
-            PickDForYou
+            SortedChoice
           </Link>
           <p className="mt-4 text-body-sm text-ink-muted">
             We research products so you can choose with confidence. Independent verdicts,
@@ -81,12 +81,12 @@ export function SiteFooter() {
       <div className="border-t border-line">
         <div className="shell flex flex-col gap-3 py-6 sm:flex-row sm:items-center sm:justify-between">
           <p className="max-w-2xl text-label-xs leading-relaxed text-ink-subtle">
-            PickDForYou does not sell products. When you follow a link to Amazon or Flipkart we may
+            SortedChoice does not sell products. When you follow a link to Amazon or Flipkart we may
             earn a commission, at no extra cost to you. That never influences a verdict — our
             recommendations are written before any retailer link is attached.
           </p>
           <p className="shrink-0 font-label text-label-xs uppercase tracking-[0.1em] text-ink-faint">
-            © {new Date().getFullYear()} PickDForYou
+            © {new Date().getFullYear()} SortedChoice
           </p>
         </div>
       </div>

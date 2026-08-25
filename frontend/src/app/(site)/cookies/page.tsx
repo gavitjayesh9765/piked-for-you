@@ -3,7 +3,7 @@ import { DocumentPage, DocLink } from "@/components/layout/DocumentPage";
 
 export const metadata: Metadata = {
   title: "Cookie policy",
-  description: "Which cookies PickDForYou sets, what each one does, and how to refuse them.",
+  description: "Which cookies SortedChoice sets, what each one does, and how to refuse them.",
   alternates: { canonical: "/cookies" },
 };
 

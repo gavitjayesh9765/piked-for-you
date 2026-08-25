@@ -1,5 +1,5 @@
 -- ============================================================================
--- PickDForYou — initial schema
+-- SortedChoice — initial schema
 --
 -- Converted from the SQLAlchemy models in backend/app/models/, with two
 -- changes for Supabase:

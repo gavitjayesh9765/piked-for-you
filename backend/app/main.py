@@ -1,5 +1,5 @@
 """
-PickDForYou API — a modular monolith (spec §64).
+SortedChoice API — a modular monolith (spec §64).
 
 Each domain lives in app/modules/<domain>/ with its own router, service and
 repository. They share one process and one database, but the boundaries are

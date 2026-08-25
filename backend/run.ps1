@@ -1,5 +1,5 @@
 <#
-  Start the PickDForYou API.
+  Start the SortedChoice API.
 
       .\run.ps1            # http://127.0.0.1:8000, auto-reload
       .\run.ps1 -Port 8001 # somewhere else

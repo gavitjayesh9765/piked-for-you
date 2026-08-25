@@ -1,6 +1,6 @@
-# PickDForYou — System Architecture
+# SortedChoice — System Architecture
 
-> Implements `PickDForYou_Master_Product_Architecture_Specification.md`.
+> Implements `SortedChoice_Master_Product_Architecture_Specification.md`.
 > Section references (§) point back to that document.
 
 ---
@@ -65,7 +65,7 @@ scrape their markup or model our product around their page structure (§63).
 ## 3. Repository layout
 
 ```
-pickdforyou/
+sortedchoice/
 ├── docs/                      architecture and design documentation
 ├── frontend/
 │   └── src/
@@ -353,11 +353,11 @@ credentials. Everything is environment-driven (`backend/.env.example`,
 `frontend/.env.example`); nothing secret is committed.
 
 ```
-GitHub → CI → build → frontend (Vercel/Node)  ·  api.pickdforyou.com (container)
+GitHub → CI → build → frontend (Vercel/Node)  ·  api.sortedchoice.com (container)
                     → managed PostgreSQL  ·  object storage + CDN
 ```
 
-`pickdforyou.com` serves the frontend; `api.pickdforyou.com` serves the API.
+`sortedchoice.com` serves the frontend; `api.sortedchoice.com` serves the API.
 
 ---
 
@@ -368,4 +368,4 @@ disabled feature, not as a stub:
 
 cart · checkout · payments · inventory · sellers · shipping · orders · returns
 
-PickDForYou is not a marketplace. The absence is the architecture.
+SortedChoice is not a marketplace. The absence is the architecture.

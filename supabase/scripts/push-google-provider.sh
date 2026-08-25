@@ -27,7 +27,7 @@ set -euo pipefail
 PROJECT_REF="${SUPABASE_PROJECT_REF:-qokjrsciihybnznbgqjn}"
 # Exported, not just set: the payload below is built by `node -e`, which reads
 # these out of the environment. A plain shell assignment is invisible to it.
-export SITE_URL="${SUPABASE_SITE_URL:-https://pickdforyou.com}"
+export SITE_URL="${SUPABASE_SITE_URL:-https://sortedchoice.com}"
 API="https://api.supabase.com/v1/projects/$PROJECT_REF/config/auth"
 
 dry_run=0
@@ -55,10 +55,10 @@ command -v curl >/dev/null || { echo "curl is required" >&2; exit 1; }
 # signed into. It is scoped to our own project's preview domain — a bare
 # `https://**` here would let any site on the internet receive a session.
 read -r -d '' ALLOW_LIST <<'EOF' || true
-https://pickdforyou.com/auth/callback,
-https://www.pickdforyou.com/auth/callback,
-https://pickdforyou.vercel.app/auth/callback,
-https://pickdforyou-*.vercel.app/auth/callback,
+https://sortedchoice.com/auth/callback,
+https://www.sortedchoice.com/auth/callback,
+https://sortedchoice.vercel.app/auth/callback,
+https://sortedchoice-*.vercel.app/auth/callback,
 http://localhost:3000/auth/callback
 EOF
 export ALLOW_LIST="$(echo "$ALLOW_LIST" | tr -d '\n ')"
@@ -160,7 +160,7 @@ CLIENT_ID="${SUPABASE_AUTH_GOOGLE_CLIENT_ID:-}" node -e '
     if (want) {
       if (!got.external_google_enabled) problems.push("provider is not enabled");
       if (got.external_google_client_id !== want) problems.push("client id did not stick");
-      if (!list.some((u) => u.includes("pickdforyou.com/auth/callback")))
+      if (!list.some((u) => u.includes("sortedchoice.com/auth/callback")))
         problems.push("production callback is missing from the allow-list");
       if (!got.password_hibp_enabled) problems.push("leaked-password protection did not stick");
     }

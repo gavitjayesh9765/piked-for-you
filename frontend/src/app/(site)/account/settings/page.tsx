@@ -69,7 +69,7 @@ export default async function AccountSettingsPage() {
             at Google, and so does the way to change it. */}
         {passwordless ? (
           <p className="mt-5 max-w-prose text-body-sm text-ink-muted">
-            You sign in with Google, so there is no PickDForYou password to change — your
+            You sign in with Google, so there is no SortedChoice password to change — your
             Google account controls access, and you change it there. Signing in with the same
             address and a password would attach that password to this same account rather than
             creating a second one.

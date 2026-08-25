@@ -87,7 +87,7 @@ const LINK_LIFETIME = "24 hours";
  * auth-action mails, so the seven notification templates would ship it to the
  * inbox as literal text. One constant renders the same in all thirteen.
  */
-const SITE_URL = "https://piked-for-you.vercel.app";
+const SITE_URL = "https://sortedchoice.com";
 const SITE_HOST = SITE_URL.replace(/^https?:\/\//, "");
 
 /* ── Layout ────────────────────────────────────────────────────────────── */
@@ -261,9 +261,9 @@ function layout({ title, preheader, eyebrow, heading, lede, cta, code, list, not
   const siteLine =
     kind === "notification"
       ? `<span class="pd-ink-sub" style="color:${c.inkFaint};"
-                    >&copy; PickDForYou &nbsp;&middot;&nbsp; ${SITE_HOST}</span
+                    >&copy; SortedChoice &nbsp;&middot;&nbsp; ${SITE_HOST}</span
                   >`
-      : `<span class="pd-ink-sub" style="color:${c.inkFaint};">&copy; PickDForYou &nbsp;&middot;&nbsp; </span
+      : `<span class="pd-ink-sub" style="color:${c.inkFaint};">&copy; SortedChoice &nbsp;&middot;&nbsp; </span
                   ><a
                     class="pd-ink-sub"
                     href="${SITE_URL}"
@@ -376,7 +376,7 @@ function layout({ title, preheader, eyebrow, heading, lede, cta, code, list, not
                 <span
                   class="pd-ink"
                   style="font-family:${f.display}; font-size:22px; font-weight:800; letter-spacing:-0.045em; color:${c.ink};"
-                  >PickDForYou</span
+                  >SortedChoice</span
                 >
               </td>
             </tr>
@@ -398,7 +398,7 @@ ${body}
                   class="pd-ink-sub"
                   style="margin:0 0 10px; font-family:${f.body}; font-size:12px; line-height:1.7; color:${c.inkSub};"
                 >
-                  PickDForYou researches products so you can choose with confidence. We do not sell
+                  SortedChoice researches products so you can choose with confidence. We do not sell
                   anything &mdash; we hand you off to the retailer once you have decided.
                 </p>
                 <p
@@ -435,10 +435,10 @@ const templates = [
     vars: ["ConfirmationURL"],
     content: {
       title: "Confirm your email address",
-      preheader: "Confirm your email address to finish setting up your PickDForYou account.",
+      preheader: "Confirm your email address to finish setting up your SortedChoice account.",
       eyebrow: "Account setup",
       heading: "Confirm your email address",
-      lede: `One step left. Confirm this address and your PickDForYou account is ready &mdash; saved
+      lede: `One step left. Confirm this address and your SortedChoice account is ready &mdash; saved
                         shortlists, price alerts, and verdicts you can come back to.`,
       cta: { label: "Confirm email address", url: "{{ .ConfirmationURL }}" },
       list: {
@@ -451,7 +451,7 @@ const templates = [
       },
       notice: {
         text: `This link works once and expires in ${LINK_LIFETIME}. If you did not sign up for
-                              PickDForYou, you can ignore this email &mdash; the account stays
+                              SortedChoice, you can ignore this email &mdash; the account stays
                               unconfirmed and unusable.`,
       },
     },
@@ -462,14 +462,14 @@ const templates = [
     kind: "auth",
     subjectKey: "mailer_subjects_recovery",
     contentKey: "mailer_templates_recovery_content",
-    subject: "Reset your PickDForYou password",
+    subject: "Reset your SortedChoice password",
     vars: ["ConfirmationURL", "Email"],
     content: {
       title: "Reset your password",
-      preheader: "Choose a new password for your PickDForYou account.",
+      preheader: "Choose a new password for your SortedChoice account.",
       eyebrow: "Password reset",
       heading: "Reset your password",
-      lede: `Someone asked to reset the password for the PickDForYou account on
+      lede: `Someone asked to reset the password for the SortedChoice account on
                         <span style="color:${c.ink};">{{ .Email }}</span>. If that was you, pick a new
                         one below.`,
       cta: { label: "Choose a new password", url: "{{ .ConfirmationURL }}" },
@@ -486,17 +486,17 @@ const templates = [
     kind: "auth",
     subjectKey: "mailer_subjects_magic_link",
     contentKey: "mailer_templates_magic_link_content",
-    subject: "Your PickDForYou sign-in link",
+    subject: "Your SortedChoice sign-in link",
     vars: ["ConfirmationURL", "Email"],
     content: {
       title: "Your sign-in link",
-      preheader: "Your single-use link to sign in to PickDForYou. No password needed.",
+      preheader: "Your single-use link to sign in to SortedChoice. No password needed.",
       eyebrow: "Sign in",
       heading: "Your sign-in link",
-      lede: `Use the link below to sign in to PickDForYou as
+      lede: `Use the link below to sign in to SortedChoice as
                         <span style="color:${c.ink};">{{ .Email }}</span>. No password needed &mdash;
                         the link is the credential, so treat it like one.`,
-      cta: { label: "Sign in to PickDForYou", url: "{{ .ConfirmationURL }}" },
+      cta: { label: "Sign in to SortedChoice", url: "{{ .ConfirmationURL }}" },
       notice: {
         text: `This link works once and expires in ${LINK_LIFETIME}. If you did not ask to sign in,
                               ignore this email and do not forward it &mdash; anyone who opens the link
@@ -514,13 +514,13 @@ const templates = [
     vars: ["ConfirmationURL", "Email", "NewEmail"],
     content: {
       title: "Confirm your new email address",
-      preheader: "Approve the email address change on your PickDForYou account.",
+      preheader: "Approve the email address change on your SortedChoice account.",
       eyebrow: "Email change",
       heading: "Confirm your new email address",
       // config.toml sets double_confirm_changes = true, so this mail lands in
       // BOTH the old and the new inbox and the copy has to read correctly to
       // either recipient. Hence "from this address" rather than "your address".
-      lede: `A request was made to move this PickDForYou account from
+      lede: `A request was made to move this SortedChoice account from
                         <span style="color:${c.ink};">{{ .Email }}</span> to
                         <span style="color:${c.ink};">{{ .NewEmail }}</span>. Both addresses have to
                         approve, so confirm from this one below.`,
@@ -538,14 +538,14 @@ const templates = [
     kind: "auth",
     subjectKey: "mailer_subjects_invite",
     contentKey: "mailer_templates_invite_content",
-    subject: "You have been invited to PickDForYou",
+    subject: "You have been invited to SortedChoice",
     vars: ["ConfirmationURL"],
     content: {
       title: "You have been invited",
-      preheader: "Accept your invitation and set up your PickDForYou account.",
+      preheader: "Accept your invitation and set up your SortedChoice account.",
       eyebrow: "Invitation",
-      heading: "You have been invited to PickDForYou",
-      lede: `Someone at PickDForYou invited this address to an account. Accept below to set a
+      heading: "You have been invited to SortedChoice",
+      lede: `Someone at SortedChoice invited this address to an account. Accept below to set a
                         password and get in &mdash; it takes about a minute.`,
       cta: { label: "Accept invitation", url: "{{ .ConfirmationURL }}" },
       notice: {
@@ -563,16 +563,16 @@ const templates = [
     contentKey: "mailer_templates_reauthentication_content",
     // The code in the subject line means it is readable from a notification
     // without opening anything, which is the whole point of a reauth code.
-    subject: "{{ .Token }} is your PickDForYou verification code",
+    subject: "{{ .Token }} is your SortedChoice verification code",
     vars: ["Token"],
     content: {
       title: "Your verification code",
-      preheader: "Your single-use PickDForYou verification code.",
+      preheader: "Your single-use SortedChoice verification code.",
       eyebrow: "Security check",
       heading: "Your verification code",
       // Deliberately no button and no URL fallback: this flow has no
       // ConfirmationURL, and inventing a link would render as literal text.
-      lede: `Enter this code back in PickDForYou to confirm it is you. We ask for it before a
+      lede: `Enter this code back in SortedChoice to confirm it is you. We ask for it before a
                         change that would be expensive to undo.`,
       code: "{{ .Token }}",
       notice: {
@@ -595,14 +595,14 @@ const templates = [
     subjectKey: "mailer_subjects_password_changed_notification",
     contentKey: "mailer_templates_password_changed_notification_content",
     enabledKey: "mailer_notifications_password_changed_enabled",
-    subject: "Your PickDForYou password was changed",
+    subject: "Your SortedChoice password was changed",
     vars: [],
     content: {
       title: "Your password was changed",
-      preheader: "The password on your PickDForYou account was just changed.",
+      preheader: "The password on your SortedChoice account was just changed.",
       eyebrow: "Security notice",
       heading: "Your password was changed",
-      lede: `The password for your PickDForYou account was changed just now. If that was you,
+      lede: `The password for your SortedChoice account was changed just now. If that was you,
                         there is nothing to do &mdash; this note is only so a change never happens
                         quietly.`,
       notice: {
@@ -620,14 +620,14 @@ const templates = [
     subjectKey: "mailer_subjects_email_changed_notification",
     contentKey: "mailer_templates_email_changed_notification_content",
     enabledKey: "mailer_notifications_email_changed_enabled",
-    subject: "Your PickDForYou email address was changed",
+    subject: "Your SortedChoice email address was changed",
     vars: ["OldEmail", "Email"],
     content: {
       title: "Your email address was changed",
-      preheader: "The email address on your PickDForYou account was just changed.",
+      preheader: "The email address on your SortedChoice account was just changed.",
       eyebrow: "Security notice",
       heading: "Your email address was changed",
-      lede: `The email address on your PickDForYou account moved from
+      lede: `The email address on your SortedChoice account moved from
                         <span style="color:${c.ink};">{{ .OldEmail }}</span> to
                         <span style="color:${c.ink};">{{ .Email }}</span>.`,
       notice: {
@@ -644,14 +644,14 @@ const templates = [
     subjectKey: "mailer_subjects_phone_changed_notification",
     contentKey: "mailer_templates_phone_changed_notification_content",
     enabledKey: "mailer_notifications_phone_changed_enabled",
-    subject: "Your PickDForYou phone number was changed",
+    subject: "Your SortedChoice phone number was changed",
     vars: ["OldPhone", "Phone"],
     content: {
       title: "Your phone number was changed",
-      preheader: "The phone number on your PickDForYou account was just changed.",
+      preheader: "The phone number on your SortedChoice account was just changed.",
       eyebrow: "Security notice",
       heading: "Your phone number was changed",
-      lede: `The phone number on your PickDForYou account moved from
+      lede: `The phone number on your SortedChoice account moved from
                         <span style="color:${c.ink};">{{ .OldPhone }}</span> to
                         <span style="color:${c.ink};">{{ .Phone }}</span>.`,
       notice: {
@@ -668,15 +668,15 @@ const templates = [
     subjectKey: "mailer_subjects_mfa_factor_enrolled_notification",
     contentKey: "mailer_templates_mfa_factor_enrolled_notification_content",
     enabledKey: "mailer_notifications_mfa_factor_enrolled_enabled",
-    subject: "A new verification method was added to your PickDForYou account",
+    subject: "A new verification method was added to your SortedChoice account",
     vars: ["FactorType"],
     content: {
       title: "A new verification method was added",
-      preheader: "A two-factor verification method was added to your PickDForYou account.",
+      preheader: "A two-factor verification method was added to your SortedChoice account.",
       eyebrow: "Security notice",
       heading: "A new verification method was added",
       lede: `A <span style="color:${c.ink};">{{ .FactorType }}</span> verification method was added
-                        to your PickDForYou account. You will be asked for it the next time you sign in.`,
+                        to your SortedChoice account. You will be asked for it the next time you sign in.`,
       notice: {
         tone: "warn",
         text: `If you did not add it, remove it from your account settings and change your password
@@ -691,15 +691,15 @@ const templates = [
     subjectKey: "mailer_subjects_mfa_factor_unenrolled_notification",
     contentKey: "mailer_templates_mfa_factor_unenrolled_notification_content",
     enabledKey: "mailer_notifications_mfa_factor_unenrolled_enabled",
-    subject: "A verification method was removed from your PickDForYou account",
+    subject: "A verification method was removed from your SortedChoice account",
     vars: ["FactorType"],
     content: {
       title: "A verification method was removed",
-      preheader: "A two-factor verification method was removed from your PickDForYou account.",
+      preheader: "A two-factor verification method was removed from your SortedChoice account.",
       eyebrow: "Security notice",
       heading: "A verification method was removed",
       lede: `The <span style="color:${c.ink};">{{ .FactorType }}</span> verification method was
-                        removed from your PickDForYou account. Your account is now protected by its
+                        removed from your SortedChoice account. Your account is now protected by its
                         password alone.`,
       notice: {
         tone: "warn",
@@ -715,15 +715,15 @@ const templates = [
     subjectKey: "mailer_subjects_identity_linked_notification",
     contentKey: "mailer_templates_identity_linked_notification_content",
     enabledKey: "mailer_notifications_identity_linked_enabled",
-    subject: "A sign-in method was linked to your PickDForYou account",
+    subject: "A sign-in method was linked to your SortedChoice account",
     vars: ["Provider", "Email"],
     content: {
       title: "A sign-in method was linked",
-      preheader: "A new sign-in method was linked to your PickDForYou account.",
+      preheader: "A new sign-in method was linked to your SortedChoice account.",
       eyebrow: "Security notice",
       heading: "A sign-in method was linked",
       lede: `Your <span style="color:${c.ink};">{{ .Provider }}</span> account was linked as a way to
-                        sign in to PickDForYou as <span style="color:${c.ink};">{{ .Email }}</span>.`,
+                        sign in to SortedChoice as <span style="color:${c.ink};">{{ .Email }}</span>.`,
       notice: {
         tone: "warn",
         text: `If you did not link it, unlink it from your account settings and change your password
@@ -738,15 +738,15 @@ const templates = [
     subjectKey: "mailer_subjects_identity_unlinked_notification",
     contentKey: "mailer_templates_identity_unlinked_notification_content",
     enabledKey: "mailer_notifications_identity_unlinked_enabled",
-    subject: "A sign-in method was removed from your PickDForYou account",
+    subject: "A sign-in method was removed from your SortedChoice account",
     vars: ["Provider", "Email"],
     content: {
       title: "A sign-in method was removed",
-      preheader: "A sign-in method was removed from your PickDForYou account.",
+      preheader: "A sign-in method was removed from your SortedChoice account.",
       eyebrow: "Security notice",
       heading: "A sign-in method was removed",
       lede: `Your <span style="color:${c.ink};">{{ .Provider }}</span> account is no longer a way to
-                        sign in to PickDForYou as <span style="color:${c.ink};">{{ .Email }}</span>.`,
+                        sign in to SortedChoice as <span style="color:${c.ink};">{{ .Email }}</span>.`,
       notice: {
         tone: "warn",
         text: `If you did not remove it, change your password &mdash; losing a sign-in method you did
@@ -770,14 +770,14 @@ const templates = [
     key: "newsletter_confirmation",
     kind: "transactional",
     out: "../../backend/app/emails/newsletter_confirmation.html",
-    subject: "Confirm your PickDForYou newsletter subscription",
+    subject: "Confirm your SortedChoice newsletter subscription",
     vars: ["ConfirmURL", "Frequency"],
     content: {
       title: "Confirm your newsletter subscription",
-      preheader: "One click confirms your PickDForYou newsletter subscription.",
+      preheader: "One click confirms your SortedChoice newsletter subscription.",
       eyebrow: "Newsletter",
       heading: "Confirm your subscription",
-      lede: `Someone &mdash; we hope you &mdash; asked for the PickDForYou newsletter at this address,
+      lede: `Someone &mdash; we hope you &mdash; asked for the SortedChoice newsletter at this address,
                         on the <span style="color:${c.ink};">{{ .Frequency }}</span> cadence. Confirm it
                         below and the next one comes to you.`,
       cta: { label: "Confirm subscription", url: "{{ .ConfirmURL }}" },
@@ -910,7 +910,7 @@ if (PAYLOAD) {
 if (PREVIEW) {
   const samples = {
     ConfirmationURL:
-      "https://piked-for-you.vercel.app/auth/callback?code=6f2a1c9e-4b81-9d3e-a7f2-preview&next=%2Faccount%2Fsettings",
+      "https://sortedchoice.com/auth/callback?code=6f2a1c9e-4b81-9d3e-a7f2-preview&next=%2Faccount%2Fsettings",
     Email: "jayesh@example.com",
     NewEmail: "jayesh.new@example.com",
     OldEmail: "jayesh.old@example.com",
@@ -920,7 +920,7 @@ if (PREVIEW) {
     Provider: "Google",
     FactorType: "TOTP",
     ConfirmURL:
-      "https://piked-for-you.vercel.app/newsletter/confirm?token=preview-3f9a2c7e14b8d05a6c3f8e21",
+      "https://sortedchoice.com/newsletter/confirm?token=preview-3f9a2c7e14b8d05a6c3f8e21",
     Frequency: "weekly",
   };
   const fill = (s) =>
@@ -945,7 +945,7 @@ if (PREVIEW) {
   const sheet = `<!doctype html>
 <html lang="en"><head><meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>PickDForYou auth emails</title>
+<title>SortedChoice auth emails</title>
 <style>
   :root { color-scheme: light dark; --bg:#f4f1ed; --fg:#16161a; --mut:#65626f; --line:#e0dad3; --card:#fff; }
   @media (prefers-color-scheme: dark) {
@@ -972,7 +972,7 @@ if (PREVIEW) {
   @media (prefers-color-scheme: dark) { iframe { background:#0a0a0a; } }
 </style></head>
 <body>
-  <h1>PickDForYou auth emails</h1>
+  <h1>SortedChoice auth emails</h1>
   <p class="lede">All ${built.length} templates with sample values substituted. Light or dark follows
      your OS setting, the same way a mail client decides. Generated by
      <code>build.mjs --preview</code>; not a deployable artefact.</p>

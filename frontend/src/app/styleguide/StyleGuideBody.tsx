@@ -24,7 +24,7 @@ export function StyleGuideBody() {
         <div className="shell flex h-nav items-center justify-between">
           <div>
             <p className="font-display text-headline-sm font-black tracking-[-0.04em] text-ink">
-              PickDForYou
+              SortedChoice
             </p>
             <p className="t-eyebrow">Design system</p>
           </div>

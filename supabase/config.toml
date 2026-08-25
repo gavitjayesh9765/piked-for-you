@@ -1,4 +1,4 @@
-project_id = "pickdforyou"
+project_id = "sortedchoice"
 
 [api]
 enabled = true
@@ -138,11 +138,11 @@ subject = "Confirm your email address"
 content_path = "./supabase/templates/confirmation.html"
 
 [auth.email.template.recovery]
-subject = "Reset your PickDForYou password"
+subject = "Reset your SortedChoice password"
 content_path = "./supabase/templates/recovery.html"
 
 [auth.email.template.magic_link]
-subject = "Your PickDForYou sign-in link"
+subject = "Your SortedChoice sign-in link"
 content_path = "./supabase/templates/magic_link.html"
 
 [auth.email.template.email_change]
@@ -153,12 +153,12 @@ content_path = "./supabase/templates/email_change.html"
 # is no invite endpoint. Branded anyway so that Dashboard → Invite user can
 # never send the stock email by accident.
 [auth.email.template.invite]
-subject = "You have been invited to PickDForYou"
+subject = "You have been invited to SortedChoice"
 content_path = "./supabase/templates/invite.html"
 
 # The code goes in the subject so it is readable from a notification.
 [auth.email.template.reauthentication]
-subject = "{{ .Token }} is your PickDForYou verification code"
+subject = "{{ .Token }} is your SortedChoice verification code"
 content_path = "./supabase/templates/reauthentication.html"
 
 # --- Security notifications --------------------------------------------------
@@ -170,37 +170,37 @@ content_path = "./supabase/templates/reauthentication.html"
 
 [auth.email.notification.password_changed]
 enabled = false
-subject = "Your PickDForYou password was changed"
+subject = "Your SortedChoice password was changed"
 content_path = "./supabase/templates/password_changed.html"
 
 [auth.email.notification.email_changed]
 enabled = false
-subject = "Your PickDForYou email address was changed"
+subject = "Your SortedChoice email address was changed"
 content_path = "./supabase/templates/email_changed.html"
 
 [auth.email.notification.phone_changed]
 enabled = false
-subject = "Your PickDForYou phone number was changed"
+subject = "Your SortedChoice phone number was changed"
 content_path = "./supabase/templates/phone_changed.html"
 
 [auth.email.notification.mfa_factor_enrolled]
 enabled = false
-subject = "A new verification method was added to your PickDForYou account"
+subject = "A new verification method was added to your SortedChoice account"
 content_path = "./supabase/templates/mfa_factor_enrolled.html"
 
 [auth.email.notification.mfa_factor_unenrolled]
 enabled = false
-subject = "A verification method was removed from your PickDForYou account"
+subject = "A verification method was removed from your SortedChoice account"
 content_path = "./supabase/templates/mfa_factor_unenrolled.html"
 
 [auth.email.notification.identity_linked]
 enabled = false
-subject = "A sign-in method was linked to your PickDForYou account"
+subject = "A sign-in method was linked to your SortedChoice account"
 content_path = "./supabase/templates/identity_linked.html"
 
 [auth.email.notification.identity_unlinked]
 enabled = false
-subject = "A sign-in method was removed from your PickDForYou account"
+subject = "A sign-in method was removed from your SortedChoice account"
 content_path = "./supabase/templates/identity_unlinked.html"
 
 [auth.mfa]

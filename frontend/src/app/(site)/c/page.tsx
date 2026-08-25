@@ -14,7 +14,7 @@ import { CategoryIcon } from "@/components/ui/CategoryIcon";
 export const metadata: Metadata = {
   title: "The index — everything we research",
   description:
-    "Every category PickDForYou covers, and how far our research has actually got in each one.",
+    "Every category SortedChoice covers, and how far our research has actually got in each one.",
   alternates: { canonical: "/c" },
 };
 

@@ -11,7 +11,7 @@ import { IdleLogout } from "@/components/admin/IdleLogout";
 import { getAdminGate } from "@/lib/supabase/server";
 
 export const metadata: Metadata = {
-  title: "Admin · PickDForYou",
+  title: "Admin · SortedChoice",
   robots: { index: false, follow: false },
 };
 
@@ -94,7 +94,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             href="/admin"
             className="font-display text-body-lg font-black tracking-[-0.04em] text-ink"
           >
-            PickDForYou
+            SortedChoice
           </Link>
           <span className="rounded-xs border border-brand-line bg-brand-soft px-1.5 py-0.5 font-label text-[9px] font-bold uppercase tracking-[0.12em] text-brand-on-soft">
             Admin

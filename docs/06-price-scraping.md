@@ -1,6 +1,6 @@
 # Price tracking
 
-How PickDForYou keeps retailer prices current, and why it is built the way it
+How SortedChoice keeps retailer prices current, and why it is built the way it
 is.
 
 ---

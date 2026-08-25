@@ -211,7 +211,7 @@ class Retailer(UUIDMixin, TimestampMixin, Base):
     logo_url: Mapped[Optional[str]] = mapped_column(String(500))
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     display_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    # Affiliate tag template, e.g. "?tag=pickdforyou-21". Kept server-side so
+    # Affiliate tag template, e.g. "?tag=sortedchoice-21". Kept server-side so
     # the tracking parameters are never assembled in the browser.
     affiliate_template: Mapped[Optional[str]] = mapped_column(String(300))
 

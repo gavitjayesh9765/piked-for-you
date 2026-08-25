@@ -201,7 +201,7 @@ export function MobileNav({
       >
         <div className="flex h-nav shrink-0 items-center justify-between gap-3 border-b border-line px-5">
           <span className="font-display text-body-lg font-black tracking-[-0.04em] text-ink">
-            PickDForYou
+            SortedChoice
           </span>
           <button
             ref={closeRef}

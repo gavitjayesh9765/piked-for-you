@@ -1,4 +1,4 @@
-# PickDForYou
+# SortedChoice
 
 > **The decision layer between the user and the marketplace.**
 
@@ -6,7 +6,7 @@ A product research, comparison and recommendation platform. We research
 products so people can choose with confidence — then hand them off to Amazon,ss
 Flipkart, or the brand's own store to buy.
 
-PickDForYou is **not** a marketplace. There is no cart, no checkout, no
+SortedChoice is **not** a marketplace. There is no cart, no checkout, no
 inventory. The value is the research and decision layerddddd
 
 ---
@@ -67,7 +67,7 @@ alembic upgrade head
 | [Roadmap](docs/04-roadmap.md) | Build order and current status |
 | [Price scraping](docs/06-price-scraping.md) | How retailer prices are checked, judged and recorded |
 | [Newsletter email](docs/10-newsletter-email.md) | Mail transport, why Brevo, and how double opt-in completes |
-| [Master spec](PickDForYou_Master_Product_Architecture_Specification.md) | The original product specification |
+| [Master spec](SortedChoice_Master_Product_Architecture_Specification.md) | The original product specification |
 
 ---
 

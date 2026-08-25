@@ -352,7 +352,7 @@ export function ContactForm({ categories }: { categories: Category[] }) {
                 type="url"
                 value={productUrl}
                 onChange={(e) => setProductUrl(e.target.value)}
-                placeholder="https://pickdforyou.com/p/audio/…"
+                placeholder="https://sortedchoice.com/p/audio/…"
                 className={inputCls}
               />
             </Field>

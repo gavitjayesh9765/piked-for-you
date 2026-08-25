@@ -4,7 +4,7 @@ import { DocumentPage, DocLink } from "@/components/layout/DocumentPage";
 export const metadata: Metadata = {
   title: "Affiliate disclosure",
   description:
-    "How PickDForYou makes money, and the rules that keep it away from the verdicts.",
+    "How SortedChoice makes money, and the rules that keep it away from the verdicts.",
   alternates: { canonical: "/affiliate-disclosure" },
 };
 
@@ -24,7 +24,7 @@ export default function AffiliateDisclosurePage() {
           body: (
             <>
               <p>
-                When you follow a link from PickDForYou to a retailer and buy something, we may
+                When you follow a link from SortedChoice to a retailer and buy something, we may
                 receive a small commission from that retailer. <strong>It costs you nothing
                 extra</strong> — the price you pay is the price you would have paid arriving
                 any other way.
@@ -91,7 +91,7 @@ export default function AffiliateDisclosurePage() {
           body: (
             <>
               <p>
-                Prices shown on PickDForYou are captured when we check them and can move at any
+                Prices shown on SortedChoice are captured when we check them and can move at any
                 time. Always confirm the price on the retailer&rsquo;s own page before buying —
                 that page, not ours, is the authoritative one.
               </p>

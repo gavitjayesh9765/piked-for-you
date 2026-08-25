@@ -95,7 +95,7 @@ function Panel({ eyebrow, heading, body, cta, busy }: PanelCopy & { busy?: boole
           href="/"
           className="mt-8 inline-flex items-center justify-center rounded-full bg-value px-6 py-3 font-label text-label-sm uppercase tracking-[0.08em] text-on-value transition-colors hover:bg-value-strong"
         >
-          Back to PickDForYou
+          Back to SortedChoice
         </Link>
       )}
       {cta === "retry" && (

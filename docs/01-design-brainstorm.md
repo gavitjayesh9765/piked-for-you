@@ -1,8 +1,8 @@
-# PickDForYou — Design Brainstorm & Direction
+# SortedChoice — Design Brainstorm & Direction
 
-> Grounded in: `PickDForYou_Master_Product_Architecture_Specification.md` (§50, §51),
+> Grounded in: `SortedChoice_Master_Product_Architecture_Specification.md` (§50, §51),
 > the Stitch design system **PickD Visual Identity** (`assets/b24f8bb197aa4a248de46ff47576f6c1`),
-> and the five generated Stitch screens in `stitch_pickdforyou_design_system/`.
+> and the five generated Stitch screens in `stitch_sortedchoice_design_system/`.
 
 ---
 
@@ -18,7 +18,7 @@ This has a direct design consequence, and it is the single most important one:
 
 **The interface must never look like it is selling. It must look like it is reporting.**
 
-Amazon and Flipkart are dense, loud, and optimized for listing. PickDForYou is the
+Amazon and Flipkart are dense, loud, and optimized for listing. SortedChoice is the
 opposite: an *editorial research desk* that happens to link out to retailers. Think
 The Wirecutter, rendered with the industrial design language of Nothing and the spatial
 generosity of Apple.
@@ -211,7 +211,7 @@ tabular, and keyboard-shaped: same tokens, a tighter density scale.
 
 ## 7. Non-negotiables
 
-- Never imply PickDForYou sells or fulfils anything (§4.5). No cart, no basket glyph, no "Add to".
+- Never imply SortedChoice sells or fulfils anything (§4.5). No cart, no basket glyph, no "Add to".
 - PickD Score is not the community rating is not the marketplace rating. Three sources, three treatments (§32).
 - No "Verified Buyer" until a real verification mechanism exists. Say "User Review" (§31).
 - Affiliate disclosure is visible on any page carrying a retailer link (§59).

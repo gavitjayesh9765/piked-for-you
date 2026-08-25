@@ -1,10 +1,10 @@
-# PickDForYou — Product Vision, Architecture & Specification
+# SortedChoice — Product Vision, Architecture & Specification
 
 > **Document Type:** Master Product & Technical Specification  
 > **Status:** Initial MVP Specification  
-> **Project:** PickDForYou  
-> **Primary Domain:** pickdforyou.com  
-> **Secondary Domain:** pickdforyou.in (optional/protective)  
+> **Project:** SortedChoice  
+> **Primary Domain:** sortedchoice.com  
+> **Secondary Domain:** sortedchoice.in (optional/protective)  
 > **Purpose:** Single source of truth for product design and implementation
 
 ---
@@ -13,7 +13,7 @@
 
 ## 1.1 Product Name
 
-**PickDForYou**
+**SortedChoice**
 
 The product name communicates the core promise:
 
@@ -21,9 +21,9 @@ The product name communicates the core promise:
 
 The exact visual brand system, logo, typography, colors, and final naming treatment can evolve later. The product architecture must not depend on a particular logo treatment.
 
-## 1.2 What PickDForYou Is
+## 1.2 What SortedChoice Is
 
-PickDForYou is a **product research, comparison, recommendation, and discovery platform**.
+SortedChoice is a **product research, comparison, recommendation, and discovery platform**.
 
 It is intentionally **not another Amazon or Flipkart marketplace**.
 
@@ -31,17 +31,17 @@ The platform does not need to maintain its own inventory or process the actual p
 
 Instead:
 
-1. PickDForYou discovers and organizes products.
-2. The PickDForYou team researches and evaluates products.
+1. SortedChoice discovers and organizes products.
+2. The SortedChoice team researches and evaluates products.
 3. Products are compared using structured information.
-4. PickDForYou gives users clear recommendations and verdicts.
+4. SortedChoice gives users clear recommendations and verdicts.
 5. Users can read community reviews.
 6. Users can upload review images and short videos.
-7. When a user decides to buy, PickDForYou sends them to an external retailer such as Amazon or Flipkart.
+7. When a user decides to buy, SortedChoice sends them to an external retailer such as Amazon or Flipkart.
 
 ### Core concept
 
-> **Don't spend hours researching. PickDForYou does the research.**
+> **Don't spend hours researching. SortedChoice does the research.**
 
 ---
 
@@ -66,13 +66,13 @@ This process is time-consuming and often confusing.
 
 Marketplaces are optimized primarily for **selling and listing products**, not for giving users a concise, trustworthy purchasing decision.
 
-PickDForYou solves the decision problem.
+SortedChoice solves the decision problem.
 
 ---
 
 # 3. Solution
 
-PickDForYou creates a curated layer between product discovery and purchase.
+SortedChoice creates a curated layer between product discovery and purchase.
 
 ### Traditional flow
 
@@ -94,12 +94,12 @@ Decision
 Purchase
 ```
 
-### PickDForYou flow
+### SortedChoice flow
 
 ```text
 User
   ↓
-PickDForYou
+SortedChoice
   ↓
 Search / browse / categories
   ↓
@@ -124,7 +124,7 @@ The platform's value is the **research and decision layer**.
 
 # 4. Product Philosophy
 
-PickDForYou should follow these principles:
+SortedChoice should follow these principles:
 
 ## 4.1 Recommendation over catalog size
 
@@ -152,14 +152,14 @@ Every major recommendation should have an underlying research process.
 
 Clearly distinguish:
 
-- PickDForYou's own verdict.
+- SortedChoice's own verdict.
 - Community/user reviews.
 - Marketplace ratings.
 - Price information.
 
 ## 4.5 User choice
 
-PickDForYou recommends; the user decides.
+SortedChoice recommends; the user decides.
 
 The platform must not misleadingly imply that it sells or directly fulfills products.
 
@@ -226,14 +226,14 @@ Admins create and manage categories dynamically.
 
 # 7. Business Model
 
-PickDForYou is designed to eventually monetize through external retailer referrals/affiliate relationships.
+SortedChoice is designed to eventually monetize through external retailer referrals/affiliate relationships.
 
 Example:
 
 ```text
 User
  ↓
-PickDForYou product page
+SortedChoice product page
  ↓
 "View on Amazon"
  ↓
@@ -247,7 +247,7 @@ Affiliate attribution/commission where applicable
 Another possible flow:
 
 ```text
-PickDForYou
+SortedChoice
  ↓
 "View on Flipkart"
  ↓
@@ -256,7 +256,7 @@ Flipkart
 Purchase
 ```
 
-PickDForYou does not need to process payments in the MVP.
+SortedChoice does not need to process payments in the MVP.
 
 No shopping cart or checkout is required for the initial product.
 
@@ -265,7 +265,7 @@ No shopping cart or checkout is required for the initial product.
 # 8. Overall System Architecture
 
 ```text
-                         PICKDFORYOU
+                         SORTEDCHOICE
                               │
               ┌───────────────┴───────────────┐
               │                               │
@@ -300,7 +300,7 @@ No shopping cart or checkout is required for the initial product.
 The project should be separated into logical applications/modules.
 
 ```text
-PickDForYou/
+SortedChoice/
 │
 ├── frontend/
 │   ├── public website
@@ -438,7 +438,7 @@ Footer
 
 The navbar should include:
 
-- PickDForYou brand/logo.
+- SortedChoice brand/logo.
 - Search bar.
 - Categories/navigation.
 - Top Picks or recommendations.
@@ -802,7 +802,7 @@ Electronics
 
 # 24. PickD Score
 
-PickDForYou should not simply copy marketplace star ratings.
+SortedChoice should not simply copy marketplace star ratings.
 
 It should provide its own evaluation.
 
@@ -1724,7 +1724,7 @@ Do NOT build these unless specifically required later:
 - Full social network.
 - Complex loyalty system.
 
-PickDForYou is not an e-commerce marketplace.
+SortedChoice is not an e-commerce marketplace.
 
 ---
 
@@ -1782,17 +1782,17 @@ Better if:
 - Comfort is more important.
 ```
 
-This feature represents the long-term vision of PickDForYou.
+This feature represents the long-term vision of SortedChoice.
 
 ---
 
 # 59. Trust & Transparency
 
-PickDForYou should clearly distinguish:
+SortedChoice should clearly distinguish:
 
 ### PickD Research
 
-Information and recommendations created by PickDForYou.
+Information and recommendations created by SortedChoice.
 
 ### Community
 
@@ -1983,7 +1983,7 @@ Object storage/CDN
 Domain:
 
 ```text
-pickdforyou.com
+sortedchoice.com
 ```
 
 should point to the production frontend.
@@ -1991,7 +1991,7 @@ should point to the production frontend.
 API can use a subdomain such as:
 
 ```text
-api.pickdforyou.com
+api.sortedchoice.com
 ```
 
 The exact infrastructure provider can be selected later.
@@ -2084,7 +2084,7 @@ The MVP is successful when:
 
 # 70. Core Product Statement
 
-PickDForYou should always be understood as:
+SortedChoice should always be understood as:
 
 > **A research-first product discovery platform that helps people decide what to buy without spending hours researching across multiple websites.**
 
@@ -2184,7 +2184,7 @@ External marketplaces should remain external.
 
 Users should provide the community layer.
 
-PickDForYou should own the **research, recommendation, organization, discovery and decision experience**.
+SortedChoice should own the **research, recommendation, organization, discovery and decision experience**.
 
 ---
 
@@ -2192,13 +2192,13 @@ PickDForYou should own the **research, recommendation, organization, discovery a
 
 The long-term vision is:
 
-> **A user should be able to come to PickDForYou, tell us what they need, understand the best available options in minutes, and confidently choose where to buy.**
+> **A user should be able to come to SortedChoice, tell us what they need, understand the best available options in minutes, and confidently choose where to buy.**
 
 Instead of:
 
 > "Here are 500 products. Good luck."
 
-PickDForYou should say:
+SortedChoice should say:
 
 > **"We researched these. Here are the ones worth your attention — and here's why."**
 

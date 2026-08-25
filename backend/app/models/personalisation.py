@@ -34,7 +34,7 @@ from app.models.base import Base, TimestampMixin, UUIDMixin
 class SavedProduct(UUIDMixin, Base):
     """A product on someone's shortlist.
 
-    Deliberately not a "cart": PickDForYou sells nothing (spec §56). This is a
+    Deliberately not a "cart": SortedChoice sells nothing (spec §56). This is a
     research shortlist — things you are still deciding between.
     """
 

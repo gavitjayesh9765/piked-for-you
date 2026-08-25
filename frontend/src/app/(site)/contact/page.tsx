@@ -94,7 +94,7 @@ export default async function ContactPage() {
                 cta: "How we research",
               },
               {
-                q: "Can I sell on PickDForYou?",
+                q: "Can I sell on SortedChoice?",
                 a: "There's nothing to sell on — we're a research desk, not a marketplace. We don't hold inventory or process payments.",
                 href: "/about",
                 cta: "Our story",

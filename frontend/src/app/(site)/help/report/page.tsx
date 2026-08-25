@@ -3,7 +3,7 @@ import { DocumentPage, DocLink } from "@/components/layout/DocumentPage";
 
 export const metadata: Metadata = {
   title: "Report a review",
-  description: "What we remove, what we do not, and how to report a review on PickDForYou.",
+  description: "What we remove, what we do not, and how to report a review on SortedChoice.",
   alternates: { canonical: "/help/report" },
 };
 

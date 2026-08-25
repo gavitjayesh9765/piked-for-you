@@ -51,7 +51,7 @@ the question. Given the frontend is on Vercel, $7/mo is the whole hosting bill.
 
 1. Push this repo to GitHub.
 2. Render Dashboard → **New → Blueprint** → select the repo. It reads
-   [`render.yaml`](../render.yaml) and creates `pickdforyou-api`.
+   [`render.yaml`](../render.yaml) and creates `sortedchoice-api`.
 3. Render prompts for every `sync: false` variable. Fill in from
    `backend/.env`:
 

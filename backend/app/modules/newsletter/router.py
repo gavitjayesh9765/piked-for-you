@@ -111,8 +111,8 @@ async def _send_confirmation(email: str, token: str, frequency: str) -> bool:
         return False
 
     text = (
-        "Confirm your PickDForYou newsletter subscription\n\n"
-        f"Someone asked for the PickDForYou newsletter at this address, on the {cadence} "
+        "Confirm your SortedChoice newsletter subscription\n\n"
+        f"Someone asked for the SortedChoice newsletter at this address, on the {cadence} "
         "cadence. Confirm it here:\n\n"
         f"{url}\n\n"
         "This link works once and expires in 24 hours. If you did not ask for this, "

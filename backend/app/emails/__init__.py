@@ -31,7 +31,7 @@ HERE = Path(__file__).resolve().parent
 # config keys, so the builder has nowhere to put one for a template it does not
 # push. It is duplicated from the `newsletter_confirmation` entry in
 # build.mjs; change it in both places.
-NEWSLETTER_CONFIRMATION_SUBJECT = "Confirm your PickDForYou newsletter subscription"
+NEWSLETTER_CONFIRMATION_SUBJECT = "Confirm your SortedChoice newsletter subscription"
 
 # Go template syntax, because the builder's verifier greps for exactly this
 # form to enforce the per-template variable whitelist. Keeping the same syntax

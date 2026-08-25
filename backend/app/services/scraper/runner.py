@@ -49,7 +49,7 @@ from app.models import (
 from app.services.scraper.extract import NoPriceFound, Reading, extract_price
 from app.services.scraper.fetch import Engine, Fetcher, FetchError
 
-log = logging.getLogger("pickdforyou.scraper")
+log = logging.getLogger("sortedchoice.scraper")
 
 # How often the worker re-reads its own job row to notice a cancel request.
 # Every item would be a query per link; never would make the button a lie.

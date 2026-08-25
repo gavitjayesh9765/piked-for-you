@@ -159,7 +159,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                 />
               ))}
               <p className="text-label-xs leading-relaxed text-ink-faint">
-                PickDForYou does not sell this product. Prices are indicative and last checked
+                SortedChoice does not sell this product. Prices are indicative and last checked
                 separately by each retailer — confirm on their site before buying.
               </p>
             </div>

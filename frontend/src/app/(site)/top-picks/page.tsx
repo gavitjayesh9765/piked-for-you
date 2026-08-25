@@ -16,7 +16,7 @@ import { PanelArriving, ValueArriving } from "@/components/ui/Arriving";
 export const metadata: Metadata = {
   title: "Top Picks — the board",
   description:
-    "Every product currently carrying a PickDForYou recommendation, ordered by our editors.",
+    "Every product currently carrying a SortedChoice recommendation, ordered by our editors.",
   alternates: { canonical: "/top-picks" },
 };
 

@@ -63,7 +63,7 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
             href="/"
             className="shrink-0 font-display text-[1.15rem] font-black tracking-[-0.045em] text-ink sm:text-[1.35rem]"
           >
-            PickDForYou
+            SortedChoice
           </Link>
 
           {/* Search is the front door (spec §33) — it gets the growing space.

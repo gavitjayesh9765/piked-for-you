@@ -4,7 +4,7 @@ import { DocumentPage, DocLink } from "@/components/layout/DocumentPage";
 export const metadata: Metadata = {
   title: "Help centre",
   description:
-    "How PickDForYou works, what the scores mean, and what to do when something looks wrong.",
+    "How SortedChoice works, what the scores mean, and what to do when something looks wrong.",
   alternates: { canonical: "/help" },
 };
 

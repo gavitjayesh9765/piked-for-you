@@ -84,7 +84,7 @@ def server():
 def fetcher(**overrides) -> Fetcher:
     return Fetcher(
         **{
-            "user_agent": "PickDForYouBot/1.0 (test)",
+            "user_agent": "SortedChoiceBot/1.0 (test)",
             "timeout_seconds": 10,
             "max_retries": 0,
             "respect_robots": True,

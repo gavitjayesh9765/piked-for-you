@@ -15,7 +15,7 @@ import { SaveButton } from "./SaveButton";
  * a card with it is a recommendation. See docs/01-design-brainstorm.md §3.3.
  *
  * Note what is deliberately absent: no cart, no "Add to", no basket glyph.
- * PickDForYou does not sell (spec §4.5).
+ * SortedChoice does not sell (spec §4.5).
  */
 export function ProductCard({
   product,

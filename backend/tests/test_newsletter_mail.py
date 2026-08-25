@@ -92,12 +92,12 @@ def test_unknown_variable_raises() -> None:
 def test_confirm_url_points_at_the_site_not_the_api(monkeypatch: pytest.MonkeyPatch) -> None:
     """The API's own /confirm answers with JSON. A subscriber who lands there
     sees a white page with a brace on it."""
-    monkeypatch.setattr(nl.settings, "SITE_URL", "https://pickdforyou.com")
-    assert nl._confirm_url("tok123").startswith("https://pickdforyou.com/newsletter/confirm?")
+    monkeypatch.setattr(nl.settings, "SITE_URL", "https://sortedchoice.com")
+    assert nl._confirm_url("tok123").startswith("https://sortedchoice.com/newsletter/confirm?")
 
 
 def test_confirm_url_percent_encodes_the_token(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(nl.settings, "SITE_URL", "https://pickdforyou.com")
+    monkeypatch.setattr(nl.settings, "SITE_URL", "https://sortedchoice.com")
     assert "token=a%2Bb%3Dc" in nl._confirm_url("a+b=c")
 
 
@@ -127,7 +127,7 @@ async def test_send_confirmation_hands_the_transport_a_complete_message(
 ) -> None:
     rec = _Recorder()
     monkeypatch.setattr(nl, "get_transport", lambda: rec)
-    monkeypatch.setattr(nl.settings, "SITE_URL", "https://pickdforyou.com")
+    monkeypatch.setattr(nl.settings, "SITE_URL", "https://sortedchoice.com")
 
     assert await nl._send_confirmation("reader@example.com", "tok123", "weekly") is True
 
@@ -213,7 +213,7 @@ class _FakeClient:
 
 def _brevo() -> BrevoTransport:
     return BrevoTransport(
-        api_key="key-abc", sender_email="hello@x.test", sender_name="PickDForYou", reply_to=""
+        api_key="key-abc", sender_email="hello@x.test", sender_name="SortedChoice", reply_to=""
     )
 
 

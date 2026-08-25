@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 /**
  * The user's shortlist.
  *
- * Deliberately *not* a cart. PickDForYou sells nothing (spec §56) — this is a
+ * Deliberately *not* a cart. SortedChoice sells nothing (spec §56) — this is a
  * research shortlist, things you are still deciding between. The copy says so
  * rather than borrowing shopping-basket language.
  *

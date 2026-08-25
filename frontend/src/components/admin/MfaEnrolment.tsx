@@ -67,7 +67,7 @@ export function MfaEnrolment({ alreadyEnrolled }: { alreadyEnrolled: boolean }) 
     // date alone means one unenroll failure blocks every retry for 24 hours.
     const { data, error: enrolError } = await supabase.auth.mfa.enroll({
       factorType: "totp",
-      friendlyName: `PickDForYou ${new Date().toISOString().replace(/[:.]/g, "-")}`,
+      friendlyName: `SortedChoice ${new Date().toISOString().replace(/[:.]/g, "-")}`,
     });
 
     if (enrolError || !data) {

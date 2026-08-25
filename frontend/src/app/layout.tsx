@@ -24,16 +24,16 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-geist", display: "sw
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono", display: "swap" });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://pickdforyou.com"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://sortedchoice.com"),
   title: {
-    default: "PickDForYou — We research products so you can choose with confidence",
-    template: "%s · PickDForYou",
+    default: "SortedChoice — We research products so you can choose with confidence",
+    template: "%s · SortedChoice",
   },
   description:
     "Independent product research, comparisons and verdicts. Stop spending hours researching — see what's actually worth buying, and why.",
   openGraph: {
     type: "website",
-    siteName: "PickDForYou",
+    siteName: "SortedChoice",
     locale: "en_IN",
   },
   robots: { index: true, follow: true },

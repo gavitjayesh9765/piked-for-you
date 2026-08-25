@@ -1,4 +1,4 @@
-# PickDForYou — Design System Reference
+# SortedChoice — Design System Reference
 
 > Source of truth: `frontend/src/styles/tokens.css`
 > Live preview: `/styleguide` (run the frontend, flip the theme toggle)

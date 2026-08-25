@@ -64,7 +64,7 @@ mail sent from `subscribe()` spends from the same budget a campaign would.
 | `MAIL_PROVIDER` | `brevo` / `console` / `disabled` | `console` is refused in production — see below |
 | `BREVO_API_KEY` | The v3 API key | Required when provider is `brevo`, checked at startup |
 | `MAIL_FROM_EMAIL` | Sender address | Must be on the domain authenticated in step 2 |
-| `MAIL_FROM_NAME` | Display name | Defaults to `PickDForYou` |
+| `MAIL_FROM_NAME` | Display name | Defaults to `SortedChoice` |
 | `MAIL_REPLY_TO` | Optional | Empty means replies go to the sender |
 | `SITE_URL` | The **frontend** origin | Not this API — see below |
 

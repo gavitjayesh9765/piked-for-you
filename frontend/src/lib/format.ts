@@ -1,6 +1,6 @@
 import type { Category, ProductSummary } from "./types";
 
-/** Default market is India (spec: pickdforyou.in, ₹ pricing examples). */
+/** Default market is India (spec: sortedchoice.in, ₹ pricing examples). */
 const DEFAULT_LOCALE = "en-IN";
 
 export function formatPrice(amount: number | string | null | undefined, currency = "INR"): string {

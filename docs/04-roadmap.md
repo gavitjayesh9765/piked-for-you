@@ -1,4 +1,4 @@
-# PickDForYou — Build Roadmap
+# SortedChoice — Build Roadmap
 
 > Ordered per spec §68. Nothing here is built simultaneously — each phase
 > depends on the one before it.
@@ -155,7 +155,7 @@ is a convenience, never the control (§27).
 - [ ] CI: lint, typecheck, test, build
 - [ ] Staging environment
 - [ ] Managed Postgres with backups
-- [ ] `pickdforyou.com` → frontend, `api.pickdforyou.com` → API
+- [ ] `sortedchoice.com` → frontend, `api.sortedchoice.com` → API
 
 ---
 

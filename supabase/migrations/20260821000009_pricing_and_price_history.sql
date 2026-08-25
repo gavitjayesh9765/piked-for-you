@@ -227,7 +227,7 @@ create table if not exists public.pricing_settings (
   max_retries            integer      not null default 2,
   respect_robots         boolean      not null default true,
   user_agent             text         not null default
-    'PickDForYouBot/1.0 (+https://pickdforyou.com/about; price accuracy check)',
+    'SortedChoiceBot/1.0 (+https://sortedchoice.com/about; price accuracy check)',
 
   -- Scope defaults for the button.
   stale_after_hours      integer      not null default 24,

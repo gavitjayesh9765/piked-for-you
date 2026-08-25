@@ -3,7 +3,7 @@ import { DocumentPage, DocLink } from "@/components/layout/DocumentPage";
 
 export const metadata: Metadata = {
   title: "Privacy policy",
-  description: "What PickDForYou collects, why, how long it is kept, and how to get it deleted.",
+  description: "What SortedChoice collects, why, how long it is kept, and how to get it deleted.",
   alternates: { canonical: "/privacy" },
 };
 
@@ -24,7 +24,7 @@ export default function PrivacyPage() {
             <>
               <p>
                 We collect the minimum needed to run the site, and we do not sell personal data to
-                anyone. You can read every verdict on PickDForYou without an account, without
+                anyone. You can read every verdict on SortedChoice without an account, without
                 logging in, and without telling us who you are.
               </p>
             </>
@@ -192,7 +192,7 @@ export default function PrivacyPage() {
           title: "Children",
           body: (
             <p>
-              PickDForYou is not intended for children under 13, and we do not knowingly collect
+              SortedChoice is not intended for children under 13, and we do not knowingly collect
               their data. If you believe a child has given us personal information,{" "}
               <DocLink href="/contact">tell us</DocLink> and we will delete it.
             </p>

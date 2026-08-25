@@ -7,7 +7,7 @@ import { cn } from "@/lib/cn";
 /**
  * Save to shortlist.
  *
- * Deliberately a bookmark, not a cart: PickDForYou sells nothing (spec §56).
+ * Deliberately a bookmark, not a cart: SortedChoice sells nothing (spec §56).
  * The label says "Save" / "Saved", never "Add to".
  *
  * Optimistic — the state flips immediately and reverts if the request fails.

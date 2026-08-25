@@ -3,7 +3,7 @@ import { DocumentPage, DocLink } from "@/components/layout/DocumentPage";
 
 export const metadata: Metadata = {
   title: "Terms of service",
-  description: "The terms you agree to by using PickDForYou.",
+  description: "The terms you agree to by using SortedChoice.",
   alternates: { canonical: "/terms" },
 };
 
@@ -23,7 +23,7 @@ export default function TermsPage() {
           body: (
             <>
               <p>
-                PickDForYou publishes independent research and recommendations about consumer
+                SortedChoice publishes independent research and recommendations about consumer
                 products. By using the site you agree to these terms.
               </p>
               <p>
@@ -135,7 +135,7 @@ export default function TermsPage() {
           body: (
             <p>
               The site&rsquo;s text, design, scoring methodology, and branding belong to
-              PickDForYou. You are welcome to quote us with attribution and a link. Wholesale
+              SortedChoice. You are welcome to quote us with attribution and a link. Wholesale
               reproduction of our verdicts or scores is not permitted without permission. Product
               names, logos, and images belong to their respective owners.
             </p>

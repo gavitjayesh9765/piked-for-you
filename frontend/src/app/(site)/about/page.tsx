@@ -3,7 +3,7 @@ import { DocumentPage, DocLink } from "@/components/layout/DocumentPage";
 
 export const metadata: Metadata = {
   title: "Our story",
-  description: "Why PickDForYou exists, what it refuses to be, and who it is for.",
+  description: "Why SortedChoice exists, what it refuses to be, and who it is for.",
   alternates: { canonical: "/about" },
 };
 

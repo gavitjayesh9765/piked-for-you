@@ -12,7 +12,7 @@ import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 
 export const metadata: Metadata = {
   title: "Brands",
-  description: "Every brand PickDForYou covers, and how many of their products we have researched.",
+  description: "Every brand SortedChoice covers, and how many of their products we have researched.",
   alternates: { canonical: "/b" },
 };
 

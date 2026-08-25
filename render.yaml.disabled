@@ -1,4 +1,4 @@
-# Render Blueprint — PickDForYou API.
+# Render Blueprint — SortedChoice API.
 #
 # Infrastructure as code so the deploy is reproducible: create the service with
 # Render Dashboard -> New -> Blueprint -> point at this repo.
@@ -49,7 +49,7 @@
 
 services:
   - type: web
-    name: pickdforyou-api
+    name: sortedchoice-api
     runtime: python
     rootDir: backend
 
@@ -181,7 +181,7 @@ services:
       - key: MAIL_FROM_EMAIL
         sync: false
       - key: MAIL_FROM_NAME
-        value: PickDForYou
+        value: SortedChoice
 
 # ---------------------------------------------------------------------------
 # DISABLED — renamed from render.yaml on 2026-08-23.

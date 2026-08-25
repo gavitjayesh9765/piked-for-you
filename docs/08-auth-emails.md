@@ -105,7 +105,7 @@ The build fails, and nothing is written or pushed, if any of these break:
 Vercel deployment:
 
 ```js
-const SITE_URL = "https://piked-for-you.vercel.app";
+const SITE_URL = "https://sortedchoice.com";
 ```
 
 When the real domain is bought, change that line, rebuild, and push. Nothing

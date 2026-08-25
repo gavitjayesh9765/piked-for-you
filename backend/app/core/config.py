@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: Literal["development", "staging", "production"] = "development"
     DEBUG: bool = False
     API_V1_PREFIX: str = "/api/v1"
-    PROJECT_NAME: str = "PickDForYou API"
+    PROJECT_NAME: str = "SortedChoice API"
 
     # --- Supabase ---
     SUPABASE_URL: str = "http://localhost:54321"
@@ -106,8 +106,8 @@ class Settings(BaseSettings):
     # with MAIL_PROVIDER=console in .env — see docs/10-newsletter-email.md.
     MAIL_PROVIDER: Literal["brevo", "console", "disabled"] = "disabled"
     BREVO_API_KEY: str = ""
-    MAIL_FROM_EMAIL: str = "hello@pickdforyou.com"
-    MAIL_FROM_NAME: str = "PickDForYou"
+    MAIL_FROM_EMAIL: str = "hello@sortedchoice.com"
+    MAIL_FROM_NAME: str = "SortedChoice"
     # Empty means Brevo omits the header and replies go to the sender address.
     MAIL_REPLY_TO: str = ""
 

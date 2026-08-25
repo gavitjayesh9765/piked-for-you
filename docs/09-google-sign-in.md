@@ -23,7 +23,7 @@ the same one-time `code`:
 
 ## Google Cloud Console (once)
 
-1. **APIs & Services → OAuth consent screen.** External. App name *PickDForYou*,
+1. **APIs & Services → OAuth consent screen.** External. App name *SortedChoice*,
    support email, logo, and the app domain. Scopes: `email`, `profile`, `openid`
    — nothing more. Anything beyond those three drags the project into Google's
    verification review for no gain, since the only claims we read are the name
@@ -32,7 +32,7 @@ the same one-time `code`:
    listed under **Test users** can sign in, and everyone else gets a flat
    "access blocked" with no explanation on our side to soften it.
 3. **Credentials → Create credentials → OAuth client ID → Web application.**
-   - Authorised JavaScript origins: `https://pickdforyou.com` (and
+   - Authorised JavaScript origins: `https://sortedchoice.com` (and
      `http://localhost:3000` for local work).
    - Authorised redirect URIs: **the Supabase callback, not ours.**
      ```
@@ -41,7 +41,7 @@ the same one-time `code`:
      ```
      This is the step that is wrong most often. The browser's journey is
      Google → *Supabase* → `/auth/callback` on our domain; Google never
-     redirects to us directly, so putting `https://pickdforyou.com/auth/callback`
+     redirects to us directly, so putting `https://sortedchoice.com/auth/callback`
      here produces `redirect_uri_mismatch` and nothing else.
 4. Copy the client ID and client secret.
 

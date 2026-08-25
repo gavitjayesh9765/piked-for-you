@@ -16,8 +16,8 @@
 -- parameter for a link that does not pay one would be noise in someone else's
 -- analytics.
 insert into public.retailers (name, slug, display_order, affiliate_template) values
-  ('Amazon',   'amazon',   1, '?tag=pickdforyou-21'),
-  ('Flipkart', 'flipkart', 2, '?affid=pickdforyou'),
+  ('Amazon',   'amazon',   1, '?tag=sortedchoice-21'),
+  ('Flipkart', 'flipkart', 2, '?affid=sortedchoice'),
   ('Official', 'official', 3, null)
 on conflict (slug) do nothing;
 
