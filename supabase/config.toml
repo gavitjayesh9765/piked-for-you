@@ -117,7 +117,7 @@ max_frequency = "60s"
 # flows; ours is the browser redirect through /auth/callback, where the nonce
 # is a replay defence worth keeping.
 [auth.external.google]
-enabled = false
+enabled = true
 client_id = "env(SUPABASE_AUTH_GOOGLE_CLIENT_ID)"
 secret = "env(SUPABASE_AUTH_GOOGLE_SECRET)"
 redirect_uri = "http://localhost:54321/auth/v1/callback"
