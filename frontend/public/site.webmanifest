@@ -1,0 +1,14 @@
+{
+  "name": "SortedChoice",
+  "short_name": "SortedChoice",
+  "description": "Independent product research, comparisons and verdicts.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "theme_color": "#f4f1ed",
+  "background_color": "#f4f1ed",
+  "icons": [
+    { "src": "/brand/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/brand/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

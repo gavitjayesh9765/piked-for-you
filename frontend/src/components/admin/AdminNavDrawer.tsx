@@ -125,7 +125,11 @@ export function AdminNavDrawer({ groups }: { groups: NavGroup[] }) {
         inert={!open}
       >
         <div className="flex h-16 shrink-0 items-center gap-3 border-b border-line px-5">
-          <Link href="/admin" className="font-display text-body-lg font-black tracking-[-0.04em] text-ink">
+          <Link
+            href="/admin"
+            className="flex items-center gap-2 font-display text-body-lg font-black tracking-[-0.04em] text-ink"
+          >
+            <BrandMark size={22} priority={false} />
             SortedChoice
           </Link>
           <span className="rounded-xs border border-brand-line bg-brand-soft px-1.5 py-0.5 font-label text-[9px] font-bold uppercase tracking-[0.12em] text-brand-on-soft">

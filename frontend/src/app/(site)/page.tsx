@@ -92,9 +92,17 @@ function SiteStructuredData() {
             url: absoluteUrl("/"),
             description: SITE_DESCRIPTION,
             slogan: SITE_TAGLINE,
+            // The 512px cut in public/brand, not the old generated `/icon.png`
+            // route — that file is gone. Google wants a real raster it can
+            // fetch and crop for a knowledge panel, and it wants the DIMENSIONS
+            // stated: an ImageObject with a bare `url` is accepted but not
+            // preferred, and the dark-ink cut is the one to hand it, since the
+            // panel is rendered on white.
             logo: {
               "@type": "ImageObject",
-              url: absoluteUrl("/icon.png"),
+              url: absoluteUrl("/brand/icon-512.png"),
+              width: 512,
+              height: 512,
             },
             // The trust documents, declared as the organisation's stated
             // policies. An evaluator — human or algorithmic — assessing whether

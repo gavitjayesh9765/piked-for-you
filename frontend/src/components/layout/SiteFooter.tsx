@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { BrandMark } from "./BrandMark";
+
 /**
  * Footer. Carries the affiliate disclosure, which spec §59 requires to be
  * visible on any page that links out to a retailer — i.e. effectively every
@@ -48,7 +50,14 @@ export function SiteFooter() {
     <footer className="mt-section border-t border-line bg-surface-1">
       <div className="shell grid gap-12 py-16 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,3fr)]">
         <div className="max-w-sm">
-          <Link href="/" className="font-display text-[1.6rem] font-black tracking-[-0.045em] text-ink">
+          <Link
+            href="/"
+            className="flex items-center gap-3 font-display text-[1.6rem] font-black tracking-[-0.045em] text-ink"
+          >
+            {/* Not `priority` — by the time anyone reaches the footer the page
+                has long since painted, and a preload here would compete with
+                the header's copy of the same two files for no gain. */}
+            <BrandMark size={38} priority={false} />
             SortedChoice
           </Link>
           <p className="mt-4 text-body-sm text-ink-muted">

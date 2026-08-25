@@ -60,6 +60,57 @@ export const metadata: Metadata = {
     title: `${SITE_NAME} — ${SITE_TAGLINE}`,
     description: SITE_DESCRIPTION,
   },
+  /**
+   * Favicons, the touch icon and the manifest — all static files under
+   * `public/brand/`, all cut from the one supplied mark.
+   *
+   * ---------------------------------------------------------------------------
+   * WHY THESE ARE DECLARED HERE RATHER THAN LEFT TO THE FILE CONVENTION
+   *
+   * This used to be `app/icon.tsx` and `app/apple-icon.tsx` — two `ImageResponse`
+   * routes drawing a purple "S" monogram, written as a placeholder when there
+   * was no brand asset to point at. There is one now, so both files are gone.
+   * A real 512px mark beats a generated letterform, and a static PNG beats
+   * rendering one per request.
+   *
+   * With the artwork in `public/`, the file convention no longer applies, so the
+   * <link> tags have to be declared. That is also what makes the pair below
+   * possible, which the convention could not express.
+   *
+   * ---------------------------------------------------------------------------
+   * THE LIGHT/DARK PAIR, AND ITS ONE LIMITATION
+   *
+   * The mark is monochrome: `mark-dark.png` is near-black ink, `mark-light.png`
+   * is near-white, both on transparency. A single one of them is invisible in
+   * half of all browser chrome — black ink vanishes into a dark tab strip — so
+   * both are offered and `media` lets the browser pick.
+   *
+   * ⚠ That `media` query is `prefers-color-scheme`, i.e. the OS setting. It is
+   * NOT this site's theme: the toggle writes `data-theme` on <html>, and no
+   * amount of it reaches browser chrome. So a reader on a light OS who switches
+   * the page to dark keeps the dark-ink favicon. That is correct — the icon
+   * lives in the tab strip, which is still light — and it is worth stating
+   * because it looks like a bug the first time you notice it.
+   *
+   * `/favicon.ico` (dark ink) stays at the web root as the unconditional
+   * fallback, for the clients that request it by path and ignore <link> tags
+   * entirely — feed readers, chat unfurlers, older bookmark managers.
+   *
+   * The Apple touch icon is the LIGHT-ink cut on purpose. iOS ignores the alpha
+   * channel and composites the tile onto black, so the dark cut would render as
+   * a black mark on a black square.
+   */
+  icons: {
+    icon: [
+      { url: "/brand/favicon-32-dark.png", type: "image/png", sizes: "32x32", media: "(prefers-color-scheme: light)" },
+      { url: "/brand/favicon-16-dark.png", type: "image/png", sizes: "16x16", media: "(prefers-color-scheme: light)" },
+      { url: "/brand/favicon-32-light.png", type: "image/png", sizes: "32x32", media: "(prefers-color-scheme: dark)" },
+      { url: "/brand/favicon-16-light.png", type: "image/png", sizes: "16x16", media: "(prefers-color-scheme: dark)" },
+    ],
+    apple: [{ url: "/brand/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+  manifest: "/site.webmanifest",
+
   robots: {
     index: true,
     follow: true,

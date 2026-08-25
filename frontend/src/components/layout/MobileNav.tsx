@@ -10,6 +10,7 @@ import type { NavItem } from "./CategoryNav";
 import { createClient } from "@/lib/supabase/client";
 import { SearchField } from "@/components/ui/SearchField";
 import { ThemeToggle } from "./ThemeToggle";
+import { BrandMark } from "./BrandMark";
 
 /**
  * Navigation for viewports below `md`.
@@ -200,7 +201,8 @@ export function MobileNav({
         inert={!open}
       >
         <div className="flex h-nav shrink-0 items-center justify-between gap-3 border-b border-line px-5">
-          <span className="font-display text-body-lg font-black tracking-[-0.04em] text-ink">
+          <span className="flex items-center gap-2 font-display text-body-lg font-black tracking-[-0.04em] text-ink">
+            <BrandMark size={24} priority={false} />
             SortedChoice
           </span>
           <button

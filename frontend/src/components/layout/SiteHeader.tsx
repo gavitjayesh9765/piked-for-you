@@ -7,6 +7,7 @@ import { ThemeToggle } from "./ThemeToggle";
 import { SearchField } from "@/components/ui/SearchField";
 import { AccountMenu } from "./AccountMenu";
 import { MobileNav } from "./MobileNav";
+import { BrandMark } from "./BrandMark";
 import { CategoryNav, type NavItem } from "./CategoryNav";
 import { getAuthedUser, hasAdminRole } from "@/lib/supabase/server";
 import { resolveDisplayName } from "@/lib/display-name";
@@ -59,10 +60,15 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
       {/* --- Primary bar --- */}
       <div className="glass">
         <div className="shell flex h-nav items-center gap-4">
+          {/* Mark + wordmark as one control. The mark is `aria-hidden` inside
+              BrandMark, so the link's accessible name is the word — one target,
+              one name, whichever half is clicked. */}
           <Link
             href="/"
-            className="shrink-0 font-display text-[1.15rem] font-black tracking-[-0.045em] text-ink sm:text-[1.35rem]"
+            className="flex shrink-0 items-center gap-2 font-display text-[1.15rem] font-black
+                       tracking-[-0.045em] text-ink sm:gap-2.5 sm:text-[1.35rem]"
           >
+            <BrandMark size={30} />
             SortedChoice
           </Link>
 

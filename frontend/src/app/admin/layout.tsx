@@ -92,8 +92,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <div className="flex h-16 items-center gap-3 border-b border-line px-5">
           <Link
             href="/admin"
-            className="font-display text-body-lg font-black tracking-[-0.04em] text-ink"
+            className="flex items-center gap-2 font-display text-body-lg font-black tracking-[-0.04em] text-ink"
           >
+            {/* 22px, not the site header's 30 — this bar shares 256px with the
+                wordmark and the Admin chip, and the chip is the half that
+                carries the meaning here. */}
+            <BrandMark size={22} />
             SortedChoice
           </Link>
           <span className="rounded-xs border border-brand-line bg-brand-soft px-1.5 py-0.5 font-label text-[9px] font-bold uppercase tracking-[0.12em] text-brand-on-soft">

@@ -534,6 +534,46 @@
   /* ------------------------------------------------------------------
      MISC
      ------------------------------------------------------------------ */
+
+  /* ------------------------------------------------------------------
+     BRAND MARK
+     Two cuts of the same logo, one shown at a time — see
+     components/layout/BrandMark.tsx for why both are in the DOM.
+
+     The selectors mirror tokens.css exactly, and they have to: the theme
+     is three-state, not two. `data-theme="dark"` is an explicit choice,
+     `data-theme="system"` defers to the OS, and NO attribute means light
+     (a first visit, or a no-JS render). Anything that keys off
+     `prefers-color-scheme` alone would show the white-ink cut on a light
+     page for every dark-OS visitor who never touched the toggle.
+
+     Default is the dark-ink cut, matching light being the default page.
+     ------------------------------------------------------------------ */
+  .brand-mark-dark {
+    display: block;
+  }
+  .brand-mark-light {
+    display: none;
+  }
+
+  :root[data-theme="dark"] .brand-mark-dark {
+    display: none;
+  }
+
+  :root[data-theme="dark"] .brand-mark-light {
+    display: block;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root[data-theme="system"] .brand-mark-dark {
+      display: none;
+    }
+
+    :root[data-theme="system"] .brand-mark-light {
+      display: block;
+    }
+  }
+
   /* ------------------------------------------------------------------
      DOCUMENT PROSE
      Long-form policy and editorial copy. Scoped rather than global so it

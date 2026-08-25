@@ -30,9 +30,12 @@ export default function AdminLoginPage() {
 
       <div className="relative w-full max-w-md">
         <div className="mb-10 text-center">
-          <p className="font-display text-[1.6rem] font-black tracking-[-0.045em] text-ink">
-            SortedChoice
-          </p>
+          <div className="flex items-center justify-center gap-3">
+            <BrandMark size={40} />
+            <p className="font-display text-[1.6rem] font-black tracking-[-0.045em] text-ink">
+              SortedChoice
+            </p>
+          </div>
           <p className="t-eyebrow mt-2">Staff access</p>
         </div>
 
