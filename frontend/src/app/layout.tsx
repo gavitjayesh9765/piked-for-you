@@ -80,6 +80,30 @@ export const metadata: Metadata = {
     },
   },
   /**
+   * Google Search Console ownership, as a META TAG.
+   *
+   * ⚠ This does NOT verify the `sortedchoice.com` **Domain** property. A Domain
+   * property is verified by DNS TXT record and by nothing else — that is the
+   * whole point of it, since it asserts ownership across every subdomain and
+   * both protocols, which no single page can prove.
+   *
+   * This is the fallback path: it verifies a **URL-prefix** property added as
+   * `https://www.sortedchoice.com`, which is worth having if the DNS record is
+   * slow to propagate or the registrar panel is being difficult.
+   *
+   * The token is the DNS value with its `google-site-verification=` prefix
+   * stripped — the meta tag carries that in `name`, and leaving the prefix in
+   * the content is the usual reason a tag silently fails to verify.
+   *
+   * Not a secret. A verification token proves ownership only by virtue of being
+   * published on the domain it names, so it is public by construction — it is
+   * served in the HTML of every page here.
+   */
+  verification: {
+    google: "Xeuz2vPDNcehDXpirhHO1rnkgSnqVXUFtsneN6iN1n8",
+  },
+
+  /**
    * ⚠ NO `alternates.canonical` HERE, deliberately.
    *
    * Next merges metadata down the tree, so a canonical on the root layout is
