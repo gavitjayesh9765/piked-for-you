@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { AdminLoginForm } from "@/components/admin/AdminLoginForm";
+import { BrandMark } from "@/components/layout/BrandMark";
 
 export const metadata: Metadata = {
   title: "Admin sign in",

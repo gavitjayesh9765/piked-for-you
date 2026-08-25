@@ -9,6 +9,7 @@ import { AdminUserMenu } from "@/components/admin/AdminUserMenu";
 import { AdminProgress } from "@/components/admin/AdminProgress";
 import { IdleLogout } from "@/components/admin/IdleLogout";
 import { getAdminGate } from "@/lib/supabase/server";
+import { BrandMark } from "@/components/layout/BrandMark";
 
 export const metadata: Metadata = {
   title: "Admin · SortedChoice",

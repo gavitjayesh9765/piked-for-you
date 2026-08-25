@@ -8,6 +8,7 @@ import { createPortal } from "react-dom";
 import { cn } from "@/lib/cn";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { AdminNav, type NavGroup } from "./AdminNav";
+import { BrandMark } from "@/components/layout/BrandMark";
 
 /**
  * The admin navigation for viewports below `lg`.
