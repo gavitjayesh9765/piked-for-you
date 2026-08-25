@@ -6,32 +6,35 @@ type Theme = "light" | "dark" | "system";
 const STORAGE_KEY = "pickd-theme";
 
 /**
- * Theme control. Three states, not two: "system" is the default and must stay
- * reachable, so a user who follows their OS schedule isn't locked to whichever
- * mode they last tapped.
+ * Theme control. Three states, not two: "system" stays reachable so a reader
+ * who follows their OS schedule can opt back into it.
+ *
+ * LIGHT IS THE DEFAULT. A first-time visitor gets the light palette whatever
+ * their OS reports — the paper-and-ink palette is the brand, and product
+ * photography is graded against it. "system" is therefore an explicit choice
+ * and is STORED as one rather than as the absence of a choice; stored by
+ * removal it would be indistinguishable from a first visit and would quietly
+ * revert to light on the next load.
  *
  * The initial paint is handled by the inline script in app/layout.tsx — this
  * component only ever *changes* the theme, so there is no flash on load.
  */
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>("system");
+  const [theme, setTheme] = useState<Theme>("light");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    setTheme((localStorage.getItem(STORAGE_KEY) as Theme) ?? "system");
+    setTheme((localStorage.getItem(STORAGE_KEY) as Theme) ?? "light");
   }, []);
 
   function apply(next: Theme) {
     setTheme(next);
     const root = document.documentElement;
-    if (next === "system") {
-      localStorage.removeItem(STORAGE_KEY);
-      root.removeAttribute("data-theme");
-    } else {
-      localStorage.setItem(STORAGE_KEY, next);
-      root.setAttribute("data-theme", next);
-    }
+    localStorage.setItem(STORAGE_KEY, next);
+    // Including "system" — tokens.css keys its prefers-color-scheme block off
+    // that value, so the attribute has to be present for the OS to be heard.
+    root.setAttribute("data-theme", next);
   }
 
   function cycle() {
@@ -50,7 +53,15 @@ export function ThemeToggle() {
                  transition-colors duration-fast ease-ease hover:border-brand hover:text-brand"
     >
       {/* Render a stable glyph until mounted so SSR and client markup agree */}
-      {!mounted || theme === "system" ? <SystemIcon /> : theme === "dark" ? <MoonIcon /> : <SunIcon />}
+      {!mounted ? (
+        <SunIcon />
+      ) : theme === "system" ? (
+        <SystemIcon />
+      ) : theme === "dark" ? (
+        <MoonIcon />
+      ) : (
+        <SunIcon />
+      )}
     </button>
   );
 }
@@ -89,9 +100,12 @@ export const themeInitScript = `
 (function(){
   try {
     var t = localStorage.getItem('${STORAGE_KEY}');
-    if (t === 'light' || t === 'dark') {
-      document.documentElement.setAttribute('data-theme', t);
-    }
-  } catch (e) {}
+    document.documentElement.setAttribute(
+      'data-theme',
+      t === 'dark' || t === 'system' ? t : 'light'
+    );
+  } catch (e) {
+    document.documentElement.setAttribute('data-theme', 'light');
+  }
 })();
 `;

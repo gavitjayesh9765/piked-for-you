@@ -39,7 +39,10 @@ export function Hero() {
               </span>
             </div>
 
-            <h1 className="t-display text-ink">
+            {/* `headline-matrix` layers a drifting halftone over the type. It is
+                decoration only — a pseudo-element, no extra DOM, no layout
+                shift, and nothing for a screen reader to read twice. */}
+            <h1 className="headline-matrix t-display text-ink">
               Stop researching.
               <br />
               Start deciding.
@@ -50,7 +53,7 @@ export function Hero() {
                 a badge bolted onto it. One step down the body scale from the
                 paragraph below it, which keeps the order of the page's voice:
                 headline, promise, then the detail. */}
-            <p className="mt-3 max-w-lg text-body-sm text-ink-muted sm:mt-4 sm:text-body-md">
+            <p className="mt-3 max-w-lg text-body-sm text-brand sm:mt-4 sm:text-body-md">
               We test products ourselves, give you a clear yes or no, and never take money to
               change that.
             </p>

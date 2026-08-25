@@ -240,6 +240,96 @@
     background-size: 16px 16px;
   }
 
+  /* ------------------------------------------------------------------
+     HEADLINE HALFTONE — a dot-matrix texture that drifts across the hero
+     headline.
+
+     The trick that keeps it monochrome in both themes without a second
+     colour: the dots are painted in the PAGE BACKGROUND colour and
+     composited with a per-theme blend mode (`--matrix-blend`). Over the
+     letterforms they punch out — light holes in dark type, dark holes in
+     light type. Over the background they ARE the background, so they
+     disappear. The overlay can therefore be a plain box across the whole
+     headline and still only ever touch the type, which is what lets it sit
+     over `text-wrap: balance` copy that rewraps at every width.
+
+     No layout cost: the overlay is an absolutely positioned pseudo-element,
+     so the headline's box, font, and spacing are untouched.
+     ------------------------------------------------------------------ */
+  .headline-matrix {
+    position: relative;
+  }
+
+  .headline-matrix::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: radial-gradient(
+      color-mix(in srgb, var(--c-bg) 62%, transparent) 1.4px,
+      transparent 1.5px
+    );
+    background-size: 6px 6px;
+    mix-blend-mode: var(--matrix-blend);
+    /* The band never closes fully — a floor of 0.32 leaves a permanent
+       whisper of halftone in the type, and the travelling peak lifts it to
+       full as it passes. An effect that switches on and off would read as a
+       glitch; one that breathes reads as material. */
+    -webkit-mask-image: linear-gradient(
+      100deg,
+      rgba(0, 0, 0, 0.32) 30%,
+      rgba(0, 0, 0, 1) 50%,
+      rgba(0, 0, 0, 0.32) 70%
+    );
+    mask-image: linear-gradient(
+      100deg,
+      rgba(0, 0, 0, 0.32) 30%,
+      rgba(0, 0, 0, 1) 50%,
+      rgba(0, 0, 0, 0.32) 70%
+    );
+    -webkit-mask-size: 300% 100%;
+    mask-size: 300% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    animation:
+      matrix-sweep 9s linear infinite,
+      matrix-drift 6s linear infinite;
+  }
+
+  /* Slow enough to be felt rather than watched */
+  @keyframes matrix-sweep {
+    from {
+      -webkit-mask-position: 100% 0;
+      mask-position: 100% 0;
+    }
+    to {
+      -webkit-mask-position: 0% 0;
+      mask-position: 0% 0;
+    }
+  }
+
+  /* One full tile, so the grid loops without a seam */
+  @keyframes matrix-drift {
+    from {
+      background-position: 0 0;
+    }
+    to {
+      background-position: 6px 6px;
+    }
+  }
+
+  /* Reduced motion gets the texture, not the movement. The global base rule
+     would otherwise freeze the sweep mid-travel and leave one end of the
+     headline denser than the other. */
+  @media (prefers-reduced-motion: reduce) {
+    .headline-matrix::after {
+      animation: none;
+      -webkit-mask-image: none;
+      mask-image: none;
+      opacity: 0.55;
+    }
+  }
+
   /* Soft stage for product photography */
   .plate {
     background-color: var(--c-plate);

@@ -39,12 +39,16 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-/** Both themes declared so the browser chrome matches the page. */
+/**
+ * Browser chrome colour. Light only, and deliberately not media-matched: the
+ * page itself no longer follows `prefers-color-scheme` unless the reader has
+ * explicitly chosen "system", so keying the chrome off the OS would paint a
+ * dark address bar above a light page for every dark-OS visitor. This metadata
+ * is static per route and cannot track the runtime `data-theme`, so it matches
+ * the default the page actually renders.
+ */
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f4f1ed" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
-  ],
+  themeColor: "#f4f1ed",
 };
 
 /**

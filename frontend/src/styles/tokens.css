@@ -260,6 +260,10 @@
   --c-glass: rgba(244, 241, 237, 0.72); /* nav backdrop — follows the page */
   --c-glass-line: rgba(38, 30, 20, 0.08);
   --c-dot: rgba(38, 30, 20, 0.09); /* dot-matrix */
+  /* How the headline halftone composites. The dots are painted in --c-bg, so
+     on a light page they must LIGHTEN to punch out of dark letterforms; over
+     the page itself they are the page, and vanish. Inverted for dark. */
+  --matrix-blend: lighten;
   --c-scrim: rgba(26, 20, 14, 0.42);
   --c-focus: #6c5ce7;
 
@@ -349,6 +353,7 @@
   --c-glass: rgba(10, 10, 10, 0.68);
   --c-glass-line: rgba(255, 255, 255, 0.08);
   --c-dot: rgba(255, 255, 255, 0.07);
+  --matrix-blend: darken;
   --c-scrim: rgba(0, 0, 0, 0.68);
   --c-focus: #a394ff;
 
@@ -361,10 +366,12 @@
   --e-brand: 0 8px 28px rgba(108, 92, 231, 0.38);
 }
 
-/* Respect the OS preference before the user has made an explicit choice.
-   `data-theme` on <html> always wins once set. */
+/* Follow the OS preference ONLY when the reader has explicitly asked for it —
+   `data-theme="system"`, set by the theme toggle. With no attribute at all the
+   page stays light, which is what makes light the default for a first visit
+   and for a no-JS render, rather than "whatever the laptop is set to". */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
+  :root[data-theme="system"] {
     color-scheme: dark;
 
     --c-bg: #0a0a0a;
@@ -421,6 +428,7 @@
     --c-glass: rgba(10, 10, 10, 0.68);
     --c-glass-line: rgba(255, 255, 255, 0.08);
     --c-dot: rgba(255, 255, 255, 0.07);
+    --matrix-blend: darken;
     --c-scrim: rgba(0, 0, 0, 0.68);
     --c-focus: #a394ff;
     --c-plate: #17171a;
