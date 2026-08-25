@@ -59,6 +59,17 @@ class Product(UUIDMixin, TimestampMixin, Base):
     price_updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
     # --- PickD Verdict (spec §25). Arrays of short strings, hence JSONB. ---
+    #
+    # `verdict_stance` is the answer to the only question the reader came with.
+    # It is a closed set rather than free text because the page leads with it:
+    # a stance that can say anything cannot be styled, sorted, or checked at
+    # publish time, and "should I buy this?" deserves an answer that is none of
+    # those things.
+    verdict_stance: Mapped[Optional[str]] = mapped_column(String(24))
+    # The WHY, in one or two sentences, sitting beside the stance above the
+    # fold. Distinct from `verdict` — that is the full argument, this is the
+    # part that has to stand alone on a phone screen.
+    verdict_summary: Mapped[Optional[str]] = mapped_column(String(400))
     verdict: Mapped[Optional[str]] = mapped_column(Text)
     best_for: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
     not_ideal_for: Mapped[list[str]] = mapped_column(JSONB, default=list, nullable=False)
@@ -67,6 +78,15 @@ class Product(UUIDMixin, TimestampMixin, Base):
 
     # Category-specific structured specs (spec §41)
     specifications: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, default=list, nullable=False)
+
+    # --- How this was researched ---
+    # `hands_on_tested` defaults to False and is only ever True because someone
+    # ticked it. The product page renders "we researched" or "we tested" off
+    # this column alone, so the site cannot drift into claiming hands-on
+    # testing by omission (editorial policy: automated tools).
+    hands_on_tested: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    research_note: Mapped[Optional[str]] = mapped_column(Text)
+    researched_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
     # --- Publication (spec §38, §61). Only 'published' is publicly visible. ---
     status: Mapped[str] = mapped_column(String(20), default="draft", nullable=False, index=True)
@@ -96,11 +116,22 @@ class Product(UUIDMixin, TimestampMixin, Base):
     retailer_links: Mapped[list["ProductRetailer"]] = relationship(
         back_populates="product", cascade="all, delete-orphan"
     )
+    alternative_links: Mapped[list["ProductAlternative"]] = relationship(
+        back_populates="product",
+        cascade="all, delete-orphan",
+        foreign_keys="ProductAlternative.product_id",
+        order_by="ProductAlternative.display_order",
+    )
     reviews: Mapped[list["Review"]] = relationship(back_populates="product")  # noqa: F821
 
     __table_args__ = (
         CheckConstraint(
             "status IN ('draft', 'published', 'archived')", name="products_status_valid"
+        ),
+        CheckConstraint(
+            "verdict_stance IS NULL OR verdict_stance IN "
+            "('buy_now', 'wait_for_sale', 'skip', 'consider_alternative')",
+            name="products_verdict_stance_valid",
         ),
         CheckConstraint(
             "price_min IS NULL OR price_max IS NULL OR price_min <= price_max",
@@ -255,4 +286,46 @@ class ProductRetailer(UUIDMixin, TimestampMixin, Base):
 
     __table_args__ = (
         UniqueConstraint("product_id", "retailer_id", name="product_retailers_one_per_retailer"),
+    )
+
+
+class ProductAlternative(UUIDMixin, TimestampMixin, Base):
+    """A curated "buy this instead, if…" link between two products (spec §52).
+
+    The heuristic in `ProductRepository.alternatives` can find products in the
+    same category and price band. What it cannot do is say *why* one of them
+    might suit you better — and that sentence is the whole value of the block,
+    especially under a SKIP or WAIT verdict, where the reader has just been
+    told not to buy and is owed somewhere to go next.
+
+    `reason` is a closed set because it is rendered as a chip on a card. Free
+    text drifts into sentences, and a chip cannot hold one; `note` is where the
+    sentence goes when there is one to make.
+    """
+
+    __tablename__ = "product_alternatives"
+
+    product_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("products.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    alternative_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("products.id", ondelete="CASCADE"), nullable=False
+    )
+    reason: Mapped[str] = mapped_column(String(32), nullable=False)
+    note: Mapped[Optional[str]] = mapped_column(String(200))
+    display_order: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    product: Mapped["Product"] = relationship(
+        back_populates="alternative_links", foreign_keys=[product_id]
+    )
+    alternative: Mapped["Product"] = relationship(foreign_keys=[alternative_id])
+
+    __table_args__ = (
+        UniqueConstraint("product_id", "alternative_id", name="product_alternatives_unique_pair"),
+        CheckConstraint("product_id <> alternative_id", name="product_alternatives_not_self"),
+        CheckConstraint(
+            "reason IN ('better_value', 'better_performance', 'better_budget', "
+            "'better_for_professionals', 'better_features', 'closest_rival')",
+            name="product_alternatives_reason_valid",
+        ),
     )

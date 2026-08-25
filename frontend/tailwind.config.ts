@@ -73,11 +73,13 @@ const config: Config = {
           on: "var(--c-danger-on-fill)",
           soft: "var(--c-danger-soft)",
           "on-soft": "var(--c-danger-on-soft)",
+          line: "var(--c-danger-line)",
         },
         warn: {
           DEFAULT: "var(--c-warn)",
           soft: "var(--c-warn-soft)",
           "on-soft": "var(--c-warn-on-soft)",
+          line: "var(--c-warn-line)",
         },
 
         editorial: {

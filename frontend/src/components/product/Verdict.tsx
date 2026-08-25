@@ -134,6 +134,72 @@ export function ProsCons({
 }
 
 /**
+ * Specifications, collapsed by default (spec §18).
+ *
+ * A native <details>, not a state hook. Three things follow from that and all
+ * three matter here: it works before hydration, `Ctrl/Cmd-F` finds text inside
+ * a closed block in Chrome and Edge, and the disclosure semantics are the
+ * browser's rather than an approximation of them.
+ *
+ * Collapsed is the right default now that the specs sit *below* the verdict.
+ * The reader who wants a recommendation should not have to scroll a table of
+ * driver diameters to reach the alternatives; the reader who wants the numbers
+ * is one click and no page load away, and the count in the summary tells them
+ * whether the click is worth making.
+ */
+export function SpecsDisclosure({
+  groups,
+  className,
+  id = "specifications",
+}: {
+  groups: SpecGroup[];
+  className?: string;
+  id?: string;
+}) {
+  if (groups.length === 0) return null;
+
+  const fields = groups.reduce((n, g) => n + g.items.length, 0);
+
+  return (
+    <details id={id} className={cn("panel group overflow-hidden", className)}>
+      <summary
+        className="flex cursor-pointer list-none items-center justify-between gap-4 p-6
+                   transition-colors duration-fast hover:bg-surface-1 sm:p-8
+                   [&::-webkit-details-marker]:hidden"
+      >
+        <div className="min-w-0">
+          <h2 className="t-eyebrow text-brand">Full specifications</h2>
+          <p className="mt-2 text-body-sm text-ink-muted">
+            {fields} {fields === 1 ? "figure" : "figures"} across {groups.length}{" "}
+            {groups.length === 1 ? "group" : "groups"}. Open only if you need them.
+          </p>
+        </div>
+        <span
+          aria-hidden="true"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-line
+                     text-ink-muted transition-transform duration-base ease-ease
+                     group-open:rotate-180"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+            <path
+              d="m3.5 6 4.5 4.5L12.5 6"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </span>
+      </summary>
+
+      <div className="border-t border-line">
+        <SpecTable groups={groups} className="rounded-none border-0 bg-transparent" />
+      </div>
+    </details>
+  );
+}
+
+/**
  * Specifications (spec §18). Values are mono and tabular so numbers align down
  * the column — the detail that makes the page feel engineered.
  */

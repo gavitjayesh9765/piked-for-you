@@ -165,6 +165,11 @@ def _retailer_links(product: Product, *, for_admin: bool) -> list[dict[str, Any]
             # Availability is public: a reader deciding whether to click a link
             # is exactly who needs to know the listing is dead.
             "in_stock": link.in_stock,
+            # Derived, never stored: a link is an affiliate link exactly when
+            # the retailer has a tag template to append. Storing it separately
+            # would let the badge and the actual tag drift apart, and a wrong
+            # disclosure is worse than none (spec §59).
+            "is_affiliate": bool(link.retailer.affiliate_template),
         }
         if for_admin:
             row |= {
@@ -212,7 +217,12 @@ def to_detail(
             if product.score
             else None
         ),
+        verdict_stance=product.verdict_stance,  # type: ignore[arg-type]
+        verdict_summary=product.verdict_summary,
         verdict=product.verdict,
+        hands_on_tested=product.hands_on_tested,
+        research_note=product.research_note,
+        researched_at=product.researched_at,
         best_for=product.best_for,
         not_ideal_for=product.not_ideal_for,
         pros=product.pros,

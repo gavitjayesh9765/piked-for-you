@@ -1,6 +1,7 @@
 import Image from "next/image";
 import { ButtonLink } from "@/components/ui/Button";
 import { SearchField } from "@/components/ui/SearchField";
+import { HeroWordCycle } from "./HeroWordCycle";
 
 /**
  * Hero (spec §14).
@@ -41,11 +42,15 @@ export function Hero() {
 
             {/* `headline-matrix` layers a drifting halftone over the type. It is
                 decoration only — a pseudo-element, no extra DOM, no layout
-                shift, and nothing for a screen reader to read twice. */}
+                shift, and nothing for a screen reader to read twice.
+
+                The second word cycles through the same halftone — see
+                HeroWordCycle. "Start" is deliberately left in this file and
+                outside the animation: only the verb changes. */}
             <h1 className="headline-matrix t-display text-ink">
               Stop researching.
               <br />
-              Start deciding.
+              Start <HeroWordCycle />
             </h1>
 
             {/* Trust line. Sits inside the copy column's normal flow — no panel,

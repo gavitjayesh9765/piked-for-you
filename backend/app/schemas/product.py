@@ -29,6 +29,25 @@ Money = _Annotated[Decimal, PlainSerializer(float, return_type=float, when_used=
 ProductStatus = Literal["draft", "published", "archived"]
 BadgeStyle = Literal["editorial", "brand", "value", "warn", "neutral"]
 
+# The answer to "should I buy this?", from a closed set.
+#
+# Closed rather than free text on purpose: the product page leads with this
+# value, styles itself from it, and the publish check refuses a product without
+# one. None of that is possible against a string an editor can type anything
+# into — and a recommendation that can say anything says nothing.
+VerdictStance = Literal["buy_now", "wait_for_sale", "skip", "consider_alternative"]
+
+# Why a reader might take an alternative over this product. Rendered as a chip
+# on a card, so it is an enum and not a sentence — the sentence goes in `note`.
+AlternativeReason = Literal[
+    "better_value",
+    "better_performance",
+    "better_budget",
+    "better_for_professionals",
+    "better_features",
+    "closest_rival",
+]
+
 
 class Wire(BaseModel):
     model_config = ConfigDict(
@@ -144,6 +163,13 @@ class RetailerLinkOut(Wire):
     display_price: Optional[Money] = None
     is_active: bool = True
     last_updated_at: Optional[datetime] = None
+    # Whether this link carries our referral tag. Derived from the retailer's
+    # affiliate template rather than stored per link, so it can never drift out
+    # of step with the tag actually being appended. Public on purpose: spec §59
+    # requires the relationship to be disclosed where the link is, not only in
+    # a footer, and a reader deciding whether to trust the verdict is exactly
+    # who is owed that fact.
+    is_affiliate: bool = False
 
     # --- Scrape state ---
     # `in_stock` is deliberately three-valued. None means the retailer's page
@@ -197,7 +223,12 @@ class ProductOut(ProductSummaryOut):
     images: list[MediaOut] = Field(default_factory=list)
     videos: list[MediaOut] = Field(default_factory=list)
     score: Optional[ScoreOut] = None  # type: ignore[assignment]
+    verdict_stance: Optional[VerdictStance] = None
+    verdict_summary: Optional[str] = None
     verdict: Optional[str] = None
+    hands_on_tested: bool = False
+    research_note: Optional[str] = None
+    researched_at: Optional[datetime] = None
     best_for: list[str] = Field(default_factory=list)
     not_ideal_for: list[str] = Field(default_factory=list)
     pros: list[str] = Field(default_factory=list)
@@ -228,7 +259,14 @@ class ProductCreate(StrictWire):
     price_min: Optional[Decimal] = Field(default=None, ge=0)
     price_max: Optional[Decimal] = Field(default=None, ge=0)
 
+    verdict_stance: Optional[VerdictStance] = None
+    verdict_summary: Optional[str] = Field(default=None, max_length=400)
     verdict: Optional[str] = None
+    # Never defaulted to True anywhere. A claim of hands-on testing is an
+    # explicit, audited act — see the column comment in the migration.
+    hands_on_tested: bool = False
+    research_note: Optional[str] = None
+    researched_at: Optional[datetime] = None
     best_for: list[str] = Field(default_factory=list)
     not_ideal_for: list[str] = Field(default_factory=list)
     pros: list[str] = Field(default_factory=list)
@@ -259,7 +297,12 @@ class ProductUpdate(StrictWire):
     price_current: Optional[Decimal] = Field(default=None, ge=0)
     price_min: Optional[Decimal] = Field(default=None, ge=0)
     price_max: Optional[Decimal] = Field(default=None, ge=0)
+    verdict_stance: Optional[VerdictStance] = None
+    verdict_summary: Optional[str] = Field(default=None, max_length=400)
     verdict: Optional[str] = None
+    hands_on_tested: Optional[bool] = None
+    research_note: Optional[str] = None
+    researched_at: Optional[datetime] = None
     best_for: Optional[list[str]] = None
     not_ideal_for: Optional[list[str]] = None
     pros: Optional[list[str]] = None
@@ -273,6 +316,40 @@ class ProductUpdate(StrictWire):
 class ScoreUpsert(StrictWire):
     overall: Money = Field(ge=0, le=10)
     criteria: list[ScoreCriterionOut] = Field(default_factory=list)
+
+
+class AlternativeOut(ProductSummaryOut):
+    """A curated alternative — a product card plus the reason to prefer it.
+
+    Extends the summary rather than wrapping it so the frontend can hand the
+    whole object to the existing `<ProductCard>` and read `reason` off the same
+    object, instead of unpacking a `{ product, reason }` envelope at every call
+    site.
+    """
+
+    reason: AlternativeReason
+    note: Optional[str] = None
+    # False for the price-band fallback: those are "similar", not "chosen".
+    # The page labels the two differently, and conflating them would put an
+    # editorial claim on a row nobody wrote.
+    is_curated: bool = True
+
+
+class AlternativeItem(StrictWire):
+    alternative_id: uuid.UUID
+    reason: AlternativeReason
+    note: Optional[str] = Field(default=None, max_length=200)
+
+
+class AlternativesUpsert(StrictWire):
+    """The complete curated set, replacing whatever is stored.
+
+    Whole-set semantics rather than per-row CRUD, matching how the admin
+    already saves retailer links: the editor sees a list and saves a list, and
+    ordering is the array order rather than a field they have to maintain.
+    """
+
+    items: list[AlternativeItem] = Field(default_factory=list, max_length=12)
 
 
 class MediaReorder(StrictWire):

@@ -41,8 +41,19 @@ PUBLISH_REQUIREMENTS = (
     ("primary image", lambda p: any(m.kind == "image" for m in p.media)),
     ("current price", lambda p: p.price_current is not None),
     ("PickD Score", lambda p: p.score is not None),
+    # The buy recommendation and the line that argues it. These are the two
+    # things a reader came for, and a page that leads with a verdict banner
+    # cannot be published with the banner empty — it would render a hole where
+    # the answer belongs.
+    ("buy recommendation", lambda p: bool(p.verdict_stance)),
+    ("recommendation summary", lambda p: bool(p.verdict_summary and p.verdict_summary.strip())),
     ("verdict", lambda p: bool(p.verdict and p.verdict.strip())),
     ("tagline", lambda p: bool(p.tagline and p.tagline.strip())),
+    # Pros and cons are the scannable half of the argument. A verdict with no
+    # cons is the shape a page takes when the affiliate link wrote it, so the
+    # check asks for both sides rather than either.
+    ("at least one pro", lambda p: bool(p.pros)),
+    ("at least one con", lambda p: bool(p.cons)),
     ("at least one retailer link", lambda p: any(r.is_active for r in p.retailer_links)),
 )
 
@@ -123,7 +134,12 @@ async def create_product(
         price_min=payload.price_min,
         price_max=payload.price_max,
         price_updated_at=datetime.now(timezone.utc) if payload.price_current else None,
+        verdict_stance=payload.verdict_stance,
+        verdict_summary=payload.verdict_summary,
         verdict=payload.verdict,
+        hands_on_tested=payload.hands_on_tested,
+        research_note=payload.research_note,
+        researched_at=payload.researched_at,
         best_for=payload.best_for,
         not_ideal_for=payload.not_ideal_for,
         pros=payload.pros,
@@ -410,6 +426,11 @@ def _snapshot(product: Product) -> dict:
         "price_min": str(product.price_min) if product.price_min else None,
         "price_max": str(product.price_max) if product.price_max else None,
         "verdict": product.verdict,
+        # The recommendation itself is the most consequential thing an editor
+        # can change, and the one a reader would most want a paper trail on.
+        "verdict_stance": product.verdict_stance,
+        "verdict_summary": product.verdict_summary,
+        "hands_on_tested": product.hands_on_tested,
         "brand_id": str(product.brand_id),
         "category_id": str(product.category_id),
     }

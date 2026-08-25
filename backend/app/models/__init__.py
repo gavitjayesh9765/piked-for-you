@@ -19,6 +19,7 @@ from app.models.profile import Profile
 from app.models.taxonomy import Badge, Brand, Category
 from app.models.product import (
     Product,
+    ProductAlternative,
     ProductBadge,
     ProductMedia,
     ProductRetailer,
@@ -46,6 +47,7 @@ __all__ = [
     "Brand",
     "Badge",
     "Product",
+    "ProductAlternative",
     "ProductMedia",
     "ProductScore",
     "ProductBadge",

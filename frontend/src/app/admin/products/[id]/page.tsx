@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { Badge, PriceHistory, SpecTemplateGroup } from "@/lib/types";
+import type { AlternativePick, Badge, PriceHistory, SpecTemplateGroup } from "@/lib/types";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -15,6 +15,7 @@ import { PriceHistoryChart } from "@/components/admin/pricing/PriceHistoryChart"
 import { RefreshPriceButton } from "@/components/admin/pricing/RefreshPriceButton";
 import { VideoLinks } from "@/components/admin/VideoLinks";
 import { ScoreEditor, type Criterion } from "@/components/admin/ScoreEditor";
+import { AlternativesManager } from "@/components/admin/AlternativesManager";
 import { listRetailers } from "@/lib/admin-api";
 
 /** The template fields the score and specification editors need. */
@@ -46,7 +47,8 @@ export default async function EditProductPage({
   const product = await safe(() => getProduct(id), null);
   if (!product) notFound();
 
-  const [categories, brands, check, retailers, taxonomy, history, badgeList] = await Promise.all([
+  const [categories, brands, check, retailers, taxonomy, history, badgeList, alternatives] =
+    await Promise.all([
     getCategories(),
     getBrands(),
     safe(() => publishCheck(id), { canPublish: false, missing: [] }),
@@ -68,6 +70,10 @@ export default async function EditProductPage({
     // the available ones meant the picker could only ever *remove* a badge —
     // there was no way to add one to an existing product.
     adminGet<{ items: Badge[] }>("/badges", { items: [] }),
+    // The curated set only — the admin route does not top up from the price
+    // heuristic, because an editor should see what they chose, not what the
+    // public page will pad it out with.
+    adminGet<AlternativePick[]>(`/products/${id}/alternatives`, [] as AlternativePick[]),
   ]);
 
   // Active badges, plus any this product already carries even if since
@@ -140,14 +146,13 @@ export default async function EditProductPage({
         specTemplates={specTemplates}
       />
 
-      {/* Media, retailer links and the score are edit-only: a product must
-          exist before an image or an outbound link can attach to it. They sit
-          after the form so the numbering reads 01 → 11 down the page; they
-          used to render first, which opened the screen on "Images 06" and
-          then repeated 06 further down for SEO. */}
+      {/* Media, retailer links, the score and the alternatives are edit-only:
+          a product must exist before an image, an outbound link, or a pointer
+          to another product can attach to it. They sit after the form so the
+          numbering reads 01 → 13 down the page. */}
       <section className="panel mb-6 p-6 lg:p-8">
         <div className="mb-6 flex items-baseline gap-4 border-b border-line pb-4">
-          <span className="font-mono text-label-xs tabular-nums text-brand">07</span>
+          <span className="font-mono text-label-xs tabular-nums text-brand">08</span>
           <div>
             <h2 className="font-display text-headline-sm text-ink">Images</h2>
             <p className="mt-1 text-body-sm text-ink-muted">
@@ -160,7 +165,7 @@ export default async function EditProductPage({
 
       <section className="panel mb-6 p-6 lg:p-8">
         <div className="mb-6 flex items-baseline gap-4 border-b border-line pb-4">
-          <span className="font-mono text-label-xs tabular-nums text-brand">08</span>
+          <span className="font-mono text-label-xs tabular-nums text-brand">09</span>
           <div>
             <h2 className="font-display text-headline-sm text-ink">Videos</h2>
             <p className="mt-1 text-body-sm text-ink-muted">
@@ -174,7 +179,7 @@ export default async function EditProductPage({
 
       <section className="panel mb-6 p-6 lg:p-8">
         <div className="mb-6 flex items-baseline gap-4 border-b border-line pb-4">
-          <span className="font-mono text-label-xs tabular-nums text-brand">09</span>
+          <span className="font-mono text-label-xs tabular-nums text-brand">10</span>
           <div>
             <h2 className="font-display text-headline-sm text-ink">Where to buy</h2>
             <p className="mt-1 text-body-sm text-ink-muted">
@@ -192,7 +197,7 @@ export default async function EditProductPage({
       <section className="panel mb-6 p-6 lg:p-8">
         <div className="mb-6 flex flex-wrap items-end justify-between gap-4 border-b border-line pb-4">
           <div className="flex items-baseline gap-4">
-            <span className="font-mono text-label-xs tabular-nums text-brand">10</span>
+            <span className="font-mono text-label-xs tabular-nums text-brand">11</span>
             <div>
               <h2 className="font-display text-headline-sm text-ink">Price history</h2>
               <p className="mt-1 max-w-xl text-body-sm text-ink-muted">
@@ -213,7 +218,7 @@ export default async function EditProductPage({
 
       <section className="panel mb-6 p-6 lg:p-8">
         <div className="mb-6 flex items-baseline gap-4 border-b border-line pb-4">
-          <span className="font-mono text-label-xs tabular-nums text-brand">11</span>
+          <span className="font-mono text-label-xs tabular-nums text-brand">12</span>
           <div>
             <h2 className="font-display text-headline-sm text-ink">PickD Score</h2>
             <p className="mt-1 text-body-sm text-ink-muted">
@@ -231,6 +236,24 @@ export default async function EditProductPage({
               : null
           }
         />
+      </section>
+
+      <section className="panel mb-6 p-6 lg:p-8">
+        <div className="mb-6 flex items-baseline gap-4 border-b border-line pb-4">
+          <span className="font-mono text-label-xs tabular-nums text-brand">13</span>
+          <div>
+            <h2 className="font-display text-headline-sm text-ink">Better alternatives</h2>
+            <p className="mt-1 max-w-xl text-body-sm text-ink-muted">
+              What to buy instead, and why. Anything you leave empty is filled by similar
+              products at a similar price — labelled as such on the page, because that is all
+              the price heuristic actually knows.{" "}
+              {product.verdictStance === "skip" || product.verdictStance === "consider_alternative"
+                ? "This verdict sends readers here, so it needs at least one."
+                : ""}
+            </p>
+          </div>
+        </div>
+        <AlternativesManager productId={product.id} initial={alternatives} />
       </section>
 
     </AdminPage>

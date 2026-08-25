@@ -246,10 +246,16 @@
   --c-danger-on-fill: #ffffff;
   --c-danger-soft: #ffdad6; /* already L*90, sits below the page unchanged */
   --c-danger-on-soft: #93000a;
+  --c-danger-line: #f4c3bd;
 
   --c-warn: #a15c07; /* 4.6:1 */
   --c-warn-soft: #f1e5d2;
   --c-warn-on-soft: #7c4306;
+  /* The hairline that outlines a warn-tinted container. Value and danger and
+     brand each had one; warn did not, so a WAIT FOR A SALE verdict had to
+     borrow `--c-warn` for its border and outlined itself twice as heavily as
+     the other three stances beside it. */
+  --c-warn-line: #e3cfa8;
 
   /* --- Component-specific --- */
   --c-editorial-bg: #0a0a0a; /* editorial badge keeps true obsidian — small
@@ -339,10 +345,12 @@
   --c-danger-on-fill: #ffffff;
   --c-danger-soft: #33100e;
   --c-danger-on-soft: #ffb4ab;
+  --c-danger-line: #5a201c;
 
   --c-warn: #f5b544;
   --c-warn-soft: #2c1e06;
   --c-warn-on-soft: #ffd28a;
+  --c-warn-line: #4a3410;
 
   /* Editorial badge inverts: on a dark page, white-on-black has no authority,
      so the badge takes the light surface and obsidian text. */
@@ -416,10 +424,12 @@
     --c-danger-fill: #d13b34;
     --c-danger-soft: #33100e;
     --c-danger-on-soft: #ffb4ab;
+    --c-danger-line: #5a201c;
 
     --c-warn: #f5b544;
     --c-warn-soft: #2c1e06;
     --c-warn-on-soft: #ffd28a;
+    --c-warn-line: #4a3410;
 
     --c-editorial-bg: #f5f3f2;
     --c-editorial-fg: #0a0a0a;

@@ -15,13 +15,12 @@ import {
 /**
  * Product create / edit form (spec §37).
  *
- * Six sections, numbered 01-06: Basics · Pricing · The verdict ·
- * Specifications · Badges · SEO.
+ * Seven sections, numbered 01-07: Basics · Pricing · The verdict ·
+ * How this was researched · Specifications · Badges · SEO.
  *
- * Media, retailer links, price history and the score are NOT here, and the
- * list above used to claim they were. They all key off a product id, so they
- * live on the edit screen as sections 07-11 and only exist once a draft has
- * been saved.
+ * Media, retailer links, price history, the score and the curated alternatives
+ * are NOT here. They all key off a product id, so they live on the edit screen
+ * as sections 08-12 and only exist once a draft has been saved.
  *
  * Three deliberate behaviours:
  *
@@ -70,7 +69,11 @@ export function ProductForm({
     priceCurrent: product?.pricing.current?.toString() ?? "",
     priceMin: product?.pricing.min?.toString() ?? "",
     priceMax: product?.pricing.max?.toString() ?? "",
+    verdictStance: product?.verdictStance ?? "",
+    verdictSummary: product?.verdictSummary ?? "",
     verdict: product?.verdict ?? "",
+    researchNote: product?.researchNote ?? "",
+    researchedAt: product?.researchedAt ? product.researchedAt.slice(0, 10) : "",
     bestFor: (product?.bestFor ?? []).join("\n"),
     notIdealFor: (product?.notIdealFor ?? []).join("\n"),
     pros: (product?.pros ?? []).join("\n"),
@@ -82,6 +85,11 @@ export function ProductForm({
   const [badgeIds, setBadgeIds] = useState<string[]>(
     (product?.badges ?? []).map((b) => b.id),
   );
+  // Outside `f` because `f` is string-keyed and `set()` takes a string. A
+  // boolean coerced through that would reach the API as "false" — which is
+  // truthy, on the one field where a silent truthy default would have the
+  // site claim a hands-on test that never happened.
+  const [handsOnTested, setHandsOnTested] = useState(product?.handsOnTested ?? false);
   const [specs, setSpecs] = useState<SpecValues>(() =>
     specValuesFrom(product?.specifications),
   );
@@ -128,7 +136,15 @@ export function ProductForm({
       priceCurrent: num(f.priceCurrent),
       priceMin: num(f.priceMin),
       priceMax: num(f.priceMax),
+      verdictStance: f.verdictStance || null,
+      verdictSummary: f.verdictSummary.trim() || null,
       verdict: f.verdict.trim() || null,
+      handsOnTested,
+      researchNote: f.researchNote.trim() || null,
+      // A date input yields "2026-08-25"; the column is timestamptz. Sent as
+      // midnight UTC rather than local, so the same save from two timezones
+      // stores the same instant.
+      researchedAt: f.researchedAt ? `${f.researchedAt}T00:00:00Z` : null,
       bestFor: lines(f.bestFor),
       notIdealFor: lines(f.notIdealFor),
       pros: lines(f.pros),
@@ -327,6 +343,66 @@ export function ProductForm({
         title="The verdict"
         hint="The reason this platform exists. Written before any retailer link is attached."
       >
+        {/* The recommendation itself. First field in the section because it is
+            the first thing on the public page and the first thing an editor
+            should have decided — a verdict written before the stance is chosen
+            tends to argue its way to whichever answer the prose reached. */}
+        <Grid>
+          <Field
+            label="Should you buy this?"
+            required
+            hint="Required to publish. Shown at the top of the product page, above everything else."
+          >
+            <select
+              value={f.verdictStance}
+              onChange={(e) => set("verdictStance", e.target.value)}
+              className={input}
+            >
+              <option value="">— Not decided yet —</option>
+              {STANCES.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            {f.verdictStance && (
+              <span className="mt-2 block text-label-xs leading-relaxed text-ink-subtle">
+                {STANCES.find((o) => o.value === f.verdictStance)?.hint}
+              </span>
+            )}
+          </Field>
+
+          <Field
+            label="Last researched"
+            hint="Shown on the page. A recommendation with no date is a rumour."
+          >
+            <input
+              type="date"
+              value={f.researchedAt}
+              onChange={(e) => set("researchedAt", e.target.value)}
+              className={cn(input, "tabular")}
+            />
+          </Field>
+
+          <Field
+            label="Why — in one or two sentences"
+            required
+            span={2}
+            hint="Required to publish. Sits directly beside the recommendation above the fold, so it has to stand on its own without the full verdict below it."
+          >
+            <textarea
+              rows={3}
+              maxLength={400}
+              value={f.verdictSummary}
+              onChange={(e) => set("verdictSummary", e.target.value)}
+              placeholder="The noise cancellation and call quality are a real step ahead at this price, and it has sat at this price long enough that waiting is unlikely to save you anything."
+              className={cn(input, "min-h-[90px] resize-y py-3 leading-relaxed")}
+            />
+            <Counter value={f.verdictSummary.length} max={400} />
+          </Field>
+        </Grid>
+
+        <div className="mt-6">
         <Field label="Our verdict" hint="Required to publish. Who it's for, who should skip it, and why.">
           <textarea
             rows={8}
@@ -336,6 +412,7 @@ export function ProductForm({
             className={cn(input, "min-h-[190px] resize-y py-3 leading-relaxed")}
           />
         </Field>
+        </div>
 
         <Grid className="mt-6">
           <Field label="Best for" hint="One per line.">
@@ -358,7 +435,7 @@ export function ProductForm({
             />
           </Field>
 
-          <Field label="Pros" hint="One per line.">
+          <Field label="Pros" hint="One per line. At least one is required to publish.">
             <textarea
               rows={5}
               value={f.pros}
@@ -367,7 +444,10 @@ export function ProductForm({
             />
           </Field>
 
-          <Field label="Cons" hint="One per line.">
+          <Field
+            label="Cons"
+            hint="One per line. At least one is required to publish — a product with no downsides is a page nobody believes."
+          >
             <textarea
               rows={5}
               value={f.cons}
@@ -378,9 +458,55 @@ export function ProductForm({
         </Grid>
       </Section>
 
-      {/* --- 4. Specifications --- */}
+      {/* --- 4. How this was researched --- */}
       <Section
         n="04"
+        title="How this was researched"
+        hint="Renders as the “How we reviewed this” box on the product page."
+      >
+        {/* A checkbox, and the copy beside it is the point. The public page
+            claims a hands-on test on the strength of this one boolean and
+            nothing else, and it defaults to off everywhere — schema, API,
+            database — so the failure mode is a page that under-claims. */}
+        <label className="flex cursor-pointer items-start gap-3 rounded-md border border-line p-4 transition-colors duration-fast hover:border-brand">
+          <input
+            type="checkbox"
+            checked={handsOnTested}
+            onChange={(e) => {
+              setHandsOnTested(e.target.checked);
+              setSaved(false);
+            }}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--c-brand-fill)]"
+          />
+          <span className="min-w-0">
+            <span className="t-eyebrow block">Somebody here physically used this product</span>
+            <span className="mt-1.5 block text-label-xs leading-relaxed text-ink-subtle">
+              Tick this <strong>only</strong> if a person on the team held and used this unit.
+              Leave it off for a research verdict — the page then says so explicitly, which is
+              the promise we make on{" "}
+              <span className="font-mono">/how-we-score</span>. Reading a spec sheet, however
+              thoroughly, is not a test.
+            </span>
+          </span>
+        </label>
+
+        <Field
+          label="Anything specific about this one"
+          hint="Optional. Added to the standard method statement — e.g. which comparisons drove the verdict, or a caveat about the evidence."
+        >
+          <textarea
+            rows={4}
+            value={f.researchNote}
+            onChange={(e) => set("researchNote", e.target.value)}
+            placeholder="Compared directly against the XM4 and the QC45 at the same street price. Battery figures are the manufacturer's — we have no independent measurement for this generation yet."
+            className={cn(input, "mt-6 min-h-[110px] resize-y py-3 leading-relaxed")}
+          />
+        </Field>
+      </Section>
+
+      {/* --- 5. Specifications --- */}
+      <Section
+        n="05"
         title="Specifications"
         hint={
           categoryName
@@ -398,7 +524,7 @@ export function ProductForm({
       </Section>
 
       {/* --- 5. Badges --- */}
-      <Section n="05" title="Badges" hint="Created in the admin panel, never hard-coded (spec §21).">
+      <Section n="06" title="Badges" hint="Created in the admin panel, never hard-coded (spec §21).">
         <div className="flex flex-wrap gap-2">
           {badges.length === 0 && (
             <p className="text-body-sm text-ink-muted">No badges defined yet.</p>
@@ -430,7 +556,7 @@ export function ProductForm({
       </Section>
 
       {/* --- 6. SEO --- */}
-      <Section n="06" title="SEO" hint="Falls back to the title and tagline when blank (spec §47).">
+      <Section n="07" title="SEO" hint="Falls back to the title and tagline when blank (spec §47).">
         <Grid>
           <Field label="Meta title" span={2}>
             <input
@@ -487,6 +613,37 @@ export function ProductForm({
 }
 
 /* ------------------------------------------------------------------ */
+
+/**
+ * The four verdicts, with the line that tells an editor which one they mean.
+ *
+ * Kept next to the form rather than imported from the public component: these
+ * hints are authoring guidance, and the labels a reader sees are the public
+ * component's business. Shared strings between the two would tempt someone to
+ * change the reader's copy while editing an editor's hint.
+ */
+const STANCES = [
+  {
+    value: "buy_now",
+    label: "Buy now",
+    hint: "Worth its current price today. Not “best in the world” — worth what it costs, now.",
+  },
+  {
+    value: "wait_for_sale",
+    label: "Wait for a sale",
+    hint: "Right product, wrong price. Use this when the product is sound and the price history says the number moves.",
+  },
+  {
+    value: "skip",
+    label: "Skip",
+    hint: "Not worth it at any price we expect it to reach. Say so plainly in the verdict.",
+  },
+  {
+    value: "consider_alternative",
+    label: "Consider an alternative",
+    hint: "Nothing wrong with it, but something else does the job better. Add the alternatives in section 12 — this verdict is incomplete without them.",
+  },
+] as const;
 
 function readableError(detail: unknown): string {
   if (!detail) return "Could not save.";

@@ -116,6 +116,42 @@ export interface PickdScore {
 }
 
 /* ------------------------------------------------------------------ */
+/* The verdict (spec §25)                                              */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The buying recommendation. Four values, deliberately — every product a
+ * reader is looking at falls into exactly one of them, and a fifth ("it
+ * depends") would be the one every undecided verdict quietly drifted into.
+ */
+export type VerdictStance = "buy_now" | "wait_for_sale" | "skip" | "consider_alternative";
+
+/** Why a reader might take an alternative over this product. */
+export type AlternativeReason =
+  | "better_value"
+  | "better_performance"
+  | "better_budget"
+  | "better_for_professionals"
+  | "better_features"
+  | "closest_rival";
+
+/**
+ * An alternative, plus the reason it is here. Extends the card shape rather
+ * than wrapping it, so `<ProductCard product={alt} />` still works and the
+ * label is read off the same object.
+ */
+export interface AlternativePick extends ProductSummary {
+  reason: AlternativeReason;
+  note?: string | null;
+  /**
+   * False for rows the price-band heuristic supplied. The page labels curated
+   * and similar products differently — presenting arithmetic as an editorial
+   * choice is the exact failure this site exists to avoid.
+   */
+  isCurated: boolean;
+}
+
+/* ------------------------------------------------------------------ */
 /* Retailers (spec §26)                                                */
 /* ------------------------------------------------------------------ */
 
@@ -127,6 +163,12 @@ export interface RetailerLink {
   displayPrice?: number | null;
   isActive: boolean;
   lastUpdatedAt?: string | null;
+  /**
+   * Whether this link carries our referral tag. Derived server-side from the
+   * retailer's affiliate template, so the badge on the button can never
+   * disagree with the tag actually being appended (spec §59).
+   */
+  isAffiliate?: boolean;
 
   /* --- Scrape state. Present on admin reads; absent on cached public ones. --- */
 
@@ -254,8 +296,26 @@ export interface Product extends ProductSummary {
   images: MediaAsset[];
   videos: MediaAsset[];
   score?: PickdScore | null;
+  /**
+   * The recommendation itself — the answer the reader came for, and the thing
+   * the page now leads with. A closed set, so the banner can style itself from
+   * it and the publish check can refuse a product without one.
+   */
+  verdictStance?: VerdictStance | null;
+  /** The one-or-two-sentence WHY, shown beside the stance above the fold. */
+  verdictSummary?: string | null;
   /** Admin-authored prose (spec §25). Rendered in a prose-width column. */
   verdict?: string | null;
+  /**
+   * True only where a person physically used the product. The "how we
+   * reviewed this" block reads this and nothing else — the site never claims
+   * hands-on testing by omission.
+   */
+  handsOnTested?: boolean;
+  /** Product-specific note on how this one was researched, when there is one. */
+  researchNote?: string | null;
+  /** ISO date. A recommendation with no date is a rumour. */
+  researchedAt?: string | null;
   bestFor: string[];
   notIdealFor: string[];
   pros: string[];

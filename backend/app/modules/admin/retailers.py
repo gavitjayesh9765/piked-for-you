@@ -197,6 +197,7 @@ async def set_retailer_links(
             display_price=link.display_price,
             is_active=link.is_active,
             last_updated_at=link.price_checked_at,
+            is_affiliate=bool(ret.affiliate_template),
             in_stock=link.in_stock,
             scrape_enabled=link.scrape_enabled,
             last_scrape_status=link.last_scrape_status,

@@ -27,7 +27,7 @@ from app.models import (
     ProductScore,
     Retailer,
 )
-from app.models.product import ProductRetailer
+from app.models.product import ProductAlternative, ProductRetailer
 from app.schemas.common import AdminSortOption, PageParams, SortOption
 
 
@@ -197,11 +197,53 @@ class ProductRepository:
         rows = (await self.db.execute(stmt)).unique().scalars().all()
         return list(rows), total
 
-    async def alternatives(self, product: Product, limit: int = 4) -> list[Product]:
+    async def curated_alternatives(
+        self, product: Product, limit: int = 6
+    ) -> list[tuple[Product, str, str | None]]:
+        """The alternatives an editor actually chose, in the order they chose.
+
+        Returned as `(product, reason, note)` triples rather than as link rows,
+        because every caller wants the product and would otherwise walk the
+        relationship itself — and would have to remember the published filter
+        while doing it.
+
+        Unpublished targets are dropped here as well as in RLS. A row pointing
+        at a draft would otherwise render a card linking to a 404, and leak the
+        draft's title on the way.
+        """
+        stmt = (
+            select(ProductAlternative)
+            .join(Product, ProductAlternative.alternative_id == Product.id)
+            .where(
+                ProductAlternative.product_id == product.id,
+                Product.status == "published",
+            )
+            .options(
+                selectinload(ProductAlternative.alternative).selectinload(Product.brand),
+                selectinload(ProductAlternative.alternative).selectinload(Product.category),
+                selectinload(ProductAlternative.alternative).selectinload(Product.media),
+                selectinload(ProductAlternative.alternative).selectinload(Product.score),
+                selectinload(ProductAlternative.alternative)
+                .selectinload(Product.badge_links)
+                .selectinload(ProductBadge.badge),
+            )
+            .order_by(ProductAlternative.display_order, ProductAlternative.created_at)
+            .limit(limit)
+        )
+        rows = (await self.db.execute(stmt)).unique().scalars().all()
+        return [(row.alternative, row.reason, row.note) for row in rows]
+
+    async def alternatives(
+        self, product: Product, limit: int = 4, exclude: Sequence[uuid.UUID] = ()
+    ) -> list[Product]:
         """Same category, similar price band, highest scoring first (spec §52).
 
         A deliberately simple heuristic for the MVP — the structured-attribute
         matching described in spec §58 replaces this later.
+
+        `exclude` keeps the curated picks from being repeated underneath
+        themselves: the same product appearing twice in one block, once with an
+        editorial label and once without, reads as a bug in the page.
         """
         stmt = _with_relations(
             _published_only(
@@ -211,6 +253,8 @@ class ProductRepository:
                 )
             )
         )
+        if exclude:
+            stmt = stmt.where(Product.id.not_in(list(exclude)))
         if product.price_current is not None:
             low = product.price_current * Decimal("0.6")
             high = product.price_current * Decimal("1.6")

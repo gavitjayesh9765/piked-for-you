@@ -30,6 +30,7 @@ from app.modules.personalisation.router import router as me_router
 from app.modules.admin.router import router as admin_router
 from app.modules.admin.media import router as admin_media_router
 from app.modules.admin.retailers import router as admin_retailers_router
+from app.modules.admin.alternatives import router as admin_alternatives_router
 from app.modules.admin.taxonomy import router as admin_taxonomy_router
 from app.modules.admin.curation import router as admin_curation_router
 from app.modules.admin.pricing import router as admin_pricing_router
@@ -61,6 +62,7 @@ for _r in (
     admin_router,
     admin_media_router,
     admin_retailers_router,
+    admin_alternatives_router,
     admin_taxonomy_router,
     admin_curation_router,
     # Price scraping. Nothing in here is scheduled — a run exists because

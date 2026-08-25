@@ -1,4 +1,5 @@
 import type {
+  AlternativePick,
   Brand,
   Category,
   FilterFacet,
@@ -347,14 +348,14 @@ export async function getProduct(categorySlug: string, slug: string): Promise<Pr
   }
 }
 
-export async function getAlternatives(productId: string, limit = 4): Promise<ProductSummary[]> {
+export async function getAlternatives(productId: string, limit = 4): Promise<AlternativePick[]> {
   if (USE_MOCKS) {
     const mock = await import("./mock/data");
-    return mock.products.filter((p) => p.id !== productId).slice(0, limit);
+    return mock.alternativesFor(productId, limit);
   }
   // productId comes from data we rendered rather than from the URL, but it is
   // still interpolated into a path — encode rather than assume.
-  return get<ProductSummary[]>(
+  return get<AlternativePick[]>(
     `/products/${encodeURIComponent(productId)}/alternatives?limit=${limit}`,
   );
 }

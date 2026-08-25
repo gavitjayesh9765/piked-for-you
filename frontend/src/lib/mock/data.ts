@@ -6,6 +6,8 @@
  * These live behind lib/api.ts and are never imported by a component directly.
  */
 import type {
+  AlternativePick,
+  AlternativeReason,
   Badge,
   Brand,
   Category,
@@ -812,6 +814,32 @@ export function productsByCategory(slug: string): ProductSummary[] {
 }
 
 /**
+ * Alternatives, mirroring the endpoint: curated picks first, then similar
+ * products filling the row.
+ *
+ * The first two are labelled as if an editor chose them, so the product page's
+ * two visual treatments — a reasoned pick and a mere neighbour — are both
+ * exercised in mock mode. Everything after them is `isCurated: false`, which
+ * is what the price-band heuristic returns for real.
+ */
+const CURATED_REASONS: AlternativeReason[] = ["better_value", "better_for_professionals"];
+
+export function alternativesFor(productId: string, limit = 4): AlternativePick[] {
+  const pool = products.filter((p) => p.id !== productId).slice(0, limit);
+  return pool.map((p, i) => ({
+    ...p,
+    reason: CURATED_REASONS[i] ?? "closest_rival",
+    note:
+      i === 0
+        ? "Around 30% cheaper and gives up little that matters day to day."
+        : i === 1
+          ? "The one to buy if this is a tool you use for eight hours a day."
+          : null,
+    isCurated: i < CURATED_REASONS.length,
+  }));
+}
+
+/**
  * Full detail for the product page.
  *
  * The score breakdown and the specification table are assembled from the
@@ -846,6 +874,13 @@ export function productDetail(slug: string): Product | null {
         .filter((c) => seed.scores[c.key] !== undefined)
         .map((c) => ({ key: c.key, label: c.label, value: seed.scores[c.key] })),
     },
+    verdictStance: "buy_now",
+    verdictSummary:
+      "The noise cancellation and call quality are a real step ahead of everything else at this price, " +
+      "and it has been at this price long enough that waiting is unlikely to save you anything.",
+    handsOnTested: false,
+    researchNote: null,
+    researchedAt: "2026-08-12T00:00:00Z",
     verdict:
       "This is the headphone to buy if noise cancellation is the reason you are shopping. The ANC is a " +
       "clear step ahead of everything else at this price, and the call quality — usually the first thing " +
@@ -876,8 +911,9 @@ export function productDetail(slug: string): Product | null {
       // A heading with nothing under it is worse than no heading.
       .filter((group) => group.items.length > 0),
     retailers: [
-      { id: "r1", retailer: "Amazon", retailerSlug: "amazon", url: "https://www.amazon.in/", displayPrice: 24990, isActive: true, lastUpdatedAt: "2026-08-19T06:00:00Z" },
-      { id: "r2", retailer: "Flipkart", retailerSlug: "flipkart", url: "https://www.flipkart.com/", displayPrice: 25499, isActive: true, lastUpdatedAt: "2026-08-19T06:00:00Z" },
+      { id: "r1", retailer: "Amazon", retailerSlug: "amazon", url: "https://www.amazon.in/", displayPrice: 24990, isActive: true, isAffiliate: true, lastUpdatedAt: "2026-08-19T06:00:00Z" },
+      { id: "r2", retailer: "Flipkart", retailerSlug: "flipkart", url: "https://www.flipkart.com/", displayPrice: 25499, isActive: true, isAffiliate: true, lastUpdatedAt: "2026-08-19T06:00:00Z" },
+      { id: "r3", retailer: "Official store", retailerSlug: "official", url: "https://www.sony.co.in/", displayPrice: 26990, isActive: true, isAffiliate: false, lastUpdatedAt: "2026-08-18T06:00:00Z" },
     ],
     seo: {
       metaTitle: `${summary.brand.name} ${summary.title} review, score and price`,

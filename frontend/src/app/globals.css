@@ -330,6 +330,163 @@
     }
   }
 
+  /* ------------------------------------------------------------------
+     HEADLINE WORD CYCLE — "Start deciding. / choosing. / shopping."
+
+     Only the second word of the hero's second line moves. It dissolves
+     through the same halftone the headline already wears: two grids of
+     background-coloured dots, offset from each other by half a tile, fading
+     out one after the other. Over the letterforms they punch holes; over the
+     page they ARE the page, so no second colour enters the design — the dots
+     are `--c-bg` and nothing else.
+
+     Fading the two grids in sequence rather than together is what makes it
+     read as pixels resolving rather than a crossfade: the word arrives in
+     fragments, then half-density, then whole, and leaves the same way.
+
+     COST: three spans, six pseudo-elements, `opacity` and `transform` only.
+     No mask/filter/blend animation, so every frame stays on the compositor
+     and off the main thread — which is what keeps it smooth on a cheap phone.
+     ------------------------------------------------------------------ */
+  .word-cycle__stack {
+    /* The three words share one grid cell, so the line is always as wide as
+       the widest of them and the swap can never reflow the headline. */
+    display: inline-grid;
+    /* All three words sit in the same row; baseline alignment is what lets the
+       grid hand a real text baseline back to the line "Start" sits on. */
+    align-items: baseline;
+    vertical-align: baseline;
+  }
+
+  .word-cycle__word {
+    grid-area: 1 / 1;
+    position: relative;
+    white-space: nowrap;
+    opacity: 0;
+    animation: wc-word 18s cubic-bezier(0.4, 0, 0.2, 1) infinite both;
+  }
+
+  /* The two dot grids. `-0.05em` of bleed so the halftone reaches ascenders
+     and descenders instead of stopping at the line box. */
+  .word-cycle__word::before,
+  .word-cycle__word::after {
+    content: "";
+    position: absolute;
+    inset: -0.05em -0.03em;
+    pointer-events: none;
+    background-image: radial-gradient(circle, var(--c-bg) 58%, transparent 62%);
+    background-size: 0.15em 0.15em;
+    animation: wc-dots-a 18s linear infinite both;
+  }
+
+  .word-cycle__word::after {
+    /* Half a tile across and down — the second grid falls in the first's
+       gaps, so together they close over the type completely. */
+    background-position: 0.075em 0.075em;
+    animation-name: wc-dots-b;
+  }
+
+  .word-cycle__word:nth-child(2),
+  .word-cycle__word:nth-child(2)::before,
+  .word-cycle__word:nth-child(2)::after {
+    animation-delay: 6s;
+  }
+
+  .word-cycle__word:nth-child(3),
+  .word-cycle__word:nth-child(3)::before,
+  .word-cycle__word:nth-child(3)::after {
+    animation-delay: 12s;
+  }
+
+  /* A hidden tab still runs keyframes in some engines. HeroWordCycle flips
+     the attribute; the work stops here. */
+  .word-cycle[data-paused="true"] .word-cycle__word,
+  .word-cycle[data-paused="true"] .word-cycle__word::before,
+  .word-cycle[data-paused="true"] .word-cycle__word::after {
+    animation-play-state: paused;
+  }
+
+  /* 18s cycle, three words: each owns a 6s slot — roughly 1.8s to resolve,
+     2.7s held solid, 1.5s to dissolve — and hands over on the beat. The drift
+     is a sixteenth of an em, enough to feel like settling and too little to
+     read as a slide. */
+  @keyframes wc-word {
+    0% {
+      opacity: 0;
+      transform: translate3d(0, 0.06em, 0);
+    }
+    6% {
+      opacity: 1;
+    }
+    10%,
+    25% {
+      transform: translate3d(0, 0, 0);
+    }
+    27% {
+      opacity: 1;
+    }
+    32% {
+      opacity: 0;
+    }
+    33%,
+    100% {
+      opacity: 0;
+      transform: translate3d(0, -0.06em, 0);
+    }
+  }
+
+  /* First grid to clear on the way in, last to close on the way out — the
+     two-step is the whole effect. */
+  @keyframes wc-dots-a {
+    0%,
+    2% {
+      opacity: 1;
+    }
+    7%,
+    27% {
+      opacity: 0;
+    }
+    31.5%,
+    100% {
+      opacity: 1;
+    }
+  }
+
+  @keyframes wc-dots-b {
+    0%,
+    5% {
+      opacity: 1;
+    }
+    10%,
+    25% {
+      opacity: 0;
+    }
+    29%,
+    100% {
+      opacity: 1;
+    }
+  }
+
+  /* Reduced motion keeps the sentence, drops the cycle: the first word, set
+     solid, with no halftone over it. */
+  @media (prefers-reduced-motion: reduce) {
+    .word-cycle__word {
+      animation: none;
+      opacity: 0;
+      transform: none;
+    }
+
+    .word-cycle__word:first-child {
+      opacity: 1;
+    }
+
+    .word-cycle__word::before,
+    .word-cycle__word::after {
+      animation: none;
+      opacity: 0;
+    }
+  }
+
   /* Soft stage for product photography */
   .plate {
     background-color: var(--c-plate);

@@ -13,7 +13,7 @@ from app.core.deps import DbSession
 from app.modules.products.repository import ProductRepository
 from app.modules.products.service import sign_for, to_detail, to_summary
 from app.schemas.common import MAX_PAGE, Facet, Page, PageParams, SortOption
-from app.schemas.product import ProductOut, ProductSummaryOut
+from app.schemas.product import AlternativeOut, ProductOut, ProductSummaryOut
 
 router = APIRouter()
 
@@ -80,21 +80,61 @@ async def product_facets(
     return await build_facets(db, category)
 
 
-@router.get("/{product_id}/alternatives", response_model=list[ProductSummaryOut])
+@router.get("/{product_id}/alternatives", response_model=list[AlternativeOut])
 async def alternatives(
     product_id: uuid.UUID,
     db: DbSession,
     response: Response,
     limit: Annotated[int, Query(ge=1, le=12)] = 4,
-) -> list[ProductSummaryOut]:
+) -> list[AlternativeOut]:
+    """Curated picks first, then the price-band heuristic to fill the row.
+
+    The two are returned in one list but stay distinguishable: `is_curated`
+    separates "an editor chose this, for this reason" from "similar product,
+    similar price". Presenting the second as the first would attach an
+    editorial claim to a row nobody wrote, which is the exact failure the whole
+    site is built to avoid.
+    """
     _cache(response)
     repo = ProductRepository(db)
     product = await repo.get_any(product_id)
     if product is None or product.status != "published":
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Product not found")
-    alts = await repo.alternatives(product, limit)
-    urls = await sign_for(alts)
-    return [to_summary(p, urls) for p in alts]
+
+    curated = await repo.curated_alternatives(product, limit)
+
+    # Only top up if the editor left room. A page with six deliberate picks
+    # does not want a seventh chosen by price arithmetic.
+    remaining = limit - len(curated)
+    filler = (
+        await repo.alternatives(
+            product, remaining, exclude=[p.id for p, _, _ in curated]
+        )
+        if remaining > 0
+        else []
+    )
+
+    urls = await sign_for([p for p, _, _ in curated] + filler)
+
+    return [
+        AlternativeOut(
+            **to_summary(p, urls).model_dump(by_alias=False),
+            reason=reason,  # type: ignore[arg-type]
+            note=note,
+            is_curated=True,
+        )
+        for p, reason, note in curated
+    ] + [
+        AlternativeOut(
+            **to_summary(p, urls).model_dump(by_alias=False),
+            # The heuristic knows one thing about these: same category, same
+            # money. "closest_rival" is the only honest label for that.
+            reason="closest_rival",
+            note=None,
+            is_curated=False,
+        )
+        for p in filler
+    ]
 
 
 @router.get("/{category_slug}/{slug}", response_model=ProductOut)

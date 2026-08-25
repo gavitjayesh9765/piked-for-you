@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { getAlternatives, getProduct, getReviews } from "@/lib/api";
-import type { Product } from "@/lib/types";
+import type { AlternativePick, Product } from "@/lib/types";
 import { getAuthedUser } from "@/lib/supabase/server";
 import { discountPercent, formatPrice, formatPriceRange } from "@/lib/format";
 
@@ -14,8 +14,16 @@ import { jsonLd } from "@/lib/json-ld";
 import { Badge, CommunityRating } from "@/components/ui/Badge";
 import { RetailButton } from "@/components/ui/Button";
 import { Gallery } from "@/components/product/Gallery";
-import { ScoreBreakdown, ScoreRing } from "@/components/product/ScoreRing";
-import { AudienceFit, ProsCons, SpecTable, VerdictBlock } from "@/components/product/Verdict";
+import { ScorePanel, ScoreRing } from "@/components/product/ScoreRing";
+import { AudienceFit, ProsCons, SpecsDisclosure, VerdictBlock } from "@/components/product/Verdict";
+import {
+  QuickSummary,
+  ReasonChip,
+  ResearchNote,
+  TrustLinks,
+  VerdictBanner,
+} from "@/components/product/Decision";
+import { BuyingOptions } from "@/components/product/BuyingOptions";
 import { ProductCard } from "@/components/product/ProductCard";
 import { ReviewList } from "@/components/product/ReviewList";
 import { RowsArriving } from "@/components/ui/Arriving";
@@ -29,7 +37,11 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   if (!product) return { title: "Product not found" };
 
   const title = product.seo?.metaTitle ?? `${product.brand.name} ${product.title}`;
-  const description = product.seo?.metaDescription ?? product.tagline;
+  // The recommendation summary is the better description when there is one: it
+  // is the sentence a searcher is actually looking for, and it is written to
+  // stand alone, which a tagline is not always.
+  const description =
+    product.seo?.metaDescription ?? product.verdictSummary ?? product.tagline;
 
   return {
     title,
@@ -44,6 +56,38 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   };
 }
 
+/**
+ * The product page.
+ *
+ * The order of this page IS the product. A reader arrives with one question —
+ * *should I buy this?* — and every block below is placed by how directly it
+ * answers it:
+ *
+ *   1. What it is          — gallery, title, price, score at a glance
+ *   2. The answer          — BUY NOW / WAIT / SKIP / CONSIDER AN ALTERNATIVE
+ *   3. The answer, fast    — fifteen-second summary
+ *   4. The argument        — verdict prose, then pros and cons
+ *   5. Whether it is you   — best for / not ideal for
+ *   6. The scoring         — overall and per criterion
+ *   7. The detail          — specifications, collapsed
+ *   8. Where to buy        — every link, every affiliate relationship named
+ *   9. Who is telling you  — how we reviewed this, and the four policy docs
+ *  10. What else           — community reviews, then better alternatives
+ *
+ * What moved, and why:
+ *
+ *  - Specifications were in a sidebar rail beside the verdict, competing with
+ *    it for the same screen. They are reference material for a decision that
+ *    has already been made by the time you want them, so they are now below
+ *    the argument and collapsed.
+ *  - The score breakdown was in the hero column, where five criteria rendered
+ *    as five near-full-width bars and read as a loading state. It now has the
+ *    page's width and two columns.
+ *  - The retailer stack has moved out of the hero, with one primary exit left
+ *    behind. A reader who already knows they want it can still leave in one
+ *    click; a reader who came for advice is no longer sold to before being
+ *    advised.
+ */
 export default async function ProductPage({ params }: { params: Promise<Params> }) {
   const { category, slug } = await params;
 
@@ -54,6 +98,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 
   const off = discountPercent(product.pricing.current, product.pricing.max);
   const activeRetailers = product.retailers.filter((r) => r.isActive);
+  const lead = activeRetailers[0];
 
   return (
     <>
@@ -71,7 +116,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           />
         </div>
 
-        {/* ================= Above the fold: gallery + decision panel =========
+        {/* ============ 1–2. What it is, and the answer ==================
             Full-bleed two-column. The gallery gets the larger share on wide
             displays; the decision column is capped so it never sprawls. */}
         <div className="shell-wide mt-6 grid gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] xl:gap-16">
@@ -147,75 +192,101 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
               />
             )}
 
-            {/* --- Retailer exits (spec §26). The only orange on the page. --- */}
-            <div className="mt-8 flex flex-col gap-3">
-              {activeRetailers.map((r, i) => (
-                <RetailButton
-                  key={r.id}
-                  retailer={r.retailer}
-                  href={r.url}
-                  price={r.displayPrice ? formatPrice(r.displayPrice, product.pricing.currency) : undefined}
-                  emphasis={i === 0 ? "primary" : "secondary"}
-                />
-              ))}
-              <p className="text-label-xs leading-relaxed text-ink-faint">
-                SortedChoice does not sell this product. Prices are indicative and last checked
-                separately by each retailer — confirm on their site before buying.
-              </p>
-            </div>
+            {/* --- THE ANSWER. Directly under the price, because the price is
+                    the question a reader is holding when they read it. --- */}
+            <VerdictBanner
+              stance={product.verdictStance}
+              summary={product.verdictSummary}
+              className="mt-7 sm:mt-8"
+            />
 
-            {/* --- Score breakdown (spec §24) --- */}
-            {product.score && product.score.criteria.length > 0 && (
-              <div className="panel mt-8 p-5 sm:p-6">
-                <div className="flex items-baseline justify-between">
-                  <h2 className="t-eyebrow text-brand">PickD Score breakdown</h2>
-                  <span className="tabular text-headline-sm font-bold text-ink">
-                    {(Number(product.score.overall) || 0).toFixed(1)}
-                    <span className="text-body-sm font-normal text-ink-subtle"> / 10</span>
-                  </span>
-                </div>
-                <ScoreBreakdown criteria={product.score.criteria} className="mt-5" />
+            {/* --- One exit, not a stack (spec §26). The full set of buying
+                    options lives below the verdict, which is where the page
+                    argues you should decide from. This is here for the reader
+                    who arrived already decided. --- */}
+            {lead && (
+              <div className="mt-6 flex flex-col gap-3">
+                <RetailButton
+                  retailer={lead.retailer}
+                  href={lead.url}
+                  price={
+                    lead.displayPrice
+                      ? formatPrice(lead.displayPrice, product.pricing.currency)
+                      : undefined
+                  }
+                  emphasis="primary"
+                />
+                {activeRetailers.length > 1 && (
+                  <Link
+                    href="#buying-options"
+                    className="font-label text-label-xs uppercase tracking-[0.12em] text-ink-subtle
+                               transition-colors duration-fast hover:text-brand"
+                  >
+                    All {activeRetailers.length} buying options ↓
+                  </Link>
+                )}
               </div>
             )}
           </div>
         </div>
 
-        {/* ================= The research =================
-            One region, not four. Each of these blocks used to be its own
+        {/* ============ 3. Fifteen seconds ============ */}
+        <div className="shell-wide mt-section">
+          <div className="mx-auto max-w-[1240px]">
+            <QuickSummary
+              pros={product.pros}
+              cons={product.cons}
+              bestFor={product.bestFor}
+              notIdealFor={product.notIdealFor}
+            />
+          </div>
+        </div>
+
+        {/* ============ 4–7. The argument, then the reference =============
+            One region, not five. Each of these blocks used to be its own
             <Section>, so a full section gap sat between a verdict and the pros
             that argue it — the page read as unrelated islands with dead air
             between them.
 
-            The reading column carries the judgement (verdict, then pros and
-            cons); the rail beside it carries the reference a reader dips into
-            (who it suits, then the numbers). Capped narrower than the hero on
-            purpose — the hero is a grid and wants the width, this is prose and
-            does not (docs/01-design-brainstorm.md §3.2). */}
-        <div className="shell-wide mt-section">
-          <div className="mx-auto grid max-w-[1240px] items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] xl:gap-6">
-            <div className="flex min-w-0 flex-col gap-5">
-              {product.verdict && <VerdictBlock verdict={product.verdict} />}
-              <ProsCons pros={product.pros} cons={product.cons} className="grid gap-5 md:grid-cols-2" />
-            </div>
+            Capped narrower than the hero on purpose: the hero is a grid and
+            wants the width, this is argument and does not
+            (docs/01-design-brainstorm.md §3.2). */}
+        <div className="shell-wide mt-6">
+          <div className="mx-auto flex max-w-[1240px] flex-col gap-5">
+            {product.verdict && <VerdictBlock verdict={product.verdict} />}
 
-            <aside className="flex flex-col gap-5">
-              <AudienceFit
-                bestFor={product.bestFor}
-                notIdealFor={product.notIdealFor}
-                className="grid gap-5 sm:grid-cols-2 lg:grid-cols-1"
+            <ProsCons pros={product.pros} cons={product.cons} className="grid gap-5 md:grid-cols-2" />
+
+            <AudienceFit
+              bestFor={product.bestFor}
+              notIdealFor={product.notIdealFor}
+              className="grid gap-5 md:grid-cols-2"
+            />
+
+            {product.score && (
+              <ScorePanel
+                overall={product.score.overall}
+                criteria={product.score.criteria}
+                updatedAt={product.score.updatedAt}
               />
+            )}
 
-              {product.specifications.length > 0 && (
-                <div>
-                  <h2 className="t-eyebrow mb-3">Specifications</h2>
-                  <SpecTable groups={product.specifications} />
-                </div>
-              )}
-            </aside>
+            <SpecsDisclosure groups={product.specifications} />
+
+            {/* ============ 8. Where to buy ============ */}
+            <BuyingOptions pricing={product.pricing} retailers={activeRetailers} />
+
+            {/* ============ 9. Who is telling you ============ */}
+            <ResearchNote
+              handsOnTested={product.handsOnTested}
+              note={product.researchNote}
+              researchedAt={product.researchedAt ?? product.score?.updatedAt}
+            />
+            <TrustLinks className="px-1" />
           </div>
         </div>
 
-        {/* ================= Community =================
+        {/* ============ 10. Community =================
 
             Reviews and the viewer's session are both below the fold and both
             cost a round trip, so neither belongs in front of the verdict. The
@@ -230,9 +301,9 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           <Community product={product} />
         </Suspense>
 
-        {/* ================= Alternatives (spec §52) ================= */}
+        {/* ============ 10. Better alternatives (spec §52) ============ */}
         <Suspense fallback={null}>
-          <Alternatives productId={product.id} />
+          <Alternatives productId={product.id} stance={product.verdictStance} />
         </Suspense>
       </main>
 
@@ -256,6 +327,24 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                     ratingValue: product.communityRating.average,
                     reviewCount: product.communityRating.count,
                     bestRating: 5,
+                  },
+                }
+              : {}),
+            // Our verdict, declared as what it is: an editorial review with its
+            // own 0–10 scale, kept structurally separate from the community
+            // aggregate above (spec §32).
+            ...(product.score && product.verdictSummary
+              ? {
+                  review: {
+                    "@type": "Review",
+                    reviewRating: {
+                      "@type": "Rating",
+                      ratingValue: product.score.overall,
+                      bestRating: 10,
+                      worstRating: 0,
+                    },
+                    author: { "@type": "Organization", name: "SortedChoice" },
+                    reviewBody: product.verdictSummary,
                   },
                 }
               : {}),
@@ -299,19 +388,58 @@ async function Community({ product }: { product: Product }) {
   );
 }
 
-async function Alternatives({ productId }: { productId: string }) {
+/**
+ * Better alternatives (spec §52).
+ *
+ * The heading follows the verdict. A reader who has just been told to SKIP is
+ * not browsing "similar products" — they are asking what to buy instead, and
+ * the block should say so rather than making them infer it.
+ *
+ * Curated picks carry an editor's reason; anything the price-band heuristic
+ * supplied is labelled as a neighbour and nothing more. The two are visually
+ * distinct on purpose: presenting arithmetic as a recommendation is the exact
+ * failure this site exists to avoid.
+ */
+async function Alternatives({
+  productId,
+  stance,
+}: {
+  productId: string;
+  stance?: Product["verdictStance"];
+}) {
   const alternatives = await getAlternatives(productId, 5);
   if (alternatives.length === 0) return null;
+
+  const redirecting = stance === "skip" || stance === "consider_alternative";
 
   return (
     <Section width="wide">
       <SectionHeader
-        title="Alternatives worth considering"
-        subtitle="Similar products we've researched, in case this one isn't the right fit."
+        title={redirecting ? "Buy one of these instead" : "Better alternatives"}
+        subtitle={
+          redirecting
+            ? "Where the money is better spent, and who each of these is for."
+            : "Products that beat this one on a specific priority — value, performance, or budget."
+        }
       />
       <div className="grid-products stagger mt-8">
-        {alternatives.map((p) => (
-          <ProductCard key={p.id} product={p} />
+        {alternatives.map((alt: AlternativePick) => (
+          <div key={alt.id} className="flex flex-col gap-3">
+            {/* Fixed-height header so every card in the row starts at the same
+                line. Without it a two-line note under one chip pushes its card
+                down and the row reads as broken rather than as annotated. The
+                clamp is what makes the min-height a guarantee instead of a
+                hope. */}
+            <div className="flex min-h-[4.5rem] flex-col gap-2">
+              <ReasonChip reason={alt.reason} curated={alt.isCurated} className="self-start" />
+              {alt.note && (
+                <span className="line-clamp-2 text-body-sm leading-snug text-ink-muted">
+                  {alt.note}
+                </span>
+              )}
+            </div>
+            <ProductCard product={alt} className="flex-1" />
+          </div>
         ))}
       </div>
     </Section>
