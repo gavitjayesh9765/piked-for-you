@@ -95,7 +95,7 @@ export default async function AccountSettingsPage() {
       </section>
 
       {/* --- Interactive: theme, consent, export, delete --------------- */}
-      <AccountSettings />
+      <AccountSettings passwordless={passwordless} />
 
       {/* --- Where the rules live ------------------------------------- */}
       <section aria-labelledby="policies" className="mt-section">

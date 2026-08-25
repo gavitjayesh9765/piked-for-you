@@ -20,10 +20,24 @@ type Theme = "light" | "dark" | "system";
  * goes through a real channel that a person actions — and the page says so
  * plainly rather than implying a one-click erase.
  */
-export function AccountSettings() {
+export function AccountSettings({ passwordless }: { passwordless: boolean }) {
   return (
     <>
-      <SecuritySetting />
+      {/* A Google-only account has no SortedChoice password, so a "Change
+          password" form is not a setting it can use. Worse than useless:
+          `updateUser({ password })` succeeds, so submitting it would quietly
+          ATTACH a password to an account whose Sign-in section, a few lines
+          up the same page, has just told the reader there is none. The two
+          halves disagreed because this one is a client component rendered
+          with no props, and so had no way to know. The server page already
+          resolves `isOAuthOnly` for the copy above; it passes the same
+          answer down rather than the question being asked twice.
+
+          Linking Google onto an existing password account leaves `email` in
+          `providers`, so those accounts are not passwordless and do keep the
+          form. Admin password rotation is untouched — it does not come
+          through here. */}
+      {passwordless ? null : <SecuritySetting />}
       <ThemeSetting />
       <AnalyticsSetting />
       <DataSetting />
