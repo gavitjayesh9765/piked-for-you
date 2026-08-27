@@ -344,13 +344,16 @@ function NothingRecordedYet() {
         </li>
         <li>
           <strong className="text-ink">The API.</strong>{" "}
-          <code className="text-label-xs">POST /api/v1/track</code> should answer 204.
+          <code className="text-label-xs">POST /api/v1/track</code> on the backend should answer
+          204.
         </li>
         <li>
-          <strong className="text-ink">The site.</strong>{" "}
+          <strong className="text-ink">The proxy.</strong>{" "}
+          <code className="text-label-xs">POST /api/track</code> on this site should also answer
+          204. It forwards to the backend, so{" "}
           <code className="text-label-xs">NEXT_PUBLIC_API_URL</code> must be set in the front-end
-          deployment, and the API&rsquo;s <code className="text-label-xs">CORS_ORIGINS</code> must
-          name the site&rsquo;s origin — the beacon is a cross-origin POST and is blocked without it.
+          deployment. The beacon goes through here rather than straight to the API precisely so
+          that <code className="text-label-xs">CORS_ORIGINS</code> cannot silently break it.
         </li>
         <li>
           <strong className="text-ink">Your own visit.</strong> Admin pages are not tracked, and an

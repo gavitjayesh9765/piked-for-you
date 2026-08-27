@@ -1,9 +1,16 @@
 /**
  * The tracking beacon, client side.
  *
- * Posts to `POST {API_URL}/track`, which answers 204 to everything. See
- * `backend/app/modules/analytics/router.py` for what happens on the other end
- * and `supabase/migrations/20260827180440_analytics_daily.sql` for why the
+ * Posts to `POST /api/track` — OUR OWN origin, not the API's. That route
+ * (`app/api/track/route.ts`) forwards to the backend. See its header for why:
+ * the short version is that the API's `CORS_ORIGINS` does not name this site,
+ * so a direct call was rejected at the preflight and every beacon died in the
+ * browser with nothing in any log to say so. Same-origin also means no
+ * preflight at all, which halves the requests for the most frequently fired
+ * call on the site.
+ *
+ * See `backend/app/modules/analytics/router.py` for what happens at the far
+ * end and `supabase/migrations/20260827180440_analytics_daily.sql` for why the
  * payload is as thin as it is.
  *
  * ---------------------------------------------------------------------------
@@ -31,8 +38,6 @@
  * that was never exact.
  */
 
-import { API_URL } from "@/lib/env";
-
 export type TrackPayload = {
   kind: "view" | "click";
   productId?: string;
@@ -48,12 +53,17 @@ export type TrackPayload = {
   referrer?: string;
 };
 
-export function track(payload: TrackPayload): void {
-  // No API configured (a mock build, or a misconfigured preview) means there
-  // is nowhere to send this. Not an error — just nothing to do.
-  if (!API_URL || typeof window === "undefined") return;
+/**
+ * Relative, so it resolves against whatever origin the page is served from —
+ * the production domain, a Vercel preview URL, or localhost — with no
+ * configuration and nothing to keep in step.
+ */
+const TRACK_URL = "/api/track";
 
-  const url = `${API_URL}/track`;
+export function track(payload: TrackPayload): void {
+  if (typeof window === "undefined") return;
+
+  const url = TRACK_URL;
   const body = JSON.stringify(payload);
 
   try {
@@ -65,11 +75,9 @@ export function track(payload: TrackPayload): void {
      * and, because nothing here reads the response, it would do so invisibly.
      * The Blob is the only way to set a content type on a beacon.
      *
-     * ⚠ `application/json` makes this a NON-SIMPLE cross-origin request, so it
-     * is preflighted. The API's CORS middleware already allows the site's
-     * origin, so this works — but it does mean each beacon is two round trips,
-     * and it is the reason a `text/plain` body would be tempting. Don't: a
-     * preflight the browser caches beats a 422 nobody can see.
+     * `application/json` would make this a non-simple request and trigger a
+     * preflight if it were cross-origin. It is not — the URL is relative, so
+     * this is same-origin and no preflight happens regardless of content type.
      */
     const sent = navigator.sendBeacon?.(
       url,
@@ -94,8 +102,9 @@ export function track(payload: TrackPayload): void {
     headers: { "Content-Type": "application/json" },
     body,
     keepalive: true,
-    mode: "cors",
-    credentials: "omit",
+    // `same-origin` rather than `omit`: the route handler checks `sameOrigin()`
+    // on the way in, and Sec-Fetch-Site is what carries that.
+    credentials: "same-origin",
   }).catch(() => {});
 }
 
