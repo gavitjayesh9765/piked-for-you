@@ -16,6 +16,7 @@ export default function PrivacyPage() {
       title="Privacy policy"
       lede="What we collect, why we collect it, and how to make us delete it."
       updated={UPDATED}
+      path="/privacy"
       sections={[
         {
           id: "principle",

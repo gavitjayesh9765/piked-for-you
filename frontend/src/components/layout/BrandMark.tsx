@@ -1,5 +1,7 @@
 import Image from "next/image";
 
+import { SITE_NAME } from "@/lib/site";
+
 /**
  * The SortedChoice logo mark.
  *
@@ -32,9 +34,27 @@ import Image from "next/image";
  * header bar, and the footer's brand block on short documents. Lazy-loading a
  * logo is how you get a header that assembles itself in two stages.
  *
- * The alt text is empty on purpose. Both cuts sit inside a link that already
- * says "SortedChoice" in words; naming the image too makes a screen reader read
- * the brand twice for one control.
+ * ---------------------------------------------------------------------------
+ * WHY THE ALT TEXT IS NAMED, GIVEN THE `aria-hidden` WRAPPER
+ *
+ * This used to be `alt=""`, on the correct reasoning that both cuts sit inside
+ * a link that already says "SortedChoice" in words, so naming the image makes a
+ * screen reader read the brand twice for one control.
+ *
+ * The reasoning was right and the mechanism was the wrong one. The wrapping
+ * <span> below carries `aria-hidden="true"`, which removes this entire subtree
+ * from the accessibility tree — alt text inside it is never announced, whatever
+ * it says. So the empty alt was buying nothing that `aria-hidden` had not
+ * already bought, and it was costing something real: an image crawler reads the
+ * attribute and does not read ARIA, so the site's logo was the one image on
+ * every page with no name attached to it. That is the file Google needs in
+ * order to associate the mark with the Organization entity for a knowledge
+ * panel, and it was anonymous.
+ *
+ * Naming it therefore has no screen-reader cost and a direct entity-graph
+ * benefit. The two cuts get the SAME alt on purpose — they are one logo, and
+ * distinguishing "dark" from "light" in alt text describes an implementation
+ * detail of our theming to a crawler that has no use for it.
  */
 export function BrandMark({
   size = 30,
@@ -46,7 +66,7 @@ export function BrandMark({
   priority?: boolean;
 }) {
   const common = {
-    alt: "",
+    alt: `${SITE_NAME} logo`,
     width: size,
     height: size,
     priority,

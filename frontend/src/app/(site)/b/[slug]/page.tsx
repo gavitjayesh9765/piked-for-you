@@ -5,10 +5,15 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { getBrand, listProducts } from "@/lib/api";
+import type { Brand } from "@/lib/types";
 import { ProductGridArriving, ValueArriving } from "@/components/ui/Arriving";
 
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { ProductCard } from "@/components/product/ProductCard";
+import { CollectionPageJsonLd } from "@/components/seo/CollectionPageJsonLd";
+import { ItemListJsonLd, itemListId } from "@/components/seo/ItemListJsonLd";
+import { brandDescription, brandTitle } from "@/lib/seo";
+import { absoluteUrl } from "@/lib/site";
 
 type Params = { slug: string };
 
@@ -19,13 +24,24 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   const brand = await getBrand(slug);
-  if (!brand) return { title: "Brand not found" };
+  // Same reasoning as the product and category pages: a brand that does not
+  // exist must not leave an indexable page behind at the URL someone guessed.
+  // This used to return a bare title and inherit `robots: index` from the root.
+  if (!brand) return { title: "Brand not found", robots: { index: false, follow: false } };
+
+  const title = brandTitle(brand);
+  const description = brandDescription(brand);
+  const canonical = `/b/${slug}`;
 
   return {
-    title: `${brand.name} — researched and ranked`,
-    description:
-      brand.description ?? `Every ${brand.name} product we have researched, with our verdict on each.`,
-    alternates: { canonical: `/b/${slug}` },
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: { title, description, url: canonical, type: "website" },
+    // See the note on the category page: card SIZE is the one thing Twitter
+    // does not inherit from Open Graph, and a route declaring its own
+    // `openGraph` does not inherit the root layout's `twitter` block either.
+    twitter: { card: "summary_large_image", title, description },
   };
 }
 
@@ -103,7 +119,7 @@ export default async function BrandPage({ params }: { params: Promise<Params> })
           </div>
         }
       >
-        <Verdicts slug={slug} brandName={brand.name} />
+        <Verdicts slug={slug} brand={brand} />
       </Suspense>
     </main>
   );
@@ -165,8 +181,10 @@ function LedgerArriving() {
   );
 }
 
-async function Verdicts({ slug, brandName }: { slug: string; brandName: string }) {
+async function Verdicts({ slug, brand }: { slug: string; brand: Brand }) {
   const products = await brandProducts(slug);
+  const brandName = brand.name;
+  const path = `/b/${slug}`;
 
   return (
     <div className="shell-wide pb-24 pt-14 lg:pt-20">
@@ -201,6 +219,54 @@ async function Verdicts({ slug, brandName }: { slug: string; brandName: string }
           </Link>
         </div>
       )}
+
+      {/* --- Structured data ----------------------------------------------
+          This page had none, which made it the largest untyped surface left on
+          the site: one page per manufacturer, each one an ordered set of our
+          verdicts, all of it legible only as prose and anchor tags.
+
+          Three nodes, each doing a different job:
+
+            CollectionPage — what this page is and who published it.
+            ItemList       — the ranking on it, highest scoring first, which is
+                             an editorial claim and not an arbitrary sort.
+            Brand          — the manufacturer as an ENTITY, so `about` resolves
+                             to something rather than to a string.
+
+          The Brand node is the one worth arguing for. Every product page
+          already emits `brand: { "@type": "Brand", name }` — an anonymous node,
+          repeated once per product, that no crawler can tell is the same maker
+          each time. This page is the natural home for the canonical one, since
+          it is the only URL on the site that is ABOUT a brand, and giving it
+          `@id` plus `url` plus the manufacturer's own site is what lets Google
+          reconcile our "Sony" with the Sony it already knows about.
+
+          `sameAs` carries the manufacturer's website where we have one. Note
+          the page renders that same link with `rel="nofollow"` — deliberately,
+          since we do not vouch for a manufacturer's marketing — and there is no
+          contradiction: `nofollow` withholds ranking endorsement from a link,
+          while `sameAs` states an identity fact. They are different claims. */}
+      {products.length > 0 && (
+        <ItemListJsonLd
+          products={products}
+          path={path}
+          name={`${brandName} products, ranked by our score`}
+        />
+      )}
+      <CollectionPageJsonLd
+        path={path}
+        name={brandTitle(brand)}
+        description={brandDescription(brand)}
+        {...(products.length > 0 ? { itemListId: itemListId(path) } : {})}
+        about={{
+          "@type": "Brand",
+          "@id": `${absoluteUrl(path)}#brand`,
+          name: brandName,
+          url: absoluteUrl(path),
+          ...(brand.logoUrl ? { logo: brand.logoUrl } : {}),
+          ...(brand.website ? { sameAs: [brand.website] } : {}),
+        }}
+      />
     </div>
   );
 }

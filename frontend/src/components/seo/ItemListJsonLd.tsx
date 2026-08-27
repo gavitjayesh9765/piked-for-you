@@ -1,5 +1,5 @@
 import { jsonLd } from "@/lib/json-ld";
-import { productHref } from "@/lib/format";
+import { productFullName, productHref } from "@/lib/format";
 import { absoluteUrl } from "@/lib/site";
 import type { ProductSummary } from "@/lib/types";
 
@@ -36,9 +36,19 @@ import type { ProductSummary } from "@/lib/types";
  * So this asserts the ranking, and delegates every fact about each item to the
  * page that owns it.
  */
+/** The `@id` this component gives the list on a page. Exported so
+ *  <CollectionPageJsonLd> can point `mainEntity` at it without the two files
+ *  agreeing on a string by coincidence. */
+export function itemListId(path: string): string {
+  return `${absoluteUrl(path)}#itemlist`;
+}
+
 export function ItemListJsonLd({
   products,
   name,
+  /** Site-relative path of the page carrying this list. Gives the node an
+   *  addressable `@id` — see `itemListId` above. */
+  path,
   /**
    * Where the ranking starts. Always 1 for a first page; exists so a paginated
    * listing can continue the numbering rather than restarting it, which would
@@ -48,6 +58,7 @@ export function ItemListJsonLd({
 }: {
   products: ProductSummary[];
   name: string;
+  path: string;
   startPosition?: number;
 }) {
   // An empty ItemList is not a neutral thing to emit — it is a positive claim
@@ -62,6 +73,7 @@ export function ItemListJsonLd({
         __html: jsonLd({
           "@context": "https://schema.org",
           "@type": "ItemList",
+          "@id": itemListId(path),
           name,
           numberOfItems: products.length,
           // The grid is sorted — by our score at default, by price or rating on
@@ -71,7 +83,7 @@ export function ItemListJsonLd({
             "@type": "ListItem",
             position: startPosition + index,
             url: absoluteUrl(productHref(product)),
-            name: `${product.brand.name} ${product.title}`,
+            name: productFullName(product.brand, product.title),
           })),
         }),
       }}

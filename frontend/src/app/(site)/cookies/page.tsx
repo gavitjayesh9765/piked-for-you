@@ -16,6 +16,7 @@ export default function CookiePolicyPage() {
       title="Cookie policy"
       lede="A short list, because it is a short list."
       updated={UPDATED}
+      path="/cookies"
       sections={[
         {
           id: "what",

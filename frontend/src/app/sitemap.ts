@@ -80,6 +80,7 @@ const STATIC_ROUTES: Array<{
   { path: "/c", changeFrequency: "weekly", priority: 0.8 },
   { path: "/b", changeFrequency: "weekly", priority: 0.7 },
   { path: "/compare", changeFrequency: "weekly", priority: 0.6 },
+  // /search is deliberately absent — see the header note and app/robots.ts.
   // The trust documents. Low priority as destinations, but they are what an
   // evaluator reads to decide whether the verdicts above are worth believing,
   // so they belong in the index rather than being crawled only via the footer.
@@ -191,6 +192,32 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
    * No `lastModified`: ProductSummary carries no `updatedAt`, and a fabricated
    * timestamp is worse than none. Google treats an always-"today" lastmod as
    * noise and stops trusting the signal across the whole file.
+   *
+   * ---------------------------------------------------------------------------
+   * `images`, WHICH IS NEW AND IS THE POINT OF THIS BLOCK
+   *
+   * Next serialises this into the `image:image` extension namespace, i.e. a
+   * proper Google image sitemap, in the same file.
+   *
+   * It matters here more than on a typical site for a specific reason: these
+   * photographs are behind `next/image`, so what a crawler encounters in the
+   * HTML is a `/_next/image?url=…&w=…&q=…` proxy URL inside a `srcset` of eight
+   * candidate widths. That is discoverable but ugly — Google has to pick a
+   * representative from the set and attribute it to the page — and it is the
+   * standard reason a well-photographed catalogue underperforms in image
+   * search. Declaring the canonical source URL against the page it belongs to
+   * removes the guesswork.
+   *
+   * Only the lead photograph, deliberately. `ProductSummary` carries exactly
+   * one, and it is the cut-out product shot rather than a lifestyle frame —
+   * the single image most likely to be worth a click from an image result.
+   * Listing every gallery angle would inflate the file for images that are
+   * variations of a picture already listed.
+   *
+   * This pairs with the alt-text change in components/product/ProductCard.tsx.
+   * Neither is worth much alone: an image sitemap pointing at uncaptioned
+   * images tells Google where they are but not what they show, and captioned
+   * images behind proxy URLs are described but hard to attribute.
    */
   const productEntries: MetadataRoute.Sitemap = products
     .filter((p) => p.status === "published")
@@ -198,6 +225,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: absoluteUrl(productHref(p)),
       changeFrequency: "weekly",
       priority: 0.7,
+      ...(p.primaryImage?.url ? { images: [p.primaryImage.url] } : {}),
     }));
 
   return [...staticEntries, ...categoryEntries, ...brandEntries, ...productEntries];

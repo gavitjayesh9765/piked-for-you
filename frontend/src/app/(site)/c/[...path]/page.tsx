@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { getCategory, getFacets, listProducts } from "@/lib/api";
+import { getCategoriesForChrome, getCategory, getFacets, listProducts } from "@/lib/api";
 import type { SortOption } from "@/lib/types";
 
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
@@ -10,7 +10,9 @@ import { ProductCard } from "@/components/product/ProductCard";
 import { FilterRail } from "@/components/category/FilterRail";
 import { SortSelect } from "@/components/category/SortSelect";
 import { PanelArriving, ProductGridArriving, ValueArriving } from "@/components/ui/Arriving";
-import { ItemListJsonLd } from "@/components/seo/ItemListJsonLd";
+import { ItemListJsonLd, itemListId } from "@/components/seo/ItemListJsonLd";
+import { CollectionPageJsonLd } from "@/components/seo/CollectionPageJsonLd";
+import { categoryDescription, categoryTitle } from "@/lib/seo";
 
 type Params = { path: string[] };
 type Search = { sort?: string; brand?: string | string[]; minScore?: string };
@@ -23,7 +25,16 @@ export async function generateMetadata({
   searchParams: Promise<Search>;
 }): Promise<Metadata> {
   const [{ path }, sp] = await Promise.all([params, searchParams]);
-  const category = await getCategory(path);
+  /**
+   * Both in one round trip. `getCategoriesForChrome` is the whole taxonomy and
+   * is already fetched by the site layout on every request, so Next's per-render
+   * fetch memoization makes this free — and it is what tells `categoryTitle`
+   * whether this category is a hub or a leaf. Without it the hub check falls
+   * back to path depth and titles a two-level shelf "Best Audio". It is the
+   * guarded variant deliberately: a title that has to degrade is much better
+   * than a metadata function that throws.
+   */
+  const [category, all] = await Promise.all([getCategory(path), getCategoriesForChrome()]);
   // Same reasoning as the product page: a category that does not exist must not
   // leave an indexable page behind at the URL someone guessed.
   if (!category) return { title: "Category not found", robots: { index: false, follow: false } };
@@ -50,16 +61,38 @@ export async function generateMetadata({
    */
   const isFiltered = Boolean(sp.brand || sp.minScore || sp.sort);
 
+  /**
+   * Both strings come from lib/seo.ts rather than being built here.
+   *
+   * The title in particular changed shape: it was "{Category} — researched and
+   * ranked", which never contained the word "best" and was therefore competing
+   * for "best wireless earbuds" against pages whose titles match the phrase
+   * exactly. The full argument — including why hub categories are titled
+   * differently, and why this is not an overclaim — is in `categoryTitle`.
+   */
+  const title = categoryTitle(category, all);
+  const description = categoryDescription(category, all);
+  const canonical = `/c/${path.join("/")}`;
+
   return {
-    title: `${category.name} — researched and ranked`,
-    description: category.description ?? `Our researched picks in ${category.name}.`,
-    alternates: { canonical: `/c/${path.join("/")}` },
+    title,
+    description,
+    alternates: { canonical },
     ...(isFiltered ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
-      title: `${category.name} — researched and ranked`,
-      description: category.description ?? `Our researched picks in ${category.name}.`,
-      url: `/c/${path.join("/")}`,
+      title,
+      description,
+      url: canonical,
       type: "website",
+    },
+    twitter: {
+      // Without this a shared category link unfurls as a `summary` card — a
+      // favicon-sized thumbnail — because Twitter only inherits CONTENT from
+      // Open Graph, never the card size. The root layout sets this for the
+      // homepage; a route declaring its own `openGraph` does not inherit it.
+      card: "summary_large_image",
+      title,
+      description,
     },
   };
 }
@@ -101,7 +134,7 @@ export default async function CategoryPage({
 }) {
   const [{ path }, sp] = await Promise.all([params, searchParams]);
 
-  const category = await getCategory(path);
+  const [category, all] = await Promise.all([getCategory(path), getCategoriesForChrome()]);
   if (!category) notFound();
 
   const brandFilter = sp.brand ? (Array.isArray(sp.brand) ? sp.brand : [sp.brand]) : undefined;
@@ -182,11 +215,24 @@ export default async function CategoryPage({
                 the grid they were already looking at, would be the single most
                 obviously "loading" thing this page could do. */}
             <Suspense key={category.slug} fallback={<ProductGridArriving />}>
-              <Results query={query} categoryName={category.name} />
+              <Results query={query} listName={categoryTitle(category, all)} basePath={basePath} />
             </Suspense>
           </div>
         </div>
       </div>
+
+      {/* Describes the PAGE, where <ItemListJsonLd> inside <Results> describes
+          the ranking on it. Emitted out here rather than beside the list
+          because everything it says is known from the category record alone —
+          holding it behind the product fetch would delay the one block that
+          never needed to wait. `mainEntity` references the list by `@id`, so
+          the two join up without either restating the other. */}
+      <CollectionPageJsonLd
+        path={basePath}
+        name={categoryTitle(category, all)}
+        description={categoryDescription(category, all)}
+        itemListId={itemListId(basePath)}
+      />
     </main>
   );
 }
@@ -212,7 +258,18 @@ async function ResultCount({ query }: { query: Query }) {
   );
 }
 
-async function Results({ query, categoryName }: { query: Query; categoryName: string }) {
+async function Results({
+  query,
+  listName,
+  basePath,
+}: {
+  query: Query;
+  /** The page's own title, so the ranking is named the same way the <title>
+   *  names it. Hardcoding `Best ${name}` here produced "Best Electronics —
+   *  researched and ranked" on a page titled "Electronics buying guides". */
+  listName: string;
+  basePath: string;
+}) {
   const results = await listProducts({ ...query, pageSize: 48 });
 
   if (results.items.length === 0) {
@@ -237,7 +294,11 @@ async function Results({ query, categoryName }: { query: Query; categoryName: st
           Inside the same Suspense boundary as the grid, so the markup and the
           products it enumerates are always the same list — a copy built from a
           second call could disagree with what rendered. */}
-      <ItemListJsonLd products={results.items} name={`${categoryName} — researched and ranked`} />
+      <ItemListJsonLd
+        products={results.items}
+        path={basePath}
+        name={`${listName} — researched and ranked`}
+      />
     </>
   );
 }

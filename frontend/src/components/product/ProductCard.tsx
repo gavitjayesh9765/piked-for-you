@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
-import { formatPrice, formatPriceRange, productHref } from "@/lib/format";
+import { formatPrice, formatPriceRange, productFullName, productHref } from "@/lib/format";
 import type { ProductSummary } from "@/lib/types";
 import { Badge, CommunityRating, ValueChip } from "@/components/ui/Badge";
 import { ScoreRing } from "./ScoreRing";
@@ -97,7 +97,28 @@ export function ProductCard({
             {primaryImage ? (
               <Image
                 src={primaryImage.url}
-                alt=""
+                /* Named, and safe to name — see the note on the wrapper above.
+
+                   This was `alt=""` to stop a screen reader announcing the
+                   product name twice: once from the image, once from the title
+                   link below it. But the link this image sits inside is
+                   `aria-hidden`, so the whole subtree is already out of the
+                   accessibility tree and the alt is never read aloud at all.
+                   The empty string was duplicating what ARIA had already done.
+
+                   What it was NOT duplicating is image indexing. Google Images
+                   reads `alt` and ignores `aria-hidden` entirely, so every
+                   product photograph on every grid — the homepage rails, the
+                   category pages, Top Picks — was being crawled with no
+                   caption. Product photography is the one asset class where
+                   image search sends real commercial traffic, and it was
+                   opted out by accident.
+
+                   The editor's own alt wins where one was written; the
+                   brand-plus-title fallback is what the wide card already
+                   uses, so the same photograph is described the same way in
+                   both placements. */
+                alt={primaryImage.alt ?? productFullName(brand, title)}
                 fill
                 sizes="(max-width: 640px) 45vw, (max-width: 1280px) 33vw, 20vw"
                 priority={priority}
@@ -194,7 +215,7 @@ export function ProductCardWide({ product }: { product: ProductSummary }) {
                empty alt makes the largest image on those pages invisible to
                both a screen reader and Google Images. The editor's own alt text
                wins where one was written. */
-            alt={primaryImage.alt ?? `${brand.name} ${title}`}
+            alt={primaryImage.alt ?? productFullName(brand, title)}
             fill
             sizes="(max-width: 640px) 100vw, 40vw"
             className="object-contain p-8 transition-transform duration-slow ease-ease group-hover:scale-[1.03]"

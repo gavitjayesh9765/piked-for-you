@@ -16,6 +16,7 @@ export default function TermsPage() {
       title="Terms of service"
       lede="The agreement between you and us. Written to be read, not to be survived."
       updated={UPDATED}
+      path="/terms"
       sections={[
         {
           id: "what-this-is",

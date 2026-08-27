@@ -16,6 +16,8 @@ export default function AboutPage() {
       title="Why this exists."
       lede="Buying a decent thing should not take a weekend of tabs. That is the entire premise."
       updated={UPDATED}
+      path="/about"
+      schemaType="AboutPage"
       sections={[
         {
           id: "the-problem",

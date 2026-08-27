@@ -16,6 +16,7 @@ export default function ReportReviewPage() {
       title="Report a review"
       lede="What gets removed, what does not, and what happens after you press the button."
       updated={UPDATED}
+      path="/help/report"
       sections={[
         {
           id: "how",

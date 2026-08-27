@@ -6,12 +6,12 @@ import { Suspense } from "react";
 import { getAlternatives, getProduct, getReviews } from "@/lib/api";
 import type { AlternativePick, Product } from "@/lib/types";
 import { getAuthedUser } from "@/lib/supabase/server";
-import { discountPercent, formatPrice, formatPriceRange } from "@/lib/format";
+import { discountPercent, formatPrice, formatPriceRange, productFullName } from "@/lib/format";
 
 import { Section, SectionHeader } from "@/components/layout/Section";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { jsonLd } from "@/lib/json-ld";
-import { absoluteUrl } from "@/lib/site";
+import { SITE_NAME, absoluteUrl } from "@/lib/site";
 import { Badge, CommunityRating } from "@/components/ui/Badge";
 import { RetailButton } from "@/components/ui/Button";
 import { Gallery } from "@/components/product/Gallery";
@@ -78,7 +78,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   // `robots: index` and every mistyped slug becomes an indexable empty page.
   if (!product) return { title: "Product not found", robots: { index: false, follow: false } };
 
-  const title = product.seo?.metaTitle ?? `${product.brand.name} ${product.title}`;
+  const title = product.seo?.metaTitle ?? productFullName(product.brand, product.title);
   // The recommendation summary is the better description when there is one: it
   // is the sentence a searcher is actually looking for, and it is written to
   // stand alone, which a tagline is not always.
@@ -124,6 +124,28 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
       // og:type=product invites clients to look for price and availability
       // properties a research page has no business asserting as a merchant.
       type: "article",
+      /**
+       * Having declared og:type=article, these are the two properties the type
+       * actually defines — and they were missing, which made the declaration
+       * half a claim: "this is an article" with no indication of when it was
+       * written or last revised.
+       *
+       * A buying verdict is perishable. Google surfaces `article:modified_time`
+       * as the date beside a result for content it judges time-sensitive, and
+       * "best X" is the canonical time-sensitive query — a result dated last
+       * week beats an undated one for the same phrase. The same properties are
+       * what a link unfurl in Slack or LinkedIn uses to stamp a shared verdict.
+       *
+       * Same sources as the `Review` node in the structured data below, so the
+       * page cannot say one thing in Open Graph and another in JSON-LD:
+       * `researchedAt` is when an editor recorded the research as done, and the
+       * score's own timestamp is what moves when a verdict is revisited.
+       * `product.updatedAt` is deliberately not used — it changes on a
+       * corrected typo, which is not a revised recommendation.
+       */
+      publishedTime: product.researchedAt ?? product.score?.updatedAt ?? product.createdAt,
+      modifiedTime: product.score?.updatedAt ?? product.updatedAt,
+      authors: [SITE_NAME],
     },
     twitter: {
       card: "summary_large_image",
@@ -410,10 +432,43 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
           __html: jsonLd({
             "@context": "https://schema.org",
             "@type": "Product",
-            name: `${product.brand.name} ${product.title}`,
-            description: product.tagline,
+            // Addressable, so the Review below can point `itemReviewed` back at
+            // this exact node instead of restating the product inside it.
+            "@id": `${absoluteUrl(`/p/${category}/${slug}`)}#product`,
+            url: absoluteUrl(`/p/${category}/${slug}`),
+            name: productFullName(product.brand, product.title),
+            // The verdict summary where there is one, falling back to the
+            // tagline. Same reasoning as `generateMetadata` above: the summary
+            // is the sentence a searcher is actually looking for, and it is
+            // written to stand alone.
+            description: product.verdictSummary ?? product.tagline,
             brand: { "@type": "Brand", name: product.brand.name },
-            image: product.images.map((i) => i.url),
+            /**
+             * Omitted entirely when there is no photograph, rather than emitted
+             * as `"image": []`.
+             *
+             * An empty array is not the absence of a claim — it is the claim
+             * that this product has zero images, which Google reports as an
+             * invalid value for a required Product field and which drags the
+             * whole block from "incomplete" to "broken". A missing key is a
+             * non-blocking warning instead. Same reasoning as `availability()`
+             * above and the empty-ItemList guard in components/seo.
+             *
+             * This is not hypothetical: products are publishable before their
+             * media is uploaded, so the live catalogue contains records whose
+             * `images` is genuinely empty, and every one of them was shipping
+             * an invalid offer block.
+             *
+             * `primaryImage` is the fallback because a ProductSummary can carry
+             * a lead photo that the detail fetch's `images` array does not — it
+             * is the one the card renders, so it is a real image of this
+             * product and belongs here.
+             */
+            ...(product.images.length > 0
+              ? { image: product.images.map((i) => i.url) }
+              : product.primaryImage?.url
+                ? { image: [product.primaryImage.url] }
+                : {}),
             ...(product.communityRating && product.communityRating.count > 0
               ? {
                   aggregateRating: {
@@ -437,8 +492,57 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                       bestRating: 10,
                       worstRating: 0,
                     },
-                    author: { "@type": "Organization", name: "SortedChoice" },
+                    /**
+                     * The Organization node declared on the homepage, by
+                     * reference rather than by value.
+                     *
+                     * This used to be `{ "@type": "Organization", name:
+                     * "SortedChoice" }` — a fresh, anonymous entity that
+                     * happened to share our name, repeated on every product
+                     * page. A crawler has no way to know that is us: it sees a
+                     * few hundred reviews by an unidentified organisation, and
+                     * separately a publisher on the homepage with a logo, an
+                     * ethics policy and publishing principles, and nothing
+                     * connects the two.
+                     *
+                     * `@id` connects them. Every verdict on the site now
+                     * resolves to the same author node, which is what turns
+                     * "somebody scored this 8.6" into "the publication whose
+                     * stated method is at /how-we-research scored this 8.6" —
+                     * the distinction an answer engine is making when it
+                     * decides whether to cite a rating or ignore it.
+                     */
+                    author: { "@id": absoluteUrl("/#organization") },
+                    publisher: { "@id": absoluteUrl("/#organization") },
                     reviewBody: product.verdictSummary,
+                    /**
+                     * WHEN WE LAST STOOD BEHIND THIS VERDICT.
+                     *
+                     * A buying recommendation is a perishable claim — the
+                     * product gets a firmware update, a successor ships, the
+                     * price halves — and an undated one is the single easiest
+                     * thing for an assistant to quote back at a reader two
+                     * years stale. The page has always rendered this date in
+                     * prose ("A recommendation with no date is a rumour", per
+                     * the `researchedAt` field's own comment); it just never
+                     * said it in a form a machine could read.
+                     *
+                     * Preference order is deliberate and runs from most to
+                     * least specific: the date an editor recorded as when the
+                     * research was done, then the date the score was last
+                     * revised, then the product record's creation date as the
+                     * floor. Every one of them is a date we actually store —
+                     * nothing here is inferred, which is the same rule the
+                     * `priceValidUntil` note above applies to offers.
+                     */
+                    datePublished:
+                      product.researchedAt ?? product.score.updatedAt ?? product.createdAt,
+                    // The score's own revision timestamp, which is what changes
+                    // when a verdict is revisited. `product.updatedAt` moves
+                    // whenever any field does — a corrected typo would claim
+                    // the verdict had been re-evaluated.
+                    dateModified: product.score.updatedAt,
+                    itemReviewed: { "@id": `${absoluteUrl(`/p/${category}/${slug}`)}#product` },
                   },
                 }
               : {}),
@@ -506,7 +610,7 @@ async function Community({ product }: { product: Product }) {
         average={product.communityRating?.average}
         count={product.communityRating?.count}
         productId={product.id}
-        productTitle={`${product.brand.name} ${product.title}`}
+        productTitle={productFullName(product.brand, product.title)}
         isAuthed={Boolean(viewer)}
       />
     </Section>

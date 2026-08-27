@@ -28,6 +28,8 @@ export default function HowWeScorePage() {
       title="How we score products"
       lede="What the number means, what the four verdicts mean, and what neither of them can be bought with."
       updated={UPDATED}
+      path="/how-we-score"
+      schemaType="Article"
       sections={[
         {
           id: "the-verdict",

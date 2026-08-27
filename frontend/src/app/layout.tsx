@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { Hanken_Grotesk, Inter, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { themeInitScript } from "@/components/layout/ThemeToggle";
-import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE, SITE_URL } from "@/lib/site";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
 
 /**
  * Three type tiers, each with a job (docs/01-design-brainstorm.md §5):
@@ -27,7 +27,7 @@ const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono"
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: `${SITE_NAME} — ${SITE_TAGLINE}`,
+    default: SITE_TITLE,
     template: `%s · ${SITE_NAME}`,
   },
   description: SITE_DESCRIPTION,
@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     locale: "en_IN",
     url: "/",
-    title: `${SITE_NAME} — ${SITE_TAGLINE}`,
+    title: SITE_TITLE,
     description: SITE_DESCRIPTION,
     // No `images` here on purpose. app/opengraph-image.tsx is picked up
     // automatically and inherited by every route that does not declare its own,
@@ -57,7 +57,7 @@ export const metadata: Metadata = {
    */
   twitter: {
     card: "summary_large_image",
-    title: `${SITE_NAME} — ${SITE_TAGLINE}`,
+    title: SITE_TITLE,
     description: SITE_DESCRIPTION,
   },
   /**
@@ -110,6 +110,7 @@ export const metadata: Metadata = {
     apple: [{ url: "/brand/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
   manifest: "/site.webmanifest",
+
 
   robots: {
     index: true,
@@ -168,6 +169,24 @@ export const metadata: Metadata = {
    * applies to exactly one URL. `metadataBase` above is what normalises the
    * origin for every relative canonical, and it is not inherited-by-accident in
    * the same way — it is only ever a base, never a claim.
+   *
+   * ⚠ AND NOTE WHAT THIS RULES OUT, WHICH IS NOT OBVIOUS.
+   *
+   * Feed autodiscovery would naturally live here too, as
+   * `alternates: { types: { "application/rss+xml": … } }`. It cannot, and the
+   * reason is worth writing down because the failure is silent and inverted.
+   *
+   * Next does NOT merge the sub-keys of `alternates` — a route exporting
+   * `alternates: { canonical }` replaces the whole object, feed entry included.
+   * So a `types` declared here would appear on exactly the pages that set no
+   * canonical of their own, which is precisely the noindex set: /login,
+   * /register, /search, /account/**. Every page that matters would lose it.
+   *
+   * This was measured, not assumed: with `types` on the root layout, /login and
+   * /search carried the feed link and /, /help and every product page did not.
+   *
+   * The feed `<link>` is therefore written directly into `<head>` in the JSX
+   * below, where nothing merges it away.
    */
 };
 
@@ -219,6 +238,24 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* Applies the stored theme before first paint — no flash. Must stay
             inline and blocking; moving it to a component would be too late. */}
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+
+        {/* Feed autodiscovery — the tag that makes /feed.xml findable at all.
+            Browsers stopped showing a feed button years ago; the things that
+            actually consume it did not. Readers, "follow" integrations,
+            newsletter tooling, and the crawlers that poll a feed to learn what
+            changed instead of re-walking the whole catalogue.
+
+            Hand-written rather than declared through `alternates.types` — see
+            the ⚠ note in the metadata export above for the measurement behind
+            that. Every page advertises the SITE's feed, which is the convention:
+            autodiscovery points at the publication, not at a feed of the
+            current page. */}
+        <link
+          rel="alternate"
+          type="application/rss+xml"
+          title={`${SITE_NAME} — latest verdicts`}
+          href="/feed.xml"
+        />
       </head>
       <body>
         <a

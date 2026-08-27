@@ -61,3 +61,33 @@ export const SITE_TAGLINE =
 
 export const SITE_DESCRIPTION =
   "Independent product research, comparisons and verdicts. Stop spending hours researching — see what's actually worth buying, and why.";
+
+/**
+ * The <title> for the site root, and the default template every page inherits.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS IS NOT `${SITE_NAME} — ${SITE_TAGLINE}`, WHICH IS WHAT IT WAS
+ *
+ * "SortedChoice — We research products so you can choose with confidence" is
+ * 69 characters. Google renders a desktop title to roughly 580px and a mobile
+ * one to a narrower box still; at 69 characters this one truncated to
+ * "SortedChoice — We research products so you can choose with c…" on desktop
+ * and lost four more words on mobile. Every word that was doing keyword work
+ * sat in the half that got cut.
+ *
+ * Worse than the truncation: the surviving words were "we research products so
+ * you can choose with" — a clause, not a claim. A tagline is written to be read
+ * after the brand, in sequence, at the top of a page. A title tag is read as a
+ * fragment in a list of ten competitors, and has to state what the site IS in
+ * the first forty characters or the reader's eye moves on.
+ *
+ * So the two strings are split. This one is the search-results identity and
+ * targets the queries people actually type — "product reviews", "buying
+ * guides" — inside the visible budget. SITE_TAGLINE keeps its job as the
+ * human-facing promise: the hero, the Organization `slogan`, the about page.
+ *
+ * ⚠ KEEP THIS UNDER 60 CHARACTERS. It is 58. The `%s · SortedChoice` template
+ * in app/layout.tsx means every OTHER page pays SITE_NAME plus three characters
+ * on top of its own title, which is the real reason the root has to be lean.
+ */
+export const SITE_TITLE = `${SITE_NAME} — Independent Product Reviews & Buying Guides`;

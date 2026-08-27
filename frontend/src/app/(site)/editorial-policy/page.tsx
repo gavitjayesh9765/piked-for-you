@@ -17,6 +17,7 @@ export default function EditorialPolicyPage() {
       title="Editorial policy"
       lede="The rules our editors work under. Published so you can tell when we have broken them."
       updated={UPDATED}
+      path="/editorial-policy"
       sections={[
         {
           id: "independence",

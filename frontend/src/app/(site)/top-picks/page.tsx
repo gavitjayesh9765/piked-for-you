@@ -12,7 +12,8 @@ import { ProductCardWide } from "@/components/product/ProductCard";
 import { ScoreRing } from "@/components/product/ScoreRing";
 import { Badge } from "@/components/ui/Badge";
 import { PanelArriving, ValueArriving } from "@/components/ui/Arriving";
-import { ItemListJsonLd } from "@/components/seo/ItemListJsonLd";
+import { ItemListJsonLd, itemListId } from "@/components/seo/ItemListJsonLd";
+import { CollectionPageJsonLd } from "@/components/seo/CollectionPageJsonLd";
 
 export const metadata: Metadata = {
   title: "Top Picks — the board",
@@ -345,7 +346,17 @@ async function Board() {
               pick, which the layout renders separately as 01. Building the list
               from `rest` would silently declare the number two to be number
               one. */}
-          <ItemListJsonLd products={picks} name="SortedChoice Top Picks" />
+          <ItemListJsonLd products={picks} path="/top-picks" name="SortedChoice Top Picks" />
+
+          {/* The board is the site's flagship ranking, so it is worth saying who
+              made it and on what basis — not just what is on it. See the note
+              in CollectionPageJsonLd for the ItemList/CollectionPage split. */}
+          <CollectionPageJsonLd
+            path="/top-picks"
+            name="Top Picks — the board"
+            description="Every product currently carrying a SortedChoice recommendation, ordered by our editors."
+            itemListId={itemListId("/top-picks")}
+          />
         </div>
       )}    </>
   );

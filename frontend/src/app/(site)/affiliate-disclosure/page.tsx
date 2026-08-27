@@ -17,6 +17,7 @@ export default function AffiliateDisclosurePage() {
       title="Affiliate disclosure"
       lede="We earn commission on some outbound links. Here is exactly how that works and what it is not allowed to touch."
       updated={UPDATED}
+      path="/affiliate-disclosure"
       sections={[
         {
           id: "the-short-version",

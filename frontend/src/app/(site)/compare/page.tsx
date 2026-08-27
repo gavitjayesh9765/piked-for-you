@@ -10,11 +10,46 @@ import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { ScoreRing } from "@/components/product/ScoreRing";
 import { CommunityRating } from "@/components/ui/Badge";
 
-export const metadata: Metadata = {
-  title: "Compare products",
-  description: "Put our verdicts side by side — scores, criteria, prices, and who each one is for.",
-  alternates: { canonical: "/compare" },
-};
+type Search = { p?: string | string[] };
+
+const TITLE = "Compare products";
+const DESCRIPTION =
+  "Put our verdicts side by side — scores, criteria, prices, and who each one is for.";
+
+/**
+ * The empty comparison tool is a real page and should rank for "compare X".
+ * A comparison of three named products is a different matter.
+ *
+ * `?p=` is a combinatorial URL space — every ordered subset of the catalogue up
+ * to `MAX`, which is already millions of resolvable URLs at a few hundred
+ * products and grows cubically. Each renders real content, each canonicalises
+ * here, and each one Google discovers is a fetch not spent on a product page.
+ *
+ * The canonical alone was doing half the job: it consolidates ranking onto
+ * /compare, but consolidation happens AFTER the crawl, so it never reduces the
+ * crawl. `noindex, follow` is the other half — do not keep these, but do walk
+ * the product links on them, so a shared comparison still passes discovery
+ * through to the pages we want indexed. app/robots.ts declines the crawl
+ * earlier for crawlers that read it; this catches the ones that arrive anyway
+ * from a shared link, which is exactly how these URLs spread.
+ */
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<Search>;
+}): Promise<Metadata> {
+  const sp = await searchParams;
+  const isComparison = Boolean(sp.p);
+
+  return {
+    title: TITLE,
+    description: DESCRIPTION,
+    alternates: { canonical: "/compare" },
+    ...(isComparison ? { robots: { index: false, follow: true } } : {}),
+    openGraph: { title: TITLE, description: DESCRIPTION, url: "/compare", type: "website" },
+    twitter: { card: "summary_large_image", title: TITLE, description: DESCRIPTION },
+  };
+}
 
 const MAX = 3;
 
@@ -38,8 +73,6 @@ const MAX = 3;
  * Selection is a plain query string of `category/slug` pairs, so the whole page
  * stays a server component and a comparison stays linkable.
  */
-type Search = { p?: string | string[] };
-
 export default async function ComparePage({
   searchParams,
 }: {

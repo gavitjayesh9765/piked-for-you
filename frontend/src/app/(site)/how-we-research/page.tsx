@@ -7,6 +7,8 @@ import type { Product } from "@/lib/types";
 
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { ScoreRing } from "@/components/product/ScoreRing";
+import { jsonLd } from "@/lib/json-ld";
+import { absoluteUrl } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "How we research",
@@ -14,6 +16,41 @@ export const metadata: Metadata = {
     "What goes into a PickD Score, what cannot buy its way in, and a worked example using a real verdict.",
   alternates: { canonical: "/how-we-research" },
 };
+
+/**
+ * When the METHOD last changed — not when this file last did.
+ *
+ * ⚠ Bump this only when the rubric, the pipeline or the commitments below
+ * actually change. Editing a sentence for clarity is not a methodology
+ * revision, and treating it as one makes the date meaningless in exactly the
+ * document where it carries the most weight: this is the page an evaluator
+ * reads to decide whether the verdicts are worth believing, and a methodology
+ * dated "today, every day" reads as one nobody is really maintaining.
+ *
+ * Matches the convention in every sibling trust document — see the `UPDATED`
+ * constant in /editorial-policy, /affiliate-disclosure and the rest. Those go
+ * through <DocumentPage>, which renders the date and emits it as
+ * `dateModified`; this page is hand-built, so it does both jobs itself below.
+ */
+const UPDATED = "2026-08-20";
+
+/**
+ * The chapters, mirrored as data for the structured-data block.
+ *
+ * ⚠ These ids and titles are duplicated from the <Chapter> calls in the JSX,
+ * which is a compromise: the chapters are interleaved with live product data
+ * and one of them renders conditionally, so there is no single array the page
+ * could map over without restructuring the whole body. Kept adjacent to the
+ * page it describes rather than in the schema component, so the two are edited
+ * in the same screenful. If a chapter is renamed or added, update both.
+ */
+const CHAPTERS = [
+  { id: "commitments", title: "What we will not do" },
+  { id: "method", title: "How a verdict gets made" },
+  { id: "example", title: "A real one, taken apart" },
+  { id: "two-numbers", title: "Two numbers, kept apart" },
+  { id: "money", title: "How we pay for this" },
+];
 
 /**
  * How we research (spec §35).
@@ -257,8 +294,77 @@ export default async function HowWeResearchPage() {
           </p>
         </Chapter>
       </div>
+
+      <MethodSchema />
     </main>
 
+  );
+}
+
+/**
+ * Structured data for the methodology.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS PAGE, SPECIFICALLY
+ *
+ * The nine documents that go through <DocumentPage> all got typed together and
+ * this one did not, because it is hand-built — it interleaves live product data
+ * with the prose, so it could not share that component. It is also the single
+ * most important page on the site to get typed, which makes the omission the
+ * wrong way round.
+ *
+ * The homepage `Organization` declares `publishingPrinciples`, and this is the
+ * document it points at. Until now that pointer resolved to an untyped page:
+ * the claim "our principles are published" was made in structured data and
+ * answered in prose. This is the other half of that assertion.
+ *
+ * `Article` rather than `WebPage` because this is an authored explanation with
+ * a position, not reference material — and because `Article` is the type that
+ * carries `dateModified` as a first-class expectation, which is the property
+ * doing the actual work here. A methodology's credibility is a function of how
+ * recently somebody stood behind it.
+ *
+ * `hasPart` exposes the five chapter anchors so an answer engine can cite
+ * /how-we-research#money — "here is how they make money" — rather than the
+ * document as a whole. Citing a specific clause is what a careful assistant
+ * does, and it can only do it if the clauses have addresses.
+ */
+function MethodSchema() {
+  const url = absoluteUrl("/how-we-research");
+
+  return (
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{
+        __html: jsonLd({
+          "@context": "https://schema.org",
+          "@type": "Article",
+          "@id": `${url}#document`,
+          url,
+          headline: "How we research",
+          name: "How we research",
+          description:
+            "What goes into a PickD Score, what cannot buy its way in, and a worked example using a real verdict.",
+          // See the UPDATED constant. Both dates are the same on purpose: the
+          // method is revised in place, so the version in effect is the version
+          // published, and inventing an original date we do not record would be
+          // fabricating the more load-bearing of the two.
+          datePublished: UPDATED,
+          dateModified: UPDATED,
+          inLanguage: "en-IN",
+          isPartOf: { "@id": absoluteUrl("/#website") },
+          author: { "@id": absoluteUrl("/#organization") },
+          publisher: { "@id": absoluteUrl("/#organization") },
+          about: { "@id": absoluteUrl("/#organization") },
+          hasPart: CHAPTERS.map((chapter) => ({
+            "@type": "WebPageElement",
+            "@id": `${url}#${chapter.id}`,
+            name: chapter.title,
+            url: `${url}#${chapter.id}`,
+          })),
+        }),
+      }}
+    />
   );
 }
 

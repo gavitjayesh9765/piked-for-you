@@ -9,6 +9,7 @@ import { categoryHref } from "@/lib/format";
 import type { Category } from "@/lib/types";
 
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
+import { CollectionPageJsonLd } from "@/components/seo/CollectionPageJsonLd";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 
 export const metadata: Metadata = {
@@ -118,6 +119,15 @@ export default function AllCategoriesPage() {
       <Suspense fallback={<div className="shell-wide pb-24 pt-14 lg:pt-20" aria-hidden="true" />}>
         <Chapters />
       </Suspense>
+      {/* No `itemListId`: this is a DIRECTORY, not a ranking. The order on
+          screen is alphabetical-ish and carries no editorial claim, so an
+          `ItemList` with `itemListOrder` would assert one we are not making.
+          The category and product pages are where the rankings live. */}
+      <CollectionPageJsonLd
+        path="/c"
+        name="The index — everything we research"
+        description="Every category SortedChoice covers, and how far our research has actually got in each one."
+      />
     </main>
   );
 }

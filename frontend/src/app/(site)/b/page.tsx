@@ -9,6 +9,7 @@ import { brandHref } from "@/lib/format";
 import type { Brand } from "@/lib/types";
 
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
+import { CollectionPageJsonLd } from "@/components/seo/CollectionPageJsonLd";
 
 export const metadata: Metadata = {
   title: "Brands",
@@ -59,6 +60,15 @@ export default function BrandsPage() {
       <Suspense fallback={<div className="shell-wide pb-24 pt-14 lg:pt-20" aria-hidden="true" />}>
         <Listing />
       </Suspense>
+      {/* No `itemListId`: this is a DIRECTORY, not a ranking. The order on
+          screen is alphabetical-ish and carries no editorial claim, so an
+          `ItemList` with `itemListOrder` would assert one we are not making.
+          The category and product pages are where the rankings live. */}
+      <CollectionPageJsonLd
+        path="/b"
+        name="Brands"
+        description="Every brand SortedChoice covers, and how many of their products we have researched."
+      />
     </main>
   );
 }
