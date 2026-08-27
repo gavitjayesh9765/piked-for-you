@@ -122,6 +122,9 @@ const markDataUri = inlinePublicImage("brand", "mark-dark.png");
  * latency and in resident memory on every instance — a 6MB export is not a
  * bigger picture at this size, it is a slower route rendering the same card.
  * `.jpg` is the right format for photography here; `.png` for flat artwork.
+ * The shipped plate is the `.jpg`. ⚠ The lookup below tries `.png` FIRST, so
+ * dropping a `.png` in beside it silently wins — replace the file, do not add
+ * one alongside, or you will be looking at artwork you thought you deleted.
  */
 const coverDataUri =
   inlinePublicImage("brand", "og-cover.png") ?? inlinePublicImage("brand", "og-cover.jpg");
