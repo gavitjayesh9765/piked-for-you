@@ -106,9 +106,11 @@ export default async function EditProductPage({
           <StatusPill status={product.status} />
           <ProductRowActions
             id={product.id}
+            title={product.title}
             status={product.status}
             slug={product.slug}
             categorySlug={product.category.slug}
+            afterDelete="list"
           />
           <Link
             href="/admin/products"

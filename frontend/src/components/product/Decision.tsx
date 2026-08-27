@@ -266,35 +266,42 @@ export function QuickSummary({
 /* 3. How we reviewed this                                             */
 /* ------------------------------------------------------------------ */
 
-const RESEARCHED_COPY =
-  "We researched the published specifications, compared this against the products " +
-  "competing with it at the same price, read through independent measurements and " +
-  "long-form reviews, and looked at the pattern in what owners report after living " +
-  "with it. Then we asked the only question that matters: is it worth what it costs?";
-
-const TESTED_COPY =
-  "We used this product ourselves, alongside the research: published specifications, " +
-  "the products competing with it at the same price, independent measurements, and the " +
-  "pattern in what owners report after living with it.";
-
 /**
  * How the verdict was reached — and, just as importantly, what it does not
  * claim.
  *
- * `handsOnTested` is the only input that switches the copy to a testing claim,
- * and it defaults to false in the schema, the API and the database. So the
- * failure mode is a page that under-claims, never one that quietly asserts a
- * reviewer held something they never held. The negative line is stated
- * explicitly rather than left to inference, because "we reviewed this" is read
- * as "we tested this" unless a page says otherwise.
+ * ---------------------------------------------------------------------------
+ * This box used to open with a paragraph describing our method ("we researched
+ * the published specifications, compared this against the products competing
+ * with it…") and, below it, whatever per-product note an editor had written.
+ * Both are gone. The method paragraph was identical on every page, so it read
+ * as boilerplate and got skipped — which is a problem, because the ONE line
+ * underneath it that is not boilerplate got skipped with it.
+ *
+ * What remains is the single claim that is actually load-bearing: whether
+ * anybody here has held this product. It is stated as a checked item rather
+ * than prose so it reads as a declaration on the record — the same shape a
+ * spec sheet uses — instead of as more copy to scroll past.
+ *
+ * `handsOnTested` is the only input, and it defaults to false in the schema,
+ * the API and the database. So the failure mode is a page that under-claims,
+ * never one that quietly asserts a reviewer held something they never held.
+ * The negative is stated explicitly rather than left to inference, because "we
+ * reviewed this" is read as "we tested this" unless a page says otherwise —
+ * and /how-we-score points readers at this box by name for the answer.
+ *
+ * `note` is still accepted and still deliberately unrendered: the call site
+ * passes it, the admin form still writes it, and the field is not lost — it is
+ * simply not shown while the box is this pared back.
  */
 export function ResearchNote({
   handsOnTested = false,
-  note,
+  note: _note,
   researchedAt,
   className,
 }: {
   handsOnTested?: boolean;
+  /** Kept on the API and in the CMS; not rendered here. See above. */
   note?: string | null;
   researchedAt?: string | null;
   className?: string;
@@ -312,19 +319,52 @@ export function ResearchNote({
         )}
       </div>
 
-      <div className="shell-prose mt-4 space-y-4 text-body-md leading-relaxed text-ink-muted">
-        <p>{handsOnTested ? TESTED_COPY : RESEARCHED_COPY}</p>
-        {note && <p>{note}</p>}
-        {!handsOnTested && (
-          <p className="text-body-sm">
-            <strong className="font-semibold text-ink">
-              This is a research verdict, not a hands-on test.
-            </strong>{" "}
-            Nobody here has used this particular unit. Where we have tested a product
-            ourselves, the page says so in this box — and where it does not say so, we
-            have not.
-          </p>
-        )}
+      <div className="mt-4 flex items-start gap-3">
+        {/* Decorative: the sentence beside it carries the whole meaning, and a
+            screen reader announcing "checked" before it would imply a control
+            that can be toggled. */}
+        <span
+          aria-hidden="true"
+          className={cn(
+            "mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-xs border",
+            handsOnTested
+              ? "border-value-line bg-value-soft text-value-on-soft"
+              : "border-brand-line bg-brand-soft text-brand-on-soft",
+          )}
+        >
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="m3 8.5 3.2 3.2L13 5" />
+          </svg>
+        </span>
+
+        <p className="text-body-sm leading-relaxed text-ink-muted">
+          {handsOnTested ? (
+            <>
+              <strong className="font-semibold text-ink">
+                We have used this product ourselves.
+              </strong>{" "}
+              This verdict is backed by hands-on testing alongside the research.
+            </>
+          ) : (
+            <>
+              <strong className="font-semibold text-ink">
+                This is a research verdict, not a hands-on test.
+              </strong>{" "}
+              Nobody here has used this particular unit. Where we have tested a product
+              ourselves, the page says so in this box — and where it does not say so, we
+              have not.
+            </>
+          )}
+        </p>
       </div>
     </section>
   );

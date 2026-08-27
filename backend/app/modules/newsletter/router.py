@@ -95,6 +95,18 @@ async def _send_confirmation(email: str, token: str, frequency: str) -> bool:
     that its response does not vary with the recipient, so there is nothing
     useful it could do with an exception except leak that it happened.
     """
+    transport = get_transport()
+
+    # `MAIL_PROVIDER=disabled` while the list is being built. Returning False
+    # here rather than letting NullTransport's silent success fall through is
+    # what keeps `confirmation_sent_at` NULL for everyone collected during that
+    # period — so when mail is switched on, "who has never been asked to
+    # confirm?" is still a question the column can answer. Nothing is rendered
+    # either, because rendering a confirmation URL nobody will receive only
+    # burns a token.
+    if not transport.delivers:
+        return False
+
     url = _confirm_url(token)
     cadence = _CADENCE_WORDS.get(frequency, frequency)
 
@@ -120,7 +132,7 @@ async def _send_confirmation(email: str, token: str, frequency: str) -> bool:
     )
 
     try:
-        await get_transport().send(
+        await transport.send(
             MailMessage(
                 to=email,
                 subject=NEWSLETTER_CONFIRMATION_SUBJECT,
@@ -162,6 +174,22 @@ class SubscribeRequest(Wire):
 class SubscribeResponse(Wire):
     accepted: bool = True
     confirmation_required: bool = True
+
+    #: Is a confirmation mail actually being sent right now?
+    #:
+    #: A GLOBAL fact about the deployment, read from `MAIL_PROVIDER` — never a
+    #: per-recipient one. That distinction is the whole reason this field is
+    #: safe to expose. "Did we mail YOU?" varies with whether the address was
+    #: already confirmed, so answering it would rebuild the enumeration oracle
+    #: this module is built to close. "Is mail switched on at all?" is the same
+    #: answer for every caller and reveals nothing about anybody.
+    #:
+    #: It exists because the signup form said "We've sent a confirmation to
+    #: <address>" unconditionally, and with `MAIL_PROVIDER=disabled` — the
+    #: current state while the list is being collected — that is simply untrue.
+    #: A reader who then waits for an email that will never arrive concludes the
+    #: site is broken and does not come back.
+    mail_enabled: bool = True
 
 
 @router.post("/subscribe", response_model=SubscribeResponse, status_code=status.HTTP_202_ACCEPTED)
@@ -233,7 +261,7 @@ async def subscribe(
     ):
         row.confirmation_sent_at = _now()
 
-    return SubscribeResponse()
+    return SubscribeResponse(mail_enabled=get_transport().delivers)
 
 
 @router.get("/confirm", response_model=SubscribeResponse)

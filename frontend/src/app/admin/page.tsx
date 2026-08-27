@@ -34,6 +34,8 @@ const EMPTY_METRICS: AdminMetrics = {
   pending_reviews: 0,
   reported_reviews: 0,
   open_messages: 0,
+  newsletter_subscribers: 0,
+  newsletter_confirmed: 0,
 };
 
 /**
@@ -111,6 +113,20 @@ async function Metrics() {
           value={number(metrics.open_messages)}
           href="/admin/messages?status=new"
         />
+        <Metric
+          label="Newsletter"
+          value={number(metrics.newsletter_subscribers)}
+          // Both numbers, because the gap between them is the story. While
+          // MAIL_PROVIDER is `disabled` the confirmed count is zero by
+          // construction — nobody can click a link that was never sent — so a
+          // tile showing only "confirmed" would read as nobody signing up.
+          delta={
+            metrics.newsletter_subscribers === 0
+              ? undefined
+              : `${number(metrics.newsletter_confirmed)} confirmed`
+          }
+          href="/admin/newsletter"
+        />
         <Metric label="Categories" value={number(metrics.categories)} href="/admin/categories" />
         <Metric label="Brands" value={number(metrics.brands)} href="/admin/brands" />
         <Metric
@@ -122,11 +138,11 @@ async function Metrics() {
   );
 }
 
-/** Eight tiles at their real size, so the grid below never jumps. */
+/** Nine tiles at their real size, so the grid below never jumps. */
 function MetricsArriving() {
   return (
     <div className="grid gap-4" style={{ gridTemplateColumns: METRIC_GRID }}>
-      {Array.from({ length: 8 }, (_, i) => (
+      {Array.from({ length: 9 }, (_, i) => (
         <div key={i} className="panel p-5" aria-hidden="true">
           <p className="tabular font-display text-headline-lg font-bold leading-none text-ink">
             <ValueArriving width={4} />

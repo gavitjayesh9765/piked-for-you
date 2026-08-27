@@ -142,6 +142,18 @@ export function StatusPill({ status }: { status: string }) {
     rejected: "bg-danger-soft text-danger-on-soft border-transparent",
     reported: "bg-danger-soft text-danger-on-soft border-transparent",
     hidden: "bg-surface-2 text-ink-faint border-line",
+    // Contact queue. `new` reads as work outstanding, so it takes the same
+    // warn tint as a pending review rather than a neutral one — the point of
+    // the pill is to make an unhandled item findable at a glance.
+    new: "bg-warn-soft text-warn-on-soft border-transparent",
+    in_progress: "bg-brand-soft text-brand-on-soft border-brand-line",
+    answered: "bg-value-soft text-value-on-soft border-value-line",
+    closed: "bg-surface-2 text-ink-faint border-line",
+    // Newsletter. `pending` above already carries the warn tint and means the
+    // same thing here — waiting on somebody — so it is reused rather than
+    // given a second name.
+    confirmed: "bg-value-soft text-value-on-soft border-value-line",
+    unsubscribed: "bg-surface-2 text-ink-faint border-line",
   };
   return (
     <span
@@ -151,7 +163,10 @@ export function StatusPill({ status }: { status: string }) {
         map[status] ?? map.draft,
       )}
     >
-      {status}
+      {/* `in_progress` rendered literally, underscore and all. These values
+          are database enums and the pill is the only place a reader sees
+          them. */}
+      {status.replace(/_/g, " ")}
     </span>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
-import { submitContactRequest } from "@/lib/api";
+import { ApiError, submitContactRequest } from "@/lib/api";
 import type { Category, ContactTopic } from "@/lib/types";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 
@@ -63,6 +63,37 @@ const BUDGETS = [
   "Not sure yet",
 ];
 
+/**
+ * What to tell someone whose message did not send.
+ *
+ * Every failure used to read "That didn't send. Try again in a moment.", which
+ * is actively wrong for two of the three things that actually go wrong here: a
+ * rejected email address will fail identically forever however long you wait,
+ * and a rate limit needs a wait rather than a retry. Only the third — an
+ * upstream that is briefly unreachable — matched the copy.
+ *
+ * The status comes from the API through the proxy in app/api/contact, so these
+ * branches are real distinctions rather than guesses at a network error.
+ */
+function messageFor(err: unknown): string {
+  if (!(err instanceof ApiError)) {
+    return "That didn't send. Try again in a moment.";
+  }
+  switch (err.status) {
+    case 422:
+      return "Something in that didn't validate — check the email address, and that the message is at least ten characters.";
+    case 429:
+      return "That's a few too many requests in a short window. Give it a minute and send again.";
+    case 0:
+    case 502:
+    case 503:
+    case 504:
+      return "We couldn't reach the desk just now. Nothing was sent — try again in a moment.";
+    default:
+      return err.message || "That didn't send. Try again in a moment.";
+  }
+}
+
 export function ContactForm({ categories }: { categories: Category[] }) {
   const [topic, setTopic] = useState<ContactTopic>("research_request");
   const [selected, setSelected] = useState<string[]>([]);
@@ -116,9 +147,9 @@ export function ContactForm({ categories }: { categories: Category[] }) {
       });
       setReference(res.reference);
       setState("done");
-    } catch {
+    } catch (err) {
       setState("error");
-      setError("That didn't send. Try again in a moment.");
+      setError(messageFor(err));
     }
   }
 

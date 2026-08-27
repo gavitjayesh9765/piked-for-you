@@ -335,6 +335,7 @@ async function Catalogue({ query }: { query: Query }) {
             <Td className="text-right">
               <ProductRowActions
                 id={p.id}
+                title={p.title}
                 status={p.status}
                 slug={p.slug}
                 categorySlug={p.category.slug}

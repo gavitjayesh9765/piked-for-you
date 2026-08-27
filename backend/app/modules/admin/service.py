@@ -21,7 +21,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core import audit
+from app.core import audit, storage
 from app.models import (
     Badge,
     Brand,
@@ -306,6 +306,66 @@ async def archive(
     return product
 
 
+async def delete_product(
+    db: AsyncSession, product: Product, actor_id: uuid.UUID, ip: str | None
+) -> None:
+    """Permanently remove a product, its media objects and everything filed
+    under it.
+
+    `archive()` above remains the right answer for a product that HAS a history
+    worth keeping — it is reversible and it does not take anyone's review down
+    with it. This exists for the other case, which archiving never addressed: a
+    row created by mistake, a duplicate, a test product. Those accumulate in the
+    catalogue, cannot be got rid of, and make the archived tab useless as a
+    record of anything.
+
+    So the two are offered side by side rather than one replacing the other, and
+    the admin UI states the difference at the point of clicking.
+
+    Two things make this safe to do at all:
+
+      * Every table that references `products` declares `on delete cascade`
+        (media, specs, badges, retailer links, reviews, saved items, top picks,
+        price history, alternatives). The database removes them in one
+        statement; nothing is left pointing at a row that is gone.
+
+      * The audit entry is written FIRST, in the same transaction, and
+        `activity_logs` has no foreign key to `products` — so the record of the
+        deletion outlives the thing deleted, which is the only reason a hard
+        delete belongs in an audited system at all.
+
+    Storage objects are removed before the row, because the row is the only
+    record of where they are. If the removal fails we still delete: an orphaned
+    object in a private bucket is a bill, while a product an editor cannot
+    delete is the bug being fixed here.
+    """
+    paths = [m.storage_path for m in product.media if m.storage_path]
+    paths += [m.thumbnail_path for m in product.media if m.thumbnail_path]
+
+    title = product.title
+    product_id = product.id
+
+    await audit.record(
+        db,
+        actor_id=actor_id,
+        action="product.delete",
+        entity_type="product",
+        entity_id=product_id,
+        summary=f"Deleted “{title}”",
+        # The snapshot is the point: this is the last place the product's own
+        # data exists, so the log keeps enough of it to reconstruct what was
+        # removed and to answer "was that the right row?" months later.
+        meta={"snapshot": _snapshot(product), "media_objects": len(paths)},
+        ip_address=ip,
+    )
+
+    if paths:
+        await storage.remove("product-media", paths)
+
+    await db.delete(product)
+    await db.flush()
+
+
 async def set_score(
     db: AsyncSession, product: Product, payload: ScoreUpsert, actor_id: uuid.UUID, ip: str | None
 ) -> Product:
@@ -448,7 +508,7 @@ async def dashboard_metrics(db: AsyncSession) -> dict:
     """
     from app.models import Brand as _Brand
     from app.models import Category as _Category
-    from app.models import ContactMessage, Review
+    from app.models import ContactMessage, NewsletterSubscriber, Review
 
     product_counts = dict(
         (
@@ -465,12 +525,27 @@ async def dashboard_metrics(db: AsyncSession) -> dict:
             stmt = stmt.where(clause)
         return stmt.scalar_subquery()
 
-    categories, brands, open_messages = (
+    # Subscribers ride along on the same statement rather than adding a fourth
+    # round trip. Both numbers are shown because, while MAIL_PROVIDER is
+    # `disabled`, the second is zero and the first is the whole list — and the
+    # gap between them is the thing worth seeing on the dashboard.
+    categories, brands, open_messages, subscribers, confirmed_subscribers = (
         await db.execute(
             select(
                 scalar_count(_Category, _Category.is_active.is_(True)),
                 scalar_count(_Brand, _Brand.is_active.is_(True)),
                 scalar_count(ContactMessage, ContactMessage.status == "new"),
+                scalar_count(
+                    NewsletterSubscriber,
+                    NewsletterSubscriber.is_active.is_(True),
+                    NewsletterSubscriber.unsubscribed_at.is_(None),
+                ),
+                scalar_count(
+                    NewsletterSubscriber,
+                    NewsletterSubscriber.is_active.is_(True),
+                    NewsletterSubscriber.unsubscribed_at.is_(None),
+                    NewsletterSubscriber.confirmed_at.isnot(None),
+                ),
             )
         )
     ).one()
@@ -484,4 +559,6 @@ async def dashboard_metrics(db: AsyncSession) -> dict:
         "pending_reviews": review_counts.get("pending", 0),
         "reported_reviews": review_counts.get("reported", 0),
         "open_messages": open_messages,
+        "newsletter_subscribers": subscribers,
+        "newsletter_confirmed": confirmed_subscribers,
     }

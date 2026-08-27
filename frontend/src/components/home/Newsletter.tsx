@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/cn";
-import { subscribeToNewsletter } from "@/lib/api";
+import { ApiError, subscribeToNewsletter } from "@/lib/api";
 import type { NewsletterFrequency } from "@/lib/types";
 
 /**
@@ -22,22 +22,58 @@ const OPTIONS: { value: NewsletterFrequency; label: string; hint: string }[] = [
   { value: "deals_only", label: "Only when it matters", hint: "Just genuinely good price drops" },
 ];
 
+/**
+ * What to tell someone whose signup did not go through.
+ *
+ * Every failure read "That didn't go through. Try again in a moment.", which
+ * is wrong for the two cases that are not transient: a rejected address fails
+ * identically however long you wait, and a rate limit needs a pause rather
+ * than a retry. The status is real — it comes from the API through the proxy
+ * in app/api/newsletter.
+ */
+function messageFor(err: unknown): string {
+  if (!(err instanceof ApiError)) return "That didn't go through. Try again in a moment.";
+  switch (err.status) {
+    case 422:
+      return "That address didn't look right — check it and try again.";
+    case 429:
+      return "That's a few too many tries in a short window. Give it a minute.";
+    case 0:
+    case 502:
+    case 503:
+    case 504:
+      return "We couldn't reach the list just now. Nothing was saved — try again in a moment.";
+    default:
+      return err.message || "That didn't go through. Try again in a moment.";
+  }
+}
+
 export function Newsletter() {
   const [email, setEmail] = useState("");
   const [frequency, setFrequency] = useState<NewsletterFrequency>("deals_only");
   const [state, setState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [error, setError] = useState<string | null>(null);
+  /**
+   * Whether a confirmation mail actually went out, per the API.
+   *
+   * Defaults true so the optimistic copy is what shows if an older API omits
+   * the field — the same-day risk is telling someone to check an inbox, and
+   * the reverse (staying quiet when a mail did arrive) is the cheaper mistake
+   * only while nothing is being sent.
+   */
+  const [mailEnabled, setMailEnabled] = useState(true);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setState("loading");
     setError(null);
     try {
-      await subscribeToNewsletter({ email: email.trim(), frequency });
+      const res = await subscribeToNewsletter({ email: email.trim(), frequency });
+      setMailEnabled(res.mailEnabled !== false);
       setState("done");
-    } catch {
+    } catch (err) {
       setState("error");
-      setError("That didn't go through. Try again in a moment.");
+      setError(messageFor(err));
     }
   }
 
@@ -69,10 +105,24 @@ export function Newsletter() {
                   </svg>
                 </span>
                 <h3 className="text-headline-sm text-ink">You're in.</h3>
-                <p className="text-body-md text-ink-muted">
-                  We've sent a confirmation to <span className="font-medium text-ink">{email}</span>.
-                  Click the link in it and you're set — nothing arrives until you do.
-                </p>
+                {/* Two messages, because only one of them is ever true. The
+                    first promises an email; saying that while the transport is
+                    off sends a reader to an inbox to wait for something that
+                    is not coming, and they conclude the site is broken. */}
+                {mailEnabled ? (
+                  <p className="text-body-md text-ink-muted">
+                    We've sent a confirmation to{" "}
+                    <span className="font-medium text-ink">{email}</span>. Click the link in it
+                    and you're set — nothing arrives until you do.
+                  </p>
+                ) : (
+                  <p className="text-body-md text-ink-muted">
+                    <span className="font-medium text-ink">{email}</span> is on the list. The
+                    newsletter hasn't started yet — we're still building up enough verdicts to
+                    make one worth reading. When it does, your first email will be a confirmation
+                    link, and nothing else is sent until you click it.
+                  </p>
+                )}
                 <button
                   type="button"
                   onClick={() => {

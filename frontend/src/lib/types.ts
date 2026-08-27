@@ -433,6 +433,19 @@ export interface NewsletterSubscribeResponse {
   accepted: boolean;
   /** Double opt-in: nothing is sent until the confirmation link is clicked. */
   confirmationRequired: boolean;
+  /**
+   * Is the mail transport switched on right now?
+   *
+   * A property of the deployment (`MAIL_PROVIDER`), identical for every caller
+   * — deliberately NOT "did we mail you", which varies with whether the
+   * address was already subscribed and would leak exactly what the endpoint's
+   * uniform response exists to hide.
+   *
+   * False while the list is being collected ahead of the first send. The form
+   * uses it to avoid promising a confirmation email that is not coming.
+   * Optional so an older API that does not send it reads as the normal case.
+   */
+  mailEnabled?: boolean;
 }
 
 /* ------------------------------------------------------------------ */

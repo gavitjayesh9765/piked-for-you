@@ -10,6 +10,8 @@ Every mutation writes an ActivityLog row inside the same transaction (§60).
 
 from __future__ import annotations
 
+import csv
+import io
 import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Literal
@@ -22,7 +24,14 @@ from sqlalchemy.orm import selectinload
 
 from app.core import audit
 from app.core.deps import CurrentAdmin, DbSession, client_ip
-from app.models import ActivityLog, ContactMessage, Product, Profile, Review
+from app.models import (
+    ActivityLog,
+    ContactMessage,
+    NewsletterSubscriber,
+    Product,
+    Profile,
+    Review,
+)
 from app.modules.admin import service
 from app.modules.products.repository import ProductRepository
 from app.modules.products.service import sign_for, to_admin_detail, to_summary
@@ -226,6 +235,35 @@ async def archive_product(
     return to_admin_detail(full, await sign_for([full]))
 
 
+@router.delete(
+    "/products/{product_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+)
+async def delete_product(
+    product_id: uuid.UUID,
+    admin: CurrentAdmin,
+    db: DbSession,
+    request: Request,
+    response: Response,
+) -> None:
+    """Permanently delete a product and everything filed under it.
+
+    This sits NEXT TO archive, not instead of it. Archiving is right for a
+    product with a history — it is reversible and it keeps the reviews people
+    wrote. But there was no way at all to get rid of a row created by mistake, a
+    duplicate, or a test product, so the catalogue could only ever grow and the
+    archived tab stopped meaning anything.
+
+    Everything referencing `products` cascades at the database level, and the
+    audit entry is written before the row goes, so the deletion is recorded even
+    though its subject is not. `service.delete_product` documents both.
+    """
+    _private(response)
+    product = await _load(db, product_id)
+    await service.delete_product(db, product, admin.id, client_ip(request))
+
+
 @router.put("/products/{product_id}/score", response_model=ProductOut)
 async def set_score(
     product_id: uuid.UUID,
@@ -406,53 +444,397 @@ async def moderate_review(
 # ------------------------------------------------------------------ #
 
 
+CONTACT_STATUSES = ("new", "in_progress", "answered", "closed")
+CONTACT_TOPICS = ("research_request", "correction", "press", "general")
+
+
+def _message_out(m: ContactMessage) -> dict:
+    return {
+        "id": str(m.id),
+        "reference": m.reference,
+        "topic": m.topic,
+        "categorySlugs": m.category_slugs,
+        "name": m.name,
+        "email": m.email,
+        "message": m.message,
+        "budgetRange": m.budget_range,
+        "productUrl": m.product_url,
+        "organisation": m.organisation,
+        "status": m.status,
+        "internalNote": m.internal_note,
+        "answeredAt": m.answered_at.isoformat() if m.answered_at else None,
+        "createdAt": m.created_at.isoformat(),
+    }
+
+
 @router.get("/messages")
 async def list_messages(
     admin: CurrentAdmin,
     db: DbSession,
     response: Response,
     status_filter: Annotated[str, Query(alias="status")] = "new",
+    topic: Annotated[str | None, Query()] = None,
+    q: Annotated[str | None, Query(max_length=120)] = None,
     page: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 1,
 ) -> dict:
+    """The contact queue, with the filters the other admin lists already had.
+
+    Three things this endpoint gained, all for the same reason — the inbox was
+    the one admin screen with no way to find anything in it:
+
+      * `q` — searches the reference, the sender and the message body. The
+        reference is the half that matters operationally: it is what a reply
+        thread quotes, so "PDY-7K42" has to be a thing you can paste in.
+      * `topic` — research requests are the editorially valuable ones and were
+        buried among corrections and press mail.
+      * `counts` — the per-status totals, so the tabs can carry a number
+        instead of making an admin click each one to find out if it is empty.
+
+    `ilike` with the term escaped for LIKE metacharacters: an unescaped `%`
+    typed into the search box would otherwise match everything, which reads as
+    a broken filter rather than a wildcard nobody asked for.
+    """
     _private(response)
     page_size = 25
 
     base = select(ContactMessage)
-    if status_filter != "all":
+    if status_filter in CONTACT_STATUSES:
         base = base.where(ContactMessage.status == status_filter)
+    if topic in CONTACT_TOPICS:
+        base = base.where(ContactMessage.topic == topic)
+
+    term = (q or "").strip()
+    if term:
+        escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        like = f"%{escaped}%"
+        base = base.where(
+            or_(
+                ContactMessage.reference.ilike(like, escape="\\"),
+                ContactMessage.email.ilike(like, escape="\\"),
+                ContactMessage.name.ilike(like, escape="\\"),
+                ContactMessage.message.ilike(like, escape="\\"),
+            )
+        )
 
     total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar_one()
     rows = (
         await db.execute(
-            base.order_by(ContactMessage.created_at.asc())
+            # Newest first. The queue was oldest-first, which is right for
+            # working through a backlog and wrong for the thing an admin
+            # actually opens this screen to do — see what just came in.
+            base.order_by(ContactMessage.created_at.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
         )
     ).scalars().all()
 
+    # One grouped query rather than four counts: the tabs are chrome and must
+    # not cost a round trip each.
+    counts_rows = (
+        await db.execute(
+            select(ContactMessage.status, func.count()).group_by(ContactMessage.status)
+        )
+    ).all()
+    counts = {status_name: 0 for status_name in CONTACT_STATUSES}
+    counts["all"] = 0
+    for name, count in counts_rows:
+        counts["all"] += count
+        if name in counts:
+            counts[name] = count
+
     return {
-        "items": [
-            {
-                "id": str(m.id),
-                "reference": m.reference,
-                "topic": m.topic,
-                "categorySlugs": m.category_slugs,
-                "name": m.name,
-                "email": m.email,
-                "message": m.message,
-                "budgetRange": m.budget_range,
-                "productUrl": m.product_url,
-                "organisation": m.organisation,
-                "status": m.status,
-                "createdAt": m.created_at.isoformat(),
-            }
-            for m in rows
-        ],
+        "items": [_message_out(m) for m in rows],
+        "counts": counts,
         "total": total,
         "page": page,
         "pageSize": page_size,
         "hasMore": (page - 1) * page_size + len(rows) < total,
     }
+
+
+class MessageUpdate(BaseModel):
+    model_config = ConfigDict(
+        alias_generator=to_camel, populate_by_name=True, extra="forbid"
+    )
+
+    status: Literal["new", "in_progress", "answered", "closed"] | None = None
+    internal_note: str | None = None
+
+
+@router.patch("/messages/{message_id}")
+async def update_message(
+    message_id: uuid.UUID,
+    payload: Annotated[MessageUpdate, Body()],
+    admin: CurrentAdmin,
+    db: DbSession,
+    request: Request,
+    response: Response,
+) -> dict:
+    """Move a message through the queue, and leave a note for whoever picks it
+    up next.
+
+    Without this the status tabs were decoration: every message was `new`
+    forever, so "New" and "All" were the same list and the other two were
+    permanently empty. `answered_at` is set by the server when the status
+    reaches `answered` — not read from the payload — and cleared if the message
+    is reopened, so the timestamp cannot disagree with the status.
+    """
+    _private(response)
+    message = await db.get(ContactMessage, message_id)
+    if message is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Message not found")
+
+    before = {"status": message.status, "internal_note": message.internal_note}
+
+    if payload.status is not None:
+        message.status = payload.status
+        message.answered_at = (
+            datetime.now(timezone.utc) if payload.status == "answered" else None
+        )
+    if payload.internal_note is not None:
+        note = payload.internal_note.strip()
+        message.internal_note = note or None
+
+    await db.flush()
+
+    await audit.record(
+        db,
+        actor_id=admin.id,
+        action="contact.update",
+        entity_type="contact_message",
+        entity_id=message.id,
+        summary=f"Message {message.reference} → {message.status}",
+        meta=audit.diff(before, {"status": message.status, "internal_note": message.internal_note}),
+        ip_address=client_ip(request),
+    )
+
+    return _message_out(message)
+
+
+# ------------------------------------------------------------------ #
+# Newsletter list                                                     #
+# ------------------------------------------------------------------ #
+
+NEWSLETTER_FREQUENCIES = ("daily", "weekly", "deals_only")
+
+#: The four states a subscriber can be in, derived rather than stored.
+#:
+#: There is no `status` column on `newsletter_subscribers` and there should not
+#: be — the state is a function of three timestamps and a boolean, and a fifth
+#: column duplicating them is a column that can disagree with them. The order
+#: they are tested in below matters: an unsubscribed row is unsubscribed
+#: whether or not it was ever confirmed.
+NEWSLETTER_STATES = ("all", "pending", "confirmed", "unsubscribed")
+
+
+def _newsletter_state(row: NewsletterSubscriber) -> str:
+    if row.unsubscribed_at is not None or not row.is_active:
+        return "unsubscribed"
+    if row.confirmed_at is not None:
+        return "confirmed"
+    return "pending"
+
+
+def _newsletter_filter(stmt, state: str):
+    """Translate a state name into the columns it is derived from."""
+    active = NewsletterSubscriber.is_active.is_(True)
+    not_unsubscribed = NewsletterSubscriber.unsubscribed_at.is_(None)
+
+    if state == "unsubscribed":
+        return stmt.where(
+            or_(
+                NewsletterSubscriber.unsubscribed_at.isnot(None),
+                NewsletterSubscriber.is_active.is_(False),
+            )
+        )
+    if state == "confirmed":
+        return stmt.where(
+            NewsletterSubscriber.confirmed_at.isnot(None), active, not_unsubscribed
+        )
+    if state == "pending":
+        return stmt.where(
+            NewsletterSubscriber.confirmed_at.is_(None), active, not_unsubscribed
+        )
+    return stmt
+
+
+def _newsletter_out(row: NewsletterSubscriber) -> dict:
+    """What the admin screen is allowed to see.
+
+    Neither token is included, and that is a decision rather than an oversight
+    about what to serialise. `unsubscribe_token` is the sole authorization on
+    the one-click unsubscribe link and `confirmation_token` is the sole
+    authorization on double opt-in, so a screen that rendered them would put
+    two live credentials per subscriber into a browser, a proxy log and any
+    screen share — in exchange for nothing anyone reading this list needs.
+    """
+    return {
+        "id": str(row.id),
+        "email": row.email,
+        "frequency": row.frequency,
+        "state": _newsletter_state(row),
+        "confirmedAt": row.confirmed_at.isoformat() if row.confirmed_at else None,
+        # NULL means no confirmation has ever gone out — which, while
+        # MAIL_PROVIDER is `disabled`, is every row. That is the honest record
+        # of a list collected before there was anywhere to send from, and it is
+        # what makes "who still needs asking?" answerable once mail is on.
+        "confirmationSentAt": (
+            row.confirmation_sent_at.isoformat() if row.confirmation_sent_at else None
+        ),
+        "unsubscribedAt": row.unsubscribed_at.isoformat() if row.unsubscribed_at else None,
+        "source": row.source,
+        "createdAt": row.created_at.isoformat(),
+    }
+
+
+@router.get("/newsletter")
+async def list_subscribers(
+    admin: CurrentAdmin,
+    db: DbSession,
+    response: Response,
+    state: Annotated[str, Query()] = "all",
+    frequency: Annotated[str | None, Query()] = None,
+    q: Annotated[str | None, Query(max_length=120)] = None,
+    page: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 1,
+) -> dict:
+    """The subscriber list.
+
+    Read-only, on purpose. Every state transition a subscriber can undergo is
+    theirs to make — confirm, unsubscribe, change cadence — and each is already
+    authorised by a token they hold. An admin endpoint that could set
+    `confirmed_at` would be a way to add consent on someone else's behalf,
+    which is the single thing double opt-in exists to prevent.
+
+    `counts` covers the whole table rather than the current filter, so the tabs
+    carry real totals without four extra round trips.
+    """
+    _private(response)
+    page_size = 50
+
+    if state not in NEWSLETTER_STATES:
+        state = "all"
+
+    base = _newsletter_filter(select(NewsletterSubscriber), state)
+    if frequency in NEWSLETTER_FREQUENCIES:
+        base = base.where(NewsletterSubscriber.frequency == frequency)
+
+    term = (q or "").strip()
+    if term:
+        escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        base = base.where(NewsletterSubscriber.email.ilike(f"%{escaped}%", escape="\\"))
+
+    total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar_one()
+    rows = (
+        await db.execute(
+            base.order_by(NewsletterSubscriber.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+    ).scalars().all()
+
+    # Four counts over the same table with different predicates. Ridden as
+    # scalar subqueries on one statement rather than awaited in sequence: the
+    # session holds a single connection, so four awaits are four round trips.
+    def count_of(name: str):
+        return _newsletter_filter(
+            select(func.count()).select_from(NewsletterSubscriber), name
+        ).scalar_subquery()
+
+    all_c, pending_c, confirmed_c, unsub_c = (
+        await db.execute(
+            select(
+                count_of("all"),
+                count_of("pending"),
+                count_of("confirmed"),
+                count_of("unsubscribed"),
+            )
+        )
+    ).one()
+
+    return {
+        "items": [_newsletter_out(r) for r in rows],
+        "counts": {
+            "all": all_c,
+            "pending": pending_c,
+            "confirmed": confirmed_c,
+            "unsubscribed": unsub_c,
+        },
+        "total": total,
+        "page": page,
+        "pageSize": page_size,
+        "hasMore": (page - 1) * page_size + len(rows) < total,
+    }
+
+
+@router.get("/newsletter/export")
+async def export_subscribers(
+    admin: CurrentAdmin,
+    db: DbSession,
+    request: Request,
+    state: Annotated[str, Query()] = "confirmed",
+) -> Response:
+    """The list as CSV, for handing to a provider.
+
+    This is the escape hatch that keeps the reasoning in
+    docs/10-newsletter-email.md honest: the list lives in our database rather
+    than a platform's, so moving it — into Brevo's contacts, into a different
+    provider, into a spreadsheet — has to be one click and not a database
+    session.
+
+    Defaults to `confirmed`. Exporting the pending rows and uploading them
+    somewhere that mails them is precisely how a double opt-in list quietly
+    becomes a single opt-in one, so the safe set is the default and anything
+    wider is a deliberate query parameter.
+
+    Audited, because it is a bulk read of every address the site holds — the
+    kind of action worth being able to point at afterwards.
+    """
+    if state not in NEWSLETTER_STATES:
+        state = "confirmed"
+
+    rows = (
+        await db.execute(
+            _newsletter_filter(select(NewsletterSubscriber), state).order_by(
+                NewsletterSubscriber.created_at.asc()
+            )
+        )
+    ).scalars().all()
+
+    await audit.record(
+        db,
+        actor_id=admin.id,
+        action="newsletter.export",
+        entity_type="newsletter",
+        summary=f"Exported {len(rows)} {state} subscriber(s)",
+        ip_address=client_ip(request),
+    )
+
+    buffer = io.StringIO()
+    # QUOTE_ALL and CRLF: this file is machine input for whatever imports it
+    # next, and one comma inside a `source` value is enough to shift every
+    # column of an unquoted row.
+    writer = csv.writer(buffer, quoting=csv.QUOTE_ALL, lineterminator="\r\n")
+    writer.writerow(["email", "frequency", "state", "confirmed_at", "source", "created_at"])
+    for row in rows:
+        writer.writerow(
+            [
+                row.email,
+                row.frequency,
+                _newsletter_state(row),
+                row.confirmed_at.isoformat() if row.confirmed_at else "",
+                row.source or "",
+                row.created_at.isoformat(),
+            ]
+        )
+
+    return Response(
+        content=buffer.getvalue(),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="sortedchoice-newsletter-{state}.csv"',
+            "Cache-Control": "no-store, private",
+        },
+    )
 
 
 # ------------------------------------------------------------------ #

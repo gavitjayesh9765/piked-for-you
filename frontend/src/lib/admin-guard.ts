@@ -1,5 +1,7 @@
+import { revalidateTag } from "next/cache";
 import { NextResponse, type NextRequest } from "next/server";
 import { getAdminSession } from "@/lib/supabase/server";
+import { CONTENT_TAG } from "@/lib/cache-tags";
 
 /**
  * The single gate every `/admin/api/*` Route Handler passes through.
@@ -117,6 +119,39 @@ export async function guard(request: NextRequest): Promise<Guard> {
 }
 
 /**
+ * Clear the public content cache after a write.
+ *
+ * Sits here rather than in each of the 48 Route Handlers deliberately: every
+ * admin mutation already funnels through `forward()`, so this is the one place
+ * that cannot be forgotten by a handler added later. A handler that had to
+ * remember to call it would eventually be the one that did not — which is
+ * precisely how a published product came to be invisible on the homepage for
+ * five minutes at a time (see lib/cache-tags.ts).
+ *
+ * One coarse tag rather than a per-resource map. Admin writes are rare and a
+ * category rename genuinely does change the homepage, the category rail, the
+ * breadcrumb on every product page and the sitemap; working out which of those
+ * a given PATCH touched is a guess that fails silently when it is wrong. The
+ * next public request re-fetches. That is the correct trade for a few writes a
+ * day, and it is not the trade to make for a few writes a second.
+ */
+function revalidatePublicContent(): void {
+  try {
+    // `{ expire: 0 }` — no stale-while-revalidate window. Next 16 takes a
+    // cacheLife profile here saying how stale an entry may still be served
+    // while it refreshes in the background; anything above zero would hand the
+    // NEXT reader the old page and only correct the one after, which is the
+    // behaviour being fixed. An editor who publishes and opens the site in the
+    // next tab has to see it there.
+    revalidateTag(CONTENT_TAG, { expire: 0 });
+  } catch {
+    // A failed invalidation must never fail the write that succeeded. The
+    // worst case is the old behaviour: the change appears within REVALIDATE
+    // seconds instead of on the next request.
+  }
+}
+
+/**
  * Forward one already-validated request to the API.
  *
  * `path` must be built from literals and values that have passed `isId` — it is
@@ -143,6 +178,10 @@ export async function forward(
       cache: "no-store",
       signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
     });
+
+    // Only on a write, and only on one the API actually accepted — a 422 that
+    // changed nothing should not churn the cache for every reader.
+    if (method !== "GET" && res.ok) revalidatePublicContent();
 
     if (res.status === 204) return new NextResponse(null, { status: 204, headers: NO_STORE });
 

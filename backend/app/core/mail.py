@@ -70,6 +70,22 @@ class MailMessage:
 
 
 class MailTransport(Protocol):
+    #: Does this transport actually put the message somewhere a recipient can
+    #: reach it? True for Brevo (an inbox) and for the console (a developer
+    #: reads the link out of the log and clicks it). False for the null
+    #: transport, which drops the message.
+    #:
+    #: This exists because `newsletter.subscribe()` records
+    #: `confirmation_sent_at` when a send does not raise, and NullTransport
+    #: does not raise. So with `MAIL_PROVIDER=disabled` every subscriber was
+    #: stamped as having been sent a confirmation that never left the process.
+    #: That is a lie in the one column that says who still needs one — and it
+    #: is a lie that only becomes expensive later, when mail is switched on
+    #: and there is no way to tell the never-mailed from the mailed-and-
+    #: ignored. Collecting addresses now and sending in two months is a
+    #: supported plan; silently forging the audit of it is not.
+    delivers: bool
+
     async def send(self, message: MailMessage) -> None: ...
 
 
@@ -80,6 +96,8 @@ class BrevoTransport:
     name and a bearer token is rejected as unauthenticated, which reads like a
     bad key rather than a wrong scheme.
     """
+
+    delivers = True
 
     def __init__(self, api_key: str, sender_email: str, sender_name: str, reply_to: str) -> None:
         self._api_key = api_key
@@ -144,6 +162,10 @@ class ConsoleTransport:
     production log is not the place for them.
     """
 
+    #: True: the link in the log is real and clicking it confirms the address,
+    #: which is exactly how double opt-in is exercised locally.
+    delivers = True
+
     async def send(self, message: MailMessage) -> None:
         links = "\n".join(f"    {url}" for url in dict.fromkeys(_HREF.findall(message.html)))
         logger.info(
@@ -157,7 +179,12 @@ class ConsoleTransport:
 class NullTransport:
     """Accept and drop. `MAIL_PROVIDER=disabled` — an explicit off switch, so
     that turning mail off is a decision in the environment rather than the
-    accident of an unset key."""
+    accident of an unset key.
+
+    `delivers = False` is the operative line. Dropping the message must not
+    read to the caller as having sent it — see the note on the protocol."""
+
+    delivers = False
 
     async def send(self, message: MailMessage) -> None:
         return None

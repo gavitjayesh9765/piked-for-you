@@ -122,6 +122,8 @@ export interface AdminMetrics {
   pending_reviews: number;
   reported_reviews: number;
   open_messages: number;
+  newsletter_subscribers: number;
+  newsletter_confirmed: number;
 }
 
 export const getMetrics = () => request<AdminMetrics>("/metrics");
@@ -213,13 +215,71 @@ export interface AdminMessage {
   productUrl: string | null;
   organisation: string | null;
   status: string;
+  internalNote: string | null;
+  answeredAt: string | null;
   createdAt: string;
 }
 
-export const listMessages = (status = "new", page = 1) =>
-  request<{ items: AdminMessage[]; total: number; hasMore: boolean }>(
-    `/messages?${new URLSearchParams({ status, page: String(pageOf(page)) })}`,
-  );
+export interface AdminMessageList {
+  items: AdminMessage[];
+  /** Per-status totals for the filter tabs, plus `all`. Grouped in one query
+   *  upstream — the tabs are chrome and must not cost a round trip each. */
+  counts: Record<string, number>;
+  total: number;
+  page: number;
+  hasMore: boolean;
+}
+
+export const listMessages = (
+  params: { status?: string; topic?: string; q?: string; page?: number } = {},
+) => {
+  const qs = new URLSearchParams({
+    status: params.status ?? "new",
+    page: String(pageOf(params.page)),
+  });
+  if (params.topic) qs.set("topic", params.topic);
+  if (params.q) qs.set("q", params.q);
+  return request<AdminMessageList>(`/messages?${qs}`);
+};
+
+export interface AdminSubscriber {
+  id: string;
+  email: string;
+  frequency: string;
+  /** Derived upstream from confirmed_at / unsubscribed_at / is_active — there
+   *  is no `status` column, and a fifth column duplicating four others is a
+   *  column that can disagree with them. */
+  state: "pending" | "confirmed" | "unsubscribed";
+  confirmedAt: string | null;
+  /** NULL means no confirmation has ever been sent — which is every row while
+   *  MAIL_PROVIDER is `disabled`. That is the record that makes "who still
+   *  needs asking?" answerable once mail is switched on. */
+  confirmationSentAt: string | null;
+  unsubscribedAt: string | null;
+  source: string | null;
+  createdAt: string;
+}
+
+export interface AdminSubscriberList {
+  items: AdminSubscriber[];
+  /** Whole-table totals for the tabs, not filtered ones. */
+  counts: Record<string, number>;
+  total: number;
+  page: number;
+  hasMore: boolean;
+}
+
+export const listSubscribers = (
+  params: { state?: string; frequency?: string; q?: string; page?: number } = {},
+) => {
+  const qs = new URLSearchParams({
+    state: params.state ?? "all",
+    page: String(pageOf(params.page)),
+  });
+  if (params.frequency) qs.set("frequency", params.frequency);
+  if (params.q) qs.set("q", params.q);
+  return request<AdminSubscriberList>(`/newsletter?${qs}`);
+};
 
 export interface AdminUser {
   id: string;

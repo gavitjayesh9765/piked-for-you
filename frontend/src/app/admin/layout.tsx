@@ -56,6 +56,10 @@ const nav: NavGroup[] = [
       // The page existed and was reachable only by typing the URL — no link
       // anywhere in the panel pointed at the contact-form inbox.
       { href: "/admin/messages", label: "Messages" },
+      // Signups have been landing in the table since launch with no screen
+      // showing them. Filed under Community rather than System because the
+      // list is an audience, not an operation.
+      { href: "/admin/newsletter", label: "Newsletter" },
     ],
   },
   {

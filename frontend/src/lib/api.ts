@@ -15,6 +15,7 @@ import type {
   SortOption,
 } from "./types";
 import { API_URL } from "./env";
+import { tagsFor } from "./cache-tags";
 
 /**
  * The single seam between the UI and the backend.
@@ -65,7 +66,15 @@ const USE_MOCKS =
   process.env.NEXT_PUBLIC_USE_MOCKS === "1" ||
   process.env.NEXT_PUBLIC_USE_MOCKS === "true";
 
-/** Public content is cacheable and revalidated on a short window (spec §48). */
+/**
+ * Public content is cacheable and revalidated on a short window (spec §48).
+ *
+ * This is the BACKSTOP, not the mechanism. Admin writes invalidate the tags
+ * below immediately (see ./cache-tags and the `revalidate` step in
+ * ./admin-guard), so an editor never waits on this number; it only bounds how
+ * long a change made *outside* the admin panel — a price run, a direct
+ * database edit — can stay invisible.
+ */
 const REVALIDATE = 300;
 
 /**
@@ -110,7 +119,10 @@ async function get<T>(path: string, init?: RequestInit): Promise<T> {
     res = await fetch(`${API_URL}${path}`, {
       ...init,
       headers: { Accept: "application/json", ...init?.headers },
-      next: { revalidate: REVALIDATE },
+      // Tagged as well as timed. The tags are what let an admin write clear
+      // exactly the reads it affects instead of everyone waiting out
+      // REVALIDATE — see ./cache-tags for the failure this corrects.
+      next: { revalidate: REVALIDATE, tags: tagsFor(path) },
       signal: AbortSignal.timeout(IS_BUILD ? BUILD_TIMEOUT_MS : TIMEOUT_MS),
     });
   } catch (cause) {
@@ -464,13 +476,31 @@ export async function subscribeToNewsletter(
     return { accepted: true, confirmationRequired: true };
   }
 
-  const res = await fetch(`${API_URL}/newsletter/subscribe`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new ApiError("Subscription failed", res.status);
-  return res.json() as Promise<NewsletterSubscribeResponse>;
+  // Same-origin, like `submitContactRequest` and for the same reason: this is
+  // called from the browser, so a cross-origin call would work only while the
+  // API's CORS_ORIGINS named this exact origin. See app/api/newsletter/route.ts.
+  let res: Response;
+  try {
+    res = await fetch("/api/newsletter", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch (cause) {
+    throw new ApiError("Could not reach the list.", 0, { cause });
+  }
+
+  const data = (await res.json().catch(() => null)) as
+    | (NewsletterSubscribeResponse & { detail?: unknown })
+    | null;
+
+  if (!res.ok) {
+    throw new ApiError(
+      typeof data?.detail === "string" ? data.detail : "Subscription failed",
+      res.status,
+    );
+  }
+  return data ?? { accepted: true, confirmationRequired: true };
 }
 
 /**
@@ -501,6 +531,24 @@ export async function confirmNewsletterSubscription(token: string): Promise<void
 /* Contact / research requests                                         */
 /* ------------------------------------------------------------------ */
 
+/**
+ * File a contact or research request.
+ *
+ * Note where this posts: `/api/contact` on our OWN origin, not `${API_URL}`.
+ * That is the one difference that makes this function work in production, and
+ * it is not a tidiness preference — see the header of app/api/contact/route.ts.
+ * Briefly: this is the only public write called from the browser, so it was the
+ * only call whose success depended on the API's `CORS_ORIGINS` naming the exact
+ * frontend origin. When it did not, the browser blocked the response before any
+ * of our code ran, and the form said "That didn't send" while the API recorded
+ * a clean 202. The proxy makes the request same-origin, so CORS cannot break it
+ * and the API origin is no longer something a page has to reach directly.
+ *
+ * The failure is thrown as an `ApiError` carrying the upstream status, because
+ * the form genuinely needs to distinguish 422 (fix your email) from 429 (slow
+ * down) from 502 (not your fault) — a single "try again" is wrong for two of
+ * the three.
+ */
 export async function submitContactRequest(payload: ContactRequest): Promise<ContactResponse> {
   if (USE_MOCKS) {
     await new Promise((r) => setTimeout(r, 700));
@@ -508,11 +556,31 @@ export async function submitContactRequest(payload: ContactRequest): Promise<Con
     return { reference: ref, accepted: true };
   }
 
-  const res = await fetch(`${API_URL}/contact`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new ApiError("Could not send message", res.status);
-  return res.json() as Promise<ContactResponse>;
+  let res: Response;
+  try {
+    res = await fetch("/api/contact", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify(payload),
+    });
+  } catch (cause) {
+    // Same-origin now, so this is a genuinely offline browser rather than a
+    // blocked cross-origin response.
+    throw new ApiError("Could not reach the desk.", 0, { cause });
+  }
+
+  const data = (await res.json().catch(() => null)) as
+    | (ContactResponse & { detail?: unknown })
+    | null;
+
+  if (!res.ok) {
+    throw new ApiError(
+      typeof data?.detail === "string" ? data.detail : "Could not send message",
+      res.status,
+    );
+  }
+  if (!data?.reference) {
+    throw new ApiError("The desk accepted the message but returned no reference.", 502);
+  }
+  return data;
 }

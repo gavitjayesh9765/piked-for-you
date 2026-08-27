@@ -89,6 +89,55 @@ It is opt-in rather than the development default, because a default that is
 unsafe in production is a default that eventually reaches production — see
 the note on `MAIL_PROVIDER` in `config.py`.
 
+## Collecting now, sending later
+
+**`MAIL_PROVIDER` is `disabled`, on purpose, and that is the current state of
+the product rather than an unfinished setup.** Brevo is wired up and tested;
+the decision is to build the list first and send once there are enough verdicts
+to make a newsletter worth opening. Everything below exists so that pause is
+honest instead of a set of small lies that get discovered in two months.
+
+**Nothing claims a mail was sent.** `MailTransport` carries a `delivers` flag —
+true for Brevo and for `console`, false for `NullTransport`. Without it,
+`NullTransport.send()` returned without raising, `_send_confirmation` read that
+as success, and every subscriber collected during the pause was stamped with a
+`confirmation_sent_at` for a message that never left the process. That column is
+the only record of who has been asked to confirm, so forging it destroys the one
+thing needed to mail the backlog later: the ability to tell the never-asked from
+the asked-and-ignored.
+
+**The signup form does not promise an email.** It used to say "We've sent a
+confirmation to <address>" unconditionally. `subscribe()` now returns
+`mailEnabled`, and the form says "the newsletter hasn't started yet" instead.
+That field is a property of the **deployment**, identical for every caller —
+deliberately not "did we mail *you*", which varies with whether the address was
+already confirmed and would rebuild the enumeration oracle this module exists to
+close.
+
+**The admin panel says why.** `/admin/newsletter` lists every subscriber with
+the same furniture as the other queues — state tabs with counts, email search,
+cadence filter, CSV export — and carries a banner explaining that everyone is
+unconfirmed because no mail is going out. Without it, "Confirmed: 0" against a
+growing list reads as a broken signup flow, and the fix somebody reaches for is
+marking people confirmed, which is consent nobody gave.
+
+**Nothing in the panel can change a subscriber's state.** Confirming,
+unsubscribing and changing cadence are each authorised by a token the subscriber
+holds. An admin control that set `confirmed_at` would be a way to manufacture
+consent — the single thing double opt-in exists to prevent — so the endpoint is
+read-only and the export defaults to `confirmed` only.
+
+### Turning it on
+
+1. Verify the sending domain in Brevo (SPF + DKIM), per **Setup** above.
+2. Set `BREVO_API_KEY`, then `MAIL_PROVIDER=brevo`. Restart.
+3. Every new signup gets a confirmation from that moment.
+4. The backlog is in `/admin/newsletter` under **Unconfirmed**, showing **"Not
+   asked yet"** — those are the addresses collected while sending was off. They
+   are knowable precisely because `confirmation_sent_at` was never faked.
+
+Nothing needs a migration, and no subscriber data changes when the switch flips.
+
 ## Three decisions worth knowing about
 
 ### `SITE_URL` is the frontend, not the API
