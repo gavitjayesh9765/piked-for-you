@@ -13,7 +13,8 @@ import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { jsonLd } from "@/lib/json-ld";
 import { SITE_NAME, absoluteUrl } from "@/lib/site";
 import { Badge, CommunityRating } from "@/components/ui/Badge";
-import { RetailButton } from "@/components/ui/Button";
+import { TrackedRetailButton } from "@/components/analytics/TrackedRetailButton";
+import { ProductView } from "@/components/analytics/PageView";
 import { Gallery } from "@/components/product/Gallery";
 import { ScorePanel, ScoreRing } from "@/components/product/ScoreRing";
 import { AudienceFit, ProsCons, SpecsDisclosure, VerdictBlock } from "@/components/product/Verdict";
@@ -202,6 +203,11 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 
   return (
     <>
+      {/* Renders nothing. Counts a view against THIS product; the path itself
+          is counted separately by the <PageView/> in the site layout, and the
+          two do not overlap — see components/analytics/PageView.tsx. */}
+      <ProductView productId={product.id} />
+
       <main id="main">
         <div className="shell-wide pt-6">
           <Breadcrumbs
@@ -313,7 +319,9 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                     who arrived already decided. --- */}
             {lead && (
               <div className="mt-6 flex flex-col gap-4">
-                <RetailButton
+                <TrackedRetailButton
+                  productId={product.id}
+                  linkId={lead.id}
                   retailer={lead.retailer}
                   href={lead.url}
                   price={
@@ -390,7 +398,11 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
             <SpecsDisclosure groups={product.specifications} />
 
             {/* ============ 8. Where to buy ============ */}
-            <BuyingOptions pricing={product.pricing} retailers={activeRetailers} />
+            <BuyingOptions
+              productId={product.id}
+              pricing={product.pricing}
+              retailers={activeRetailers}
+            />
 
             {/* ============ 9. Who is telling you ============ */}
             <ResearchNote

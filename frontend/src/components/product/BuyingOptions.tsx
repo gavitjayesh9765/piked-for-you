@@ -4,7 +4,7 @@ import { cn } from "@/lib/cn";
 import { discountPercent, formatPrice, formatPriceRange } from "@/lib/format";
 import type { Pricing, RetailerLink } from "@/lib/types";
 
-import { RetailButton } from "@/components/ui/Button";
+import { TrackedRetailButton } from "@/components/analytics/TrackedRetailButton";
 
 /**
  * Price and where to buy (spec §20, §26, §59).
@@ -29,11 +29,16 @@ import { RetailButton } from "@/components/ui/Button";
  * a null would be inventing a fact about someone else's shop.
  */
 export function BuyingOptions({
+  productId,
   pricing,
   retailers,
   id = "buying-options",
   className,
 }: {
+  /** Required, so an outbound click from this block can be counted. Passing
+   *  the id rather than reading it from context keeps this component a plain
+   *  server component with no data dependency of its own. */
+  productId: string;
   pricing: Pricing;
   /** Active links only — the caller filters, so a draft-only link cannot
    *  reach a public render by accident. */
@@ -79,7 +84,9 @@ export function BuyingOptions({
         <ul className="mt-6 flex flex-col gap-3">
           {retailers.map((r, i) => (
             <li key={r.id}>
-              <RetailButton
+              <TrackedRetailButton
+                productId={productId}
+                linkId={r.id}
                 retailer={r.retailer}
                 href={r.url}
                 price={

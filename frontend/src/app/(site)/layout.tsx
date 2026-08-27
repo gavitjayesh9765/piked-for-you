@@ -5,6 +5,7 @@ import { getAuthedUser } from "@/lib/supabase/server";
 import { SessionExpiry } from "@/components/auth/SessionExpiry";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
+import { PageView } from "@/components/analytics/PageView";
 
 /**
  * The public site shell.
@@ -62,6 +63,11 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       <SiteHeader categories={categories} />
       {children}
       <SiteFooter />
+      {/* Renders nothing. Mounted here rather than per-page precisely
+          BECAUSE this layout survives navigation — see the note in
+          components/analytics/PageView.tsx for why that means it watches
+          the pathname instead of firing on mount. */}
+      <PageView />
     </>
   );
 }

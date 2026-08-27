@@ -1,13 +1,24 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
+import { cache, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
-import { getMetrics, listLogs, listProducts, safe, type AdminMetrics } from "@/lib/admin-api";
+import {
+  getAnalyticsPulse,
+  getMetrics,
+  listLogs,
+  listProducts,
+  safe,
+  type AdminMetrics,
+  type AnalyticsPulse,
+} from "@/lib/admin-api";
 import { formatPrice, relativeTime } from "@/lib/format";
+import { cn } from "@/lib/cn";
 import { StatusPill } from "@/components/ui/Badge";
 import { ScoreRing } from "@/components/product/ScoreRing";
 import { RowsArriving, ValueArriving } from "@/components/ui/Arriving";
+import { Sparkline } from "@/components/admin/analytics/Charts";
+import { StatTile } from "@/components/admin/analytics/StatTile";
 
 export const metadata: Metadata = { title: "Dashboard", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -15,16 +26,35 @@ export const dynamic = "force-dynamic";
 /**
  * Admin dashboard (spec §35).
  *
- * Every number and every log line on this page used to be a literal in the
- * source — "1,284 published products", an activity feed naming products that
- * may not exist. The catalogue table was fetched from the *public* API, so it
- * showed only published rows: the one view whose entire purpose is drafts and
- * moderation queues was the one view that could not see them.
+ * ---------------------------------------------------------------------------
+ * WHAT THIS PAGE IS FOR, WHICH DECIDES ITS ORDER
  *
- * A dashboard that reports invented numbers is worse than no dashboard. An
- * empty one tells you the API is unreachable; a confident one tells you
- * nothing is wrong. Both endpoints exist and are now what this reads.
+ * It was nine identical count tiles in one flat grid, a catalogue table and a
+ * log. Every number had the same visual weight, which meant the page answered
+ * "what exists" and never "what needs me". "Brands: 12" sat beside "Reported
+ * content: 3" in the same typeface at the same size, and the second one is the
+ * only one worth opening the page for.
+ *
+ * So the page is now ordered by urgency rather than by entity:
+ *
+ *   1. NEEDS ATTENTION — queues with work in them. Hidden entirely when empty,
+ *      because a permanent row of zeroes trains you to stop looking at it.
+ *   2. THIS WEEK — is anyone reading, and are they clicking through. The
+ *      commercial question, and the one nothing on this screen could answer
+ *      before there was any analytics at all.
+ *   3. CATALOGUE — what was touched most recently.
+ *   4. ACTIVITY — the audit trail.
+ *   5. LIBRARY — the reference counts. Last, small, and stated once.
+ *
+ * ---------------------------------------------------------------------------
+ * FOUR INDEPENDENT SUSPENSE BOUNDARIES, NOT ONE PROMISE.ALL
+ *
+ * The four endpoints behind this page are not equally fast and do not depend
+ * on each other, so each streams in on its own. The heading and the grid are
+ * ours and render immediately; a slow analytics query cannot hold up the
+ * moderation queue, which is the half of this page with something at stake.
  */
+
 const EMPTY_METRICS: AdminMetrics = {
   published_products: 0,
   draft_products: 0,
@@ -38,123 +68,251 @@ const EMPTY_METRICS: AdminMetrics = {
   newsletter_confirmed: 0,
 };
 
+/** See the ⚠ on `EMPTY` in admin/analytics/page.tsx: `hasData: true` is the
+ *  safe default because it renders zeroes rather than a wrong diagnosis. */
+const EMPTY_PULSE: AnalyticsPulse = {
+  days: 7,
+  pageViews: 0,
+  productViews: 0,
+  clicks: 0,
+  ctr: 0,
+  viewsChange: null,
+  clicksChange: null,
+  sparkline: [],
+  hasData: true,
+};
+
 /**
- * The three endpoints behind this page are independent and are not equally
- * fast, so they no longer share one `Promise.all` in front of the whole
- * screen. Each has its own boundary and lands when it lands: the metric tiles
- * are usually first, the catalogue and the activity feed follow. The heading
- * and the grid itself are ours and render immediately.
+ * ⚠ `cache()` HERE IS NOT AN OPTIMISATION, IT IS A CORRECTNESS-ADJACENT FIX.
+ *
+ * Two sections on this page need the metrics: <Attention/> at the top and
+ * <Library/> at the bottom. They are separate Suspense boundaries on purpose —
+ * the queues must not wait on anything — but that means two independent
+ * `await`s of the same endpoint, and `request()` in lib/admin-api.ts is
+ * `cache: "no-store"`, so Next's fetch deduplication does not apply.
+ *
+ * Without this the dashboard makes the same authenticated call twice per
+ * render, and the two halves of the page could disagree: a review approved
+ * between the two responses would show in one section and not the other.
+ * React's `cache()` memoises per request, so both boundaries read one answer.
  */
+const metricsOnce = cache(() => safe(getMetrics, EMPTY_METRICS));
+
+const TILE_GRID = "repeat(auto-fit, minmax(min(220px, 100%), 1fr))";
+
 export default function AdminDashboard() {
   return (
-    <div className="mx-auto w-full max-w-wide">
-      <header className="mb-8">
+    <div className="mx-auto flex w-full max-w-wide flex-col gap-8">
+      <header>
         <h1 className="font-display text-display-lg text-ink">Platform overview</h1>
-        <p className="t-eyebrow mt-2">System metrics and recent activity</p>
+        <p className="t-eyebrow mt-2">What needs you, and what happened</p>
       </header>
 
-      {/* --- Metrics (spec §35) --- */}
-      <Suspense fallback={<MetricsArriving />}>
-        <Metrics />
+      {/* --- 1. Queues with work in them (spec §35) --- */}
+      <Suspense fallback={<AttentionArriving />}>
+        <Attention />
       </Suspense>
 
-      <div className="mt-8 grid gap-6 xl:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)]">
-        {/* --- Product catalogue (spec §36) --- */}
+      {/* --- 2. Readership (see components/analytics/PageView.tsx) --- */}
+      <Suspense fallback={<PulseArriving />}>
+        <Pulse />
+      </Suspense>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)]">
+        {/* --- 3. Product catalogue (spec §36) --- */}
         <Suspense fallback={<CataloguePanelArriving />}>
           <Catalogue />
         </Suspense>
 
-        {/* --- Activity log (spec §60) --- */}
+        {/* --- 4. Activity log (spec §60) --- */}
         <Suspense fallback={<ActivityPanelArriving />}>
           <Activity />
         </Suspense>
       </div>
+
+      {/* --- 5. Reference counts --- */}
+      <Suspense fallback={null}>
+        <Library />
+      </Suspense>
     </div>
   );
 }
 
-const METRIC_GRID = "repeat(auto-fit, minmax(min(220px, 100%), 1fr))";
+/* ------------------------------------------------------------------ */
+/* 1. Needs attention                                                  */
+/* ------------------------------------------------------------------ */
 
-async function Metrics() {
-  const metrics = await safe(getMetrics, EMPTY_METRICS);
-  const number = (n: number) => n.toLocaleString("en-IN");
+/**
+ * The queues, and only the ones with something in them.
+ *
+ * ⚠ THE EMPTY CASE RENDERS A SINGLE LINE, NOT FOUR ZEROES, and that is the
+ * whole design. A dashboard that permanently shows "Pending reviews: 0" beside
+ * "Reported content: 0" teaches you within a week that this region never
+ * changes, and then the one morning it says 3 you scroll past it. Hiding the
+ * empty rows is what keeps the region meaningful: if anything is here, it
+ * needs doing.
+ */
+async function Attention() {
+  const m = await metricsOnce();
+
+  const queues = [
+    {
+      label: "Reported content",
+      count: m.reported_reviews,
+      href: "/admin/reports",
+      hint: "Moderate now",
+      tone: "danger" as const,
+    },
+    {
+      label: "Pending reviews",
+      count: m.pending_reviews,
+      href: "/admin/reviews?status=pending",
+      hint: "Waiting on a decision",
+      tone: "warn" as const,
+    },
+    {
+      label: "Open messages",
+      count: m.open_messages,
+      href: "/admin/messages?status=new",
+      hint: "Unanswered",
+      tone: "warn" as const,
+    },
+    {
+      label: "Drafts",
+      count: m.draft_products,
+      href: "/admin/products?status=draft",
+      hint: "Not visible publicly",
+      tone: "neutral" as const,
+    },
+  ].filter((q) => q.count > 0);
+
+  if (queues.length === 0) {
+    return (
+      <section className="panel flex items-center gap-3 border-value-line bg-value-soft/40 px-5 py-4">
+        <span className="h-2 w-2 shrink-0 rounded-full bg-value" aria-hidden="true" />
+        <p className="text-body-sm text-ink">
+          Every queue is clear — no reports, no pending reviews, no unanswered messages, no drafts.
+        </p>
+      </section>
+    );
+  }
 
   return (
-    <div className="grid gap-4" style={{ gridTemplateColumns: METRIC_GRID }}>
-        <Metric
-          label="Published products"
-          value={number(metrics.published_products)}
-          delta="Live on the public site"
-          tone="value"
-          href="/admin/products?status=published"
-        />
-        <Metric
-          label="Drafts"
-          value={number(metrics.draft_products)}
-          delta={metrics.draft_products > 0 ? "Not visible publicly" : undefined}
-          href="/admin/products?status=draft"
-        />
-        <Metric
-          label="Pending reviews"
-          value={number(metrics.pending_reviews)}
-          delta={metrics.pending_reviews > 0 ? "Waiting on a decision" : "Queue is clear"}
-          tone={metrics.pending_reviews > 0 ? "warn" : "neutral"}
-          href="/admin/reviews?status=pending"
-        />
-        <Metric
-          label="Reported content"
-          value={number(metrics.reported_reviews)}
-          delta={metrics.reported_reviews > 0 ? "Moderate now" : "Nothing reported"}
-          tone={metrics.reported_reviews > 0 ? "danger" : "neutral"}
-          href="/admin/reports"
-        />
-        <Metric
-          label="Open messages"
-          value={number(metrics.open_messages)}
-          href="/admin/messages?status=new"
-        />
-        <Metric
-          label="Newsletter"
-          value={number(metrics.newsletter_subscribers)}
-          // Both numbers, because the gap between them is the story. While
-          // MAIL_PROVIDER is `disabled` the confirmed count is zero by
-          // construction — nobody can click a link that was never sent — so a
-          // tile showing only "confirmed" would read as nobody signing up.
-          delta={
-            metrics.newsletter_subscribers === 0
-              ? undefined
-              : `${number(metrics.newsletter_confirmed)} confirmed`
-          }
-          href="/admin/newsletter"
-        />
-        <Metric label="Categories" value={number(metrics.categories)} href="/admin/categories" />
-        <Metric label="Brands" value={number(metrics.brands)} href="/admin/brands" />
-        <Metric
-          label="Archived"
-          value={number(metrics.archived_products)}
-          href="/admin/products?status=archived"
-        />
-    </div>
+    <section>
+      <h2 className="t-eyebrow mb-3">Needs attention</h2>
+      <div className="grid gap-4" style={{ gridTemplateColumns: TILE_GRID }}>
+        {queues.map((q) => (
+          <StatTile
+            key={q.label}
+            label={q.label}
+            value={n(q.count)}
+            hint={q.hint}
+            tone={q.tone}
+            href={q.href}
+          />
+        ))}
+      </div>
+    </section>
   );
 }
 
-/** Nine tiles at their real size, so the grid below never jumps. */
-function MetricsArriving() {
+function AttentionArriving() {
   return (
-    <div className="grid gap-4" style={{ gridTemplateColumns: METRIC_GRID }}>
-      {Array.from({ length: 9 }, (_, i) => (
-        <div key={i} className="panel p-5" aria-hidden="true">
-          <p className="tabular font-display text-headline-lg font-bold leading-none text-ink">
-            <ValueArriving width={4} />
-          </p>
-          <p className="t-eyebrow mt-3">
-            <ValueArriving width={10} />
+    <section aria-hidden="true">
+      <h2 className="t-eyebrow mb-3">Needs attention</h2>
+      <div className="grid gap-4" style={{ gridTemplateColumns: TILE_GRID }}>
+        {Array.from({ length: 3 }, (_, i) => (
+          <div key={i} className="panel p-5">
+            <p className="t-eyebrow">
+              <ValueArriving width={10} />
+            </p>
+            <p className="tabular mt-3 font-display text-display-lg font-bold leading-none text-ink">
+              <ValueArriving width={3} />
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* 2. Readership                                                       */
+/* ------------------------------------------------------------------ */
+
+async function Pulse() {
+  const p = await safe(getAnalyticsPulse, EMPTY_PULSE);
+
+  return (
+    <section>
+      <div className="mb-3 flex items-baseline justify-between gap-4">
+        <h2 className="t-eyebrow">Last 7 days</h2>
+        <Link
+          href="/admin/analytics"
+          className="font-label text-label-xs uppercase tracking-[0.1em] text-brand hover:underline"
+        >
+          Full analytics
+        </Link>
+      </div>
+
+      {!p.hasData ? (
+        <div className="panel dot-matrix px-5 py-8 text-center">
+          <p className="text-body-sm text-ink-muted">
+            No traffic has been recorded yet.{" "}
+            <Link href="/admin/analytics" className="text-brand hover:underline">
+              What to check
+            </Link>
           </p>
         </div>
-      ))}
-    </div>
+      ) : (
+        <div className="grid gap-4" style={{ gridTemplateColumns: TILE_GRID }}>
+          <StatTile label="Page views" value={n(p.pageViews)} tone="brand">
+            {p.sparkline.length > 1 ? (
+              <Sparkline values={p.sparkline} className="w-full" />
+            ) : null}
+          </StatTile>
+          <StatTile label="Product views" value={n(p.productViews)} change={p.viewsChange} />
+          <StatTile
+            label="Outbound clicks"
+            value={n(p.clicks)}
+            change={p.clicksChange}
+            tone="warn"
+          />
+          <StatTile
+            label="Click-through"
+            value={`${p.ctr}%`}
+            hint="Of product views"
+            tone={p.ctr > 0 ? "value" : "neutral"}
+          />
+        </div>
+      )}
+    </section>
   );
 }
+
+function PulseArriving() {
+  return (
+    <section aria-hidden="true">
+      <h2 className="t-eyebrow mb-3">Last 7 days</h2>
+      <div className="grid gap-4" style={{ gridTemplateColumns: TILE_GRID }}>
+        {Array.from({ length: 4 }, (_, i) => (
+          <div key={i} className="panel p-5">
+            <p className="t-eyebrow">
+              <ValueArriving width={9} />
+            </p>
+            <p className="tabular mt-3 font-display text-display-lg font-bold leading-none text-ink">
+              <ValueArriving width={4} />
+            </p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/* 3. Catalogue                                                        */
+/* ------------------------------------------------------------------ */
 
 async function Catalogue() {
   const products = await safe(() => listProducts({ page: 1 }), {
@@ -169,7 +327,12 @@ async function Catalogue() {
   return (
     <section className="panel overflow-hidden">
       <div className="flex items-center justify-between gap-4 border-b border-line p-5">
-        <h2 className="text-headline-sm text-ink">Product catalogue</h2>
+        <div>
+          <h2 className="text-headline-sm text-ink">Product catalogue</h2>
+          <p className="t-eyebrow mt-1">
+            {products.total > 0 ? `${n(products.total)} total` : "Most recently updated"}
+          </p>
+        </div>
         <Link
           href="/admin/products"
           className="font-label text-label-xs uppercase tracking-[0.1em] text-brand hover:underline"
@@ -263,7 +426,6 @@ async function Catalogue() {
   );
 }
 
-/** The catalogue panel's frame and its row rhythm, held still. */
 function CataloguePanelArriving() {
   return (
     <section className="panel overflow-hidden" aria-hidden="true">
@@ -276,6 +438,10 @@ function CataloguePanelArriving() {
     </section>
   );
 }
+
+/* ------------------------------------------------------------------ */
+/* 4. Activity                                                         */
+/* ------------------------------------------------------------------ */
 
 function ActivityPanelArriving() {
   return (
@@ -350,39 +516,68 @@ function toneFor(action: string): "value" | "danger" | "warn" | "brand" {
   return "brand";
 }
 
-function Metric({
-  label,
-  value,
-  delta,
-  tone = "neutral",
-  href,
-}: {
-  label: string;
-  value: string;
-  delta?: string;
-  tone?: "neutral" | "value" | "warn" | "danger";
-  href?: string;
-}) {
-  const deltaColor = {
-    neutral: "text-ink-subtle",
-    value: "text-value",
-    warn: "text-warn",
-    danger: "text-danger",
-  }[tone];
+/* ------------------------------------------------------------------ */
+/* 5. Library                                                          */
+/* ------------------------------------------------------------------ */
 
-  const body = (
-    <>
-      <p className="t-eyebrow">{label}</p>
-      <p className="tabular mt-3 text-display-lg font-bold leading-none text-ink">{value}</p>
-      {delta && <p className={`mt-2 text-body-sm ${deltaColor}`}>{delta}</p>}
-    </>
-  );
+/**
+ * The reference counts, stated once and quietly.
+ *
+ * These were four full-size tiles competing with the moderation queue for
+ * attention. They are facts about the shape of the catalogue, not work — you
+ * look at "Brands: 12" when you are about to add a brand, and never otherwise
+ * — so they get one row at label size, at the bottom, where a fact belongs.
+ */
+async function Library() {
+  const m = await metricsOnce();
 
-  return href ? (
-    <Link href={href} className="panel p-5 transition-colors duration-fast hover:border-brand-line">
-      {body}
-    </Link>
-  ) : (
-    <div className="panel p-5">{body}</div>
+  const items = [
+    { label: "Published", value: m.published_products, href: "/admin/products?status=published" },
+    { label: "Archived", value: m.archived_products, href: "/admin/products?status=archived" },
+    { label: "Categories", value: m.categories, href: "/admin/categories" },
+    { label: "Brands", value: m.brands, href: "/admin/brands" },
+    {
+      label: "Subscribers",
+      value: m.newsletter_subscribers,
+      href: "/admin/newsletter",
+      // Both numbers, because the gap between them is the story. While
+      // MAIL_PROVIDER is `disabled` the confirmed count is zero by
+      // construction — nobody can click a link that was never sent — so a
+      // figure showing only "confirmed" would read as nobody signing up.
+      note:
+        m.newsletter_subscribers > 0 ? `${n(m.newsletter_confirmed)} confirmed` : undefined,
+    },
+  ];
+
+  return (
+    <section className="panel px-5 py-4">
+      <h2 className="t-eyebrow mb-3">Library</h2>
+      <dl className="flex flex-wrap gap-x-8 gap-y-4">
+        {items.map((it) => (
+          <Link
+            key={it.label}
+            href={it.href}
+            className="group min-w-[100px] transition-colors duration-fast"
+          >
+            <dt className="font-label text-[10px] uppercase tracking-[0.12em] text-ink-faint">
+              {it.label}
+            </dt>
+            <dd
+              className={cn(
+                "tabular mt-1 text-headline-sm font-semibold text-ink",
+                "group-hover:text-brand",
+              )}
+            >
+              {n(it.value)}
+              {it.note ? (
+                <span className="ml-2 font-normal text-label-xs text-ink-faint">{it.note}</span>
+              ) : null}
+            </dd>
+          </Link>
+        ))}
+      </dl>
+    </section>
   );
 }
+
+const n = (v: number) => v.toLocaleString("en-IN");

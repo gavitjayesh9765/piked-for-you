@@ -129,6 +129,97 @@ export interface AdminMetrics {
 export const getMetrics = () => request<AdminMetrics>("/metrics");
 
 /* ------------------------------------------------------------------ */
+/* Analytics                                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Traffic counters. Read `supabase/migrations/20260827180440_analytics_daily.sql`
+ * for what these numbers are and — more importantly — what they are not.
+ *
+ * The short version for anyone reading a screen built on these: they are
+ * pre-aggregated daily counts with no visitor identity behind them at all.
+ * There is no way to ask "who" or "in what order" of this data, and no UI built
+ * on it should imply otherwise.
+ */
+
+/** A percentage change against the previous equal-length period, or `null`
+ *  where the previous period was zero and no percentage exists. Rendering
+ *  `null` as 0% or as +100% would both be inventions — the UI says
+ *  "no prior data". */
+export type Change = number | null;
+
+export interface AnalyticsSeriesPoint {
+  day: string;
+  views: number;
+  clicks: number;
+  pageViews: number;
+}
+
+export interface AnalyticsProductRow {
+  id: string;
+  title: string;
+  slug: string;
+  status?: string;
+  brand: string;
+  category?: string;
+  views: number;
+  clicks: number;
+  /** Clicks as a percentage of views, one decimal. 0 when views is 0. */
+  ctr: number;
+}
+
+export interface AnalyticsKeyRow {
+  key: string;
+  count: number;
+}
+
+export interface AnalyticsOverview {
+  days: number;
+  start: string;
+  end: string;
+  totals: {
+    pageViews: number;
+    productViews: number;
+    clicks: number;
+    ctr: number;
+    pageViewsChange: Change;
+    productViewsChange: Change;
+    clicksChange: Change;
+  };
+  series: AnalyticsSeriesPoint[];
+  topProducts: AnalyticsProductRow[];
+  topConverting: AnalyticsProductRow[];
+  retailers: { id: string; name: string; clicks: number }[];
+  paths: AnalyticsKeyRow[];
+  referrers: AnalyticsKeyRow[];
+  devices: AnalyticsKeyRow[];
+  /** False when NOTHING has ever been recorded — which looks identical to a
+   *  quiet week in every other field, and is the only one of the two that
+   *  means something is broken. */
+  hasData: boolean;
+}
+
+export interface AnalyticsPulse {
+  days: number;
+  pageViews: number;
+  productViews: number;
+  clicks: number;
+  ctr: number;
+  viewsChange: Change;
+  clicksChange: Change;
+  sparkline: number[];
+  hasData: boolean;
+}
+
+/** Windows the API accepts. Anything else is coerced to 30 server-side. */
+export type AnalyticsWindow = 7 | 30 | 90;
+
+export const getAnalytics = (days: AnalyticsWindow = 30) =>
+  request<AnalyticsOverview>(`/analytics?days=${days}`);
+
+export const getAnalyticsPulse = () => request<AnalyticsPulse>("/analytics/pulse");
+
+/* ------------------------------------------------------------------ */
 /* Products                                                            */
 /* ------------------------------------------------------------------ */
 

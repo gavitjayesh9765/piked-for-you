@@ -25,6 +25,7 @@ from app.modules.media.router import router as media_router
 from app.modules.newsletter.router import router as newsletter_router
 from app.modules.contact.router import router as contact_router
 from app.modules.personalisation.router import router as me_router
+from app.modules.analytics.router import router as track_router
 
 # --- Admin modules ---
 from app.modules.admin.router import router as admin_router
@@ -35,6 +36,7 @@ from app.modules.admin.taxonomy import router as admin_taxonomy_router
 from app.modules.admin.curation import router as admin_curation_router
 from app.modules.admin.pricing import router as admin_pricing_router
 from app.modules.admin.pricing import product_router as admin_pricing_product_router
+from app.modules.admin.analytics import router as admin_analytics_router
 
 api_router = APIRouter()
 
@@ -49,6 +51,12 @@ api_router.include_router(homepage_router, prefix="/homepage", tags=["homepage"]
 api_router.include_router(media_router, prefix="/media", tags=["media"])
 api_router.include_router(newsletter_router, prefix="/newsletter", tags=["newsletter"])
 api_router.include_router(contact_router, prefix="/contact", tags=["contact"])
+
+# The tracking beacon. Public and unauthenticated by necessity — it is called
+# by every reader's browser, most of whom are not signed in — and it answers
+# 204 to everything, so being public gives an attacker a counter to inflate
+# and nothing to read. See modules/analytics/router.py.
+api_router.include_router(track_router, prefix="/track", tags=["analytics"])
 
 # Personalisation. Every route scopes to the caller's own id from the verified
 # token — no user id appears in any path or body, so the IDOR shape does not
@@ -69,6 +77,8 @@ for _r in (
     # an admin created one (see app/services/scraper/).
     admin_pricing_router,
     admin_pricing_product_router,
+    # Read-only. There is no admin route anywhere that can write a counter.
+    admin_analytics_router,
 ):
     api_router.include_router(
         _r,
