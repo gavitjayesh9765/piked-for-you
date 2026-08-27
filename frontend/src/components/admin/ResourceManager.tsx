@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
+import { readableError } from "@/lib/admin-errors";
 import { Badge as BadgeChip } from "@/components/ui/Badge";
 import type { BadgeStyle } from "@/lib/types";
 
@@ -25,6 +26,17 @@ export interface FieldSpec {
   options?: string[];
   placeholder?: string;
   span?: 2;
+  /**
+   * The value a *new* row starts with.
+   *
+   * Without it every checkbox on a create form began unchecked and was
+   * submitted as an explicit `false`, which overrode the API's own default.
+   * So every brand and badge created here was born inactive: absent from the
+   * public site, absent from the product form's brand select, and absent from
+   * its badge picker — which is why that section read "No badges defined yet"
+   * however many badges existed.
+   */
+  default?: string | number | boolean;
 }
 
 export interface ColumnSpec {
@@ -97,7 +109,9 @@ export function ResourceManager({
       });
       if (!res.ok) {
         const d = await res.json().catch(() => null);
-        setError(typeof d?.detail === "string" ? d.detail : "Could not save.");
+        // Named fields, not "Could not save." — a 422 already says which key
+        // was refused, and throwing that away sends the editor hunting.
+        setError(readableError(d));
         return;
       }
       await refresh();
@@ -118,7 +132,7 @@ export function ResourceManager({
     if (!res.ok) {
       const d = await res.json().catch(() => null);
       // The API says exactly what still depends on this row — show that.
-      setError(typeof d?.detail === "string" ? d.detail : "Could not delete.");
+      setError(readableError(d, "Could not delete."));
       return;
     }
     await refresh();
@@ -260,7 +274,9 @@ function ResourceForm({
   const [values, setValues] = useState<Record<string, unknown>>(() => {
     const out: Record<string, unknown> = {};
     for (const f of fields) {
-      const v = initial?.[f.key];
+      // Editing reads the stored value — including a stored `false`. Creating
+      // has no row to read, so the field's declared default applies.
+      const v = initial ? initial[f.key] : f.default;
       out[f.key] = f.type === "checkbox" ? Boolean(v ?? false) : (v ?? "");
     }
     return out;
@@ -275,6 +291,12 @@ function ResourceForm({
           const v = values[f.key];
           if (f.type === "checkbox") payload[f.key] = Boolean(v);
           else if (f.type === "number") payload[f.key] = Number(v) || 0;
+          // A select is a closed set the API declares non-nullable — badge
+          // style is `str = "neutral"`, not `str | None`. Falling through to
+          // the null branch below sent `style: null` on every create, which
+          // pydantic refused, which surfaced as "Could not save.": creating a
+          // badge was impossible. Fall back to the first option instead.
+          else if (f.type === "select") payload[f.key] = String(v ?? "") || f.options?.[0] || "";
           else payload[f.key] = String(v ?? "").trim() || (f.required ? "" : null);
         }
         onSave(payload);
@@ -291,7 +313,7 @@ function ResourceForm({
             key={f.key}
             className={cn(
               f.span === 2 && "sm:col-span-2",
-              f.type === "checkbox" ? "flex items-center gap-2 pt-6" : "block",
+              f.type === "checkbox" ? "flex items-start gap-2 pt-6" : "block",
             )}
           >
             {f.type === "checkbox" ? (
@@ -300,9 +322,16 @@ function ResourceForm({
                   type="checkbox"
                   checked={Boolean(values[f.key])}
                   onChange={(e) => setValues({ ...values, [f.key]: e.target.checked })}
-                  className="h-4 w-4 accent-[var(--c-brand-fill)]"
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--c-brand-fill)]"
                 />
-                <span className="text-body-sm text-ink">{f.label}</span>
+                <span className="min-w-0">
+                  <span className="block text-body-sm text-ink">{f.label}</span>
+                  {f.hint && (
+                    <span className="mt-0.5 block text-label-xs leading-relaxed text-ink-faint">
+                      {f.hint}
+                    </span>
+                  )}
+                </span>
               </>
             ) : (
               <>

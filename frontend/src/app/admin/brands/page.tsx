@@ -46,9 +46,24 @@ async function BrandList() {
         { key: "website", label: "Website", type: "url", placeholder: "https://" },
         { key: "logoUrl", label: "Logo URL", type: "url", placeholder: "https://" },
         { key: "description", label: "Description", type: "textarea", span: 2 },
-        { key: "displayOrder", label: "Order", type: "number" },
-        { key: "isPinned", label: "Pinned to homepage", type: "checkbox" },
-        { key: "isActive", label: "Active", type: "checkbox" },
+        { key: "displayOrder", label: "Order", type: "number", default: 0 },
+        {
+          key: "isPinned",
+          label: "Pinned to homepage",
+          type: "checkbox",
+          hint: "Shows in the featured brand strip on the homepage.",
+        },
+        {
+          key: "isActive",
+          label: "Active",
+          type: "checkbox",
+          // New brands start active. They used to start unchecked, and the form
+          // submitted that as an explicit false — so a brand created here was
+          // invisible on /b and missing from the New-product brand select,
+          // which then refused to open at all: "you need a brand first".
+          default: true,
+          hint: "Off hides the brand from the site and from the product form. Its products stay put.",
+        },
       ]}
       columns={[
         { key: "name", label: "Brand" },

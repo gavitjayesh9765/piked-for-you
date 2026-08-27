@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
+import { readableError } from "@/lib/admin-errors";
 import type { Badge, Brand, Category, Product, SpecTemplateGroup } from "@/lib/types";
 import {
   SpecEditor,
@@ -42,6 +43,7 @@ export function ProductForm({
   brands,
   badges,
   specTemplates = {},
+  specTemplateSources = {},
 }: {
   product?: Product;
   categories: Category[];
@@ -53,6 +55,14 @@ export function ProductForm({
    * not need a round trip mid-form.
    */
   specTemplates?: Record<string, SpecTemplateGroup[]>;
+  /**
+   * Category id -> the category its template actually came from, when that is
+   * an ancestor rather than itself. SpecEditor has always been able to say
+   * "template inherited from Computers"; nothing ever passed it the value, so
+   * it never did, and an editor looking at fields their own category does not
+   * define had no way to learn where to go and change them.
+   */
+  specTemplateSources?: Record<string, string | null>;
 }) {
   const router = useRouter();
   const isEdit = Boolean(product);
@@ -98,10 +108,58 @@ export function ProductForm({
     () => specTemplates[f.categoryId] ?? [],
     [specTemplates, f.categoryId],
   );
+  const specTemplateSource = specTemplateSources[f.categoryId] ?? null;
   const categoryName = useMemo(
     () => categories.find((c) => c.id === f.categoryId)?.name,
     [categories, f.categoryId],
   );
+
+  /**
+   * What the two selects may offer.
+   *
+   * getBrands() and getCategories() return ACTIVE rows only. A product whose
+   * brand or category was deactivated after it was filed therefore had a
+   * select with no matching option: the control rendered blank, and the
+   * obvious response to a blank required field is to pick something - quietly
+   * refiling the product under whatever sat at the top of the list. The
+   * current value is appended instead, labelled, so it stays selected and the
+   * reason it looks odd is on the screen.
+   *
+   * Categories are shown as a full path. A flat list of leaf names is
+   * ambiguous the moment two branches both have an "Accessories", and a
+   * product filed one level too high is invisible afterwards.
+   */
+  const brandOptions = useMemo(() => {
+    const list = brands.map((b) => ({ id: b.id, label: b.name }));
+    if (product && !list.some((o) => o.id === product.brand.id)) {
+      list.push({ id: product.brand.id, label: product.brand.name + " — deactivated" });
+    }
+    return list;
+  }, [brands, product]);
+
+  const categoryOptions = useMemo(() => {
+    const byId = new Map(categories.map((c) => [c.id, c]));
+    const pathLabel = (c: Category): string => {
+      const names: string[] = [];
+      const seen = new Set<string>();
+      let node: Category | undefined = c;
+      while (node && !seen.has(node.id)) {
+        seen.add(node.id);
+        names.unshift(node.name);
+        node = node.parentId ? byId.get(node.parentId) : undefined;
+      }
+      return names.join(" › ");
+    };
+
+    const list = categories
+      .map((c) => ({ id: c.id, label: pathLabel(c) }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+
+    if (product && !list.some((o) => o.id === product.category.id)) {
+      list.push({ id: product.category.id, label: product.category.name + " — deactivated" });
+    }
+    return list;
+  }, [categories, product]);
   const unmapped = useMemo(
     () => unmappedSpecs(product?.specifications, specTemplate),
     [product?.specifications, specTemplate],
@@ -109,11 +167,34 @@ export function ProductForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [dirty, setDirty] = useState(false);
+
+  /** Every edit path calls this, so no control can forget to mark the form. */
+  function touch() {
+    setSaved(false);
+    setDirty(true);
+  }
 
   function set<K extends keyof typeof f>(key: K, value: string) {
     setF((prev) => ({ ...prev, [key]: value }));
-    setSaved(false);
+    touch();
   }
+
+  /**
+   * Refuse to lose a half-written verdict to a closed tab.
+   *
+   * This form holds the longest-form writing anywhere in the panel and has no
+   * autosave, so a reload or a stray ctrl-W took the lot with no warning. The
+   * browser only lets us guard a real unload - an in-app navigation to another
+   * admin screen is not covered, which is why the save bar now says in words
+   * that there are unsaved changes.
+   */
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
 
   const lines = (v: string) =>
     v.split("\n").map((s) => s.trim()).filter(Boolean);
@@ -122,6 +203,21 @@ export function ProductForm({
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+
+    const priceCurrent = num(f.priceCurrent);
+    const priceMin = num(f.priceMin);
+    const priceMax = num(f.priceMax);
+
+    // Checked here because nothing downstream checks it. The schema bounds
+    // each of the three at >= 0 and independently of the others, so low 5,000
+    // with high 3,000 saved without complaint and the product page then
+    // rendered the range backwards.
+    const priceProblem = checkPrices(priceCurrent, priceMin, priceMax);
+    if (priceProblem) {
+      setError(priceProblem);
+      return;
+    }
+
     setBusy(true);
     setError(null);
 
@@ -133,9 +229,9 @@ export function ProductForm({
       shortDescription: f.shortDescription.trim() || null,
       description: f.description.trim() || null,
       currency: f.currency,
-      priceCurrent: num(f.priceCurrent),
-      priceMin: num(f.priceMin),
-      priceMax: num(f.priceMax),
+      priceCurrent,
+      priceMin,
+      priceMax,
       verdictStance: f.verdictStance || null,
       verdictSummary: f.verdictSummary.trim() || null,
       verdict: f.verdict.trim() || null,
@@ -184,6 +280,7 @@ export function ProductForm({
 
       const created = await res.json();
       setSaved(true);
+      setDirty(false);
       if (!isEdit && created?.id) {
         router.replace(`/admin/products/${created.id}`);
       }
@@ -226,24 +323,28 @@ export function ProductForm({
               onChange={(e) => set("brandId", e.target.value)}
               className={input}
             >
-              {brands.map((b) => (
+              {brandOptions.map((b) => (
                 <option key={b.id} value={b.id}>
-                  {b.name}
+                  {b.label}
                 </option>
               ))}
             </select>
           </Field>
 
-          <Field label="Category" required>
+          <Field
+            label="Category"
+            required
+            hint="Shown as a full path. File against the most specific one - the specification fields in 05 and the scoring criteria on the next screen both come from it."
+          >
             <select
               required
               value={f.categoryId}
               onChange={(e) => set("categoryId", e.target.value)}
               className={input}
             >
-              {categories.map((c) => (
+              {categoryOptions.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.name}
+                  {c.label}
                 </option>
               ))}
             </select>
@@ -302,7 +403,11 @@ export function ProductForm({
             </select>
           </Field>
 
-          <Field label="Current price" hint="Required to publish.">
+          <Field
+            label="Current price"
+            publish
+            hint="The headline number. Per-retailer prices are separate, on the edit screen."
+          >
             <input
               type="number"
               min={0}
@@ -313,7 +418,7 @@ export function ProductForm({
             />
           </Field>
 
-          <Field label="Range — low">
+          <Field label="Range — low" hint="The lowest you have seen it sell for.">
             <input
               type="number"
               min={0}
@@ -324,7 +429,7 @@ export function ProductForm({
             />
           </Field>
 
-          <Field label="Range — high">
+          <Field label="Range — high" hint="Its usual, non-sale price.">
             <input
               type="number"
               min={0}
@@ -350,8 +455,8 @@ export function ProductForm({
         <Grid>
           <Field
             label="Should you buy this?"
-            required
-            hint="Required to publish. Shown at the top of the product page, above everything else."
+            publish
+            hint="Shown at the top of the product page, above everything else."
           >
             <select
               value={f.verdictStance}
@@ -386,9 +491,9 @@ export function ProductForm({
 
           <Field
             label="Why — in one or two sentences"
-            required
+            publish
             span={2}
-            hint="Required to publish. Sits directly beside the recommendation above the fold, so it has to stand on its own without the full verdict below it."
+            hint="Sits directly beside the recommendation above the fold, so it has to stand on its own without the full verdict below it."
           >
             <textarea
               rows={3}
@@ -403,7 +508,11 @@ export function ProductForm({
         </Grid>
 
         <div className="mt-6">
-        <Field label="Our verdict" hint="Required to publish. Who it's for, who should skip it, and why.">
+        <Field
+          label="Our verdict"
+          publish
+          hint="Who it is for, who should skip it, and why. The long-form argument under the banner."
+        >
           <textarea
             rows={8}
             value={f.verdict}
@@ -435,7 +544,7 @@ export function ProductForm({
             />
           </Field>
 
-          <Field label="Pros" hint="One per line. At least one is required to publish.">
+          <Field label="Pros" publish hint="One per line. At least one, to publish.">
             <textarea
               rows={5}
               value={f.pros}
@@ -446,7 +555,8 @@ export function ProductForm({
 
           <Field
             label="Cons"
-            hint="One per line. At least one is required to publish — a product with no downsides is a page nobody believes."
+            publish
+            hint="One per line. At least one, to publish — a product with no downsides is a page nobody believes."
           >
             <textarea
               rows={5}
@@ -474,7 +584,7 @@ export function ProductForm({
             checked={handsOnTested}
             onChange={(e) => {
               setHandsOnTested(e.target.checked);
-              setSaved(false);
+              touch();
             }}
             className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--c-brand-fill)]"
           />
@@ -517,13 +627,17 @@ export function ProductForm({
         <SpecEditor
           template={specTemplate}
           values={specs}
-          onChange={setSpecs}
+          onChange={(next) => {
+            setSpecs(next);
+            touch();
+          }}
+          templateSource={specTemplateSource}
           categoryName={categoryName}
           unmapped={unmapped}
         />
       </Section>
 
-      {/* --- 5. Badges --- */}
+      {/* --- 6. Badges --- */}
       <Section n="06" title="Badges" hint="Created in the admin panel, never hard-coded (spec §21).">
         <div className="flex flex-wrap gap-2">
           {badges.length === 0 && (
@@ -535,11 +649,12 @@ export function ProductForm({
               <button
                 key={b.id}
                 type="button"
-                onClick={() =>
+                onClick={() => {
                   setBadgeIds((prev) =>
                     prev.includes(b.id) ? prev.filter((x) => x !== b.id) : [...prev, b.id],
-                  )
-                }
+                  );
+                  touch();
+                }}
                 className={cn(
                   "rounded-full border px-4 py-2 font-label text-label-xs font-semibold uppercase",
                   "tracking-[0.1em] transition-all duration-fast",
@@ -555,7 +670,7 @@ export function ProductForm({
         </div>
       </Section>
 
-      {/* --- 6. SEO --- */}
+      {/* --- 7. SEO --- */}
       <Section n="07" title="SEO" hint="Falls back to the title and tagline when blank (spec §47).">
         <Grid>
           <Field label="Meta title" span={2}>
@@ -589,6 +704,12 @@ export function ProductForm({
               </p>
             ) : saved ? (
               <p className="text-body-sm text-value">Saved.</p>
+            ) : dirty ? (
+              // An in-app navigation cannot be intercepted, so the only
+              // honest thing left is to say so where the editor is looking.
+              <p className="text-body-sm text-warn">
+                Unsaved changes. Leaving this screen loses them.
+              </p>
             ) : (
               <p className="text-label-xs text-ink-faint">
                 Saving keeps this a draft — publishing is a separate step.
@@ -641,22 +762,42 @@ const STANCES = [
   {
     value: "consider_alternative",
     label: "Consider an alternative",
-    hint: "Nothing wrong with it, but something else does the job better. Add the alternatives in section 12 — this verdict is incomplete without them.",
+    hint: "Nothing wrong with it, but something else does the job better. Add the alternatives in section 13, on the edit screen — this verdict is incomplete without them.",
   },
 ] as const;
 
-function readableError(detail: unknown): string {
-  if (!detail) return "Could not save.";
-  const d = (detail as { detail?: unknown }).detail ?? detail;
-  if (typeof d === "string") return d;
-  if (Array.isArray(d)) {
-    // FastAPI validation errors — surface the field, not the raw shape.
-    const first = d[0] as { loc?: string[]; msg?: string };
-    const field = first?.loc?.slice(-1)[0];
-    return field ? `${field}: ${first.msg}` : (first?.msg ?? "Validation failed.");
+/**
+ * The price relationships nothing else checks.
+ *
+ * `ProductCreate` bounds each of the three at >= 0 and independently of the
+ * others. Nothing compares them, so "low 5,000 / high 3,000" saved cleanly and
+ * the product page rendered the range backwards; a current price outside its
+ * own stated range reads as either a typo or a lie, depending which way it
+ * falls. Both are cheap to catch here and expensive to notice in production.
+ */
+function checkPrices(
+  current: number | null,
+  low: number | null,
+  high: number | null,
+): string | null {
+  for (const [label, value] of [
+    ["Current price", current],
+    ["Range — low", low],
+    ["Range — high", high],
+  ] as const) {
+    if (value !== null && !Number.isFinite(value)) return `${label} is not a number.`;
+    if (value !== null && value < 0) return `${label} cannot be negative.`;
   }
-  if (typeof d === "object" && d && "message" in d) return String((d as never)["message"]);
-  return "Could not save.";
+  if (low !== null && high !== null && low > high) {
+    return "Range — low is above Range — high. Swap them.";
+  }
+  if (current !== null && low !== null && current < low) {
+    return "The current price is below the bottom of the range you gave.";
+  }
+  if (current !== null && high !== null && current > high) {
+    return "The current price is above the top of the range you gave.";
+  }
+  return null;
 }
 
 const input =
@@ -696,20 +837,36 @@ function Field({
   label,
   hint,
   required,
+  publish,
   span,
   children,
 }: {
   label: string;
   hint?: string;
+  /** Enforced by this form — save is blocked without it. */
   required?: boolean;
+  /**
+   * Not needed to save, refused at publish (spec §62).
+   *
+   * These used to carry the same red asterisk as the genuinely required
+   * fields, which said the wrong thing in both directions: the form let you
+   * save without them anyway, so the marker was a bluff, and the fields that
+   * really do block a save looked no different from the ones that do not.
+   */
+  publish?: boolean;
   span?: 1 | 2;
   children: React.ReactNode;
 }) {
   return (
     <label className={cn("block", span === 2 && "sm:col-span-2")}>
-      <span className="t-eyebrow flex items-center gap-1">
+      <span className="t-eyebrow flex flex-wrap items-center gap-1.5">
         {label}
         {required && <span className="text-brand">*</span>}
+        {publish && (
+          <span className="rounded-xs border border-warn bg-warn-soft px-1.5 py-px font-label text-[9px] font-bold uppercase tracking-[0.08em] text-warn-on-soft">
+            To publish
+          </span>
+        )}
       </span>
       {hint && <span className="mt-1 block text-label-xs leading-relaxed text-ink-subtle">{hint}</span>}
       <span className="mt-2 block">{children}</span>

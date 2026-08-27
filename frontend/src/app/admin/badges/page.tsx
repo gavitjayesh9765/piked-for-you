@@ -53,13 +53,25 @@ async function BadgeList() {
           key: "style",
           label: "Style token",
           type: "select",
-          options: ["editorial", "brand", "value", "warn", "neutral"],
+          options: ["neutral", "editorial", "brand", "value", "warn"],
+          // The select had no default, so a new badge submitted style: "" and
+          // the API refused it with the style list — as "Could not save."
+          default: "neutral",
           hint: "A token, never a colour — the design system decides how it looks.",
         },
         { key: "icon", label: "Icon (emoji)", type: "text", placeholder: "Optional" },
         { key: "description", label: "Description", type: "textarea", span: 2 },
-        { key: "displayOrder", label: "Order", type: "number" },
-        { key: "isActive", label: "Active", type: "checkbox" },
+        { key: "displayOrder", label: "Order", type: "number", default: 0 },
+        {
+          key: "isActive",
+          label: "Active",
+          type: "checkbox",
+          // Same defect as brands: created unchecked, submitted as false, and
+          // the product form only offers active badges — so a badge made here
+          // could never be attached to anything.
+          default: true,
+          hint: "Only active badges can be attached to a product. Products already carrying it keep it.",
+        },
       ]}
       columns={[
         { key: "preview", label: "Preview", cell: "badge" },

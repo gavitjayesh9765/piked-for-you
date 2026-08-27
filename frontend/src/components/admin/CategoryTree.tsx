@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
+import { readableError } from "@/lib/admin-errors";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import type { ScoreCriterionDef, SpecTemplateGroup } from "@/lib/types";
 import {
@@ -90,8 +91,13 @@ export function CategoryTree({ initial }: { initial: AdminCategory[] }) {
   const hasChildren = (id: string) => items.some((c) => c.parentId === id);
 
   async function refresh() {
-    const res = await fetch("/admin/api/categories");
-    if (res.ok) setItems((await res.json()).items);
+    const res = await fetch("/admin/api/categories", { cache: "no-store" });
+    if (res.ok) {
+      const body = await res.json().catch(() => null);
+      // A 200 with an unexpected body would otherwise set `items` to
+      // undefined and crash the whole tree on the next render.
+      if (Array.isArray(body?.items)) setItems(body.items);
+    }
     router.refresh();
   }
 
@@ -106,7 +112,11 @@ export function CategoryTree({ initial }: { initial: AdminCategory[] }) {
       });
       if (!res.ok) {
         const d = await res.json().catch(() => null);
-        setError(typeof d?.detail === "string" ? d.detail : "Could not save.");
+        // Template refusals arrive as an object naming the offending key —
+        // "Duplicate group key: display", "Field x needs a label". Reading
+        // only the string case turned every one of them into "Could not
+        // save." and left the editor with no idea which row was wrong.
+        setError(readableError(d));
         return false;
       }
       await refresh();
@@ -119,12 +129,24 @@ export function CategoryTree({ initial }: { initial: AdminCategory[] }) {
   }
 
   async function remove(c: AdminCategory) {
+    // Delete sat one unguarded click away from Edit, with no confirmation and
+    // no undo — the same defect ResourceManager already fixed for brands and
+    // badges. The API refuses a category that still has products or children,
+    // but the ones it allows are gone for good, and a deleted category takes
+    // its scoring criteria and specification template with it.
+    if (
+      !window.confirm(
+        `Delete the category “${c.name}”? This cannot be undone, and its scoring criteria and specification template go with it.`,
+      )
+    ) {
+      return;
+    }
     setError(null);
     const res = await fetch(`/admin/api/categories/${c.id}`, { method: "DELETE" });
     if (!res.ok) {
       const d = await res.json().catch(() => null);
       // The API explains *what* is in the way — surface that, not a generic error.
-      setError(typeof d?.detail === "string" ? d.detail : "Could not delete.");
+      setError(readableError(d, "Could not delete."));
       return;
     }
     await refresh();

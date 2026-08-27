@@ -33,7 +33,14 @@ export const metadata: Metadata = {
 const nav: NavGroup[] = [
   {
     label: "Overview",
-    items: [{ href: "/admin", label: "Dashboard" }],
+    items: [
+      { href: "/admin", label: "Dashboard" },
+      // What every field on every form is for, what publishing demands, and
+      // the prompts that draft the writing. Filed here rather than under
+      // System because it is the first thing a new editor needs and the last
+      // place anyone would look for it is behind Settings.
+      { href: "/admin/guide", label: "Guide" },
+    ],
   },
   {
     label: "Content",

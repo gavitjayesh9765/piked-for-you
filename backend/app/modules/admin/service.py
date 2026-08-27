@@ -119,7 +119,12 @@ async def create_product(
 
     specifications = await _validated_specs(db, payload.category_id, payload.specifications)
 
-    slug = await unique_slug(db, payload.slug or slugify(payload.title))
+    # Slugified whether it was typed or derived. `update_product` already did
+    # this; create did not, so a Slug field filled in by hand with "Sony
+    # WH-1000XM5!" was stored verbatim. The public product URL is built from
+    # this value and the frontend refuses anything that is not kebab-case, so
+    # the product simply 404ed and the only fix was to guess the cause.
+    slug = await unique_slug(db, slugify(payload.slug) if payload.slug else slugify(payload.title))
 
     product = Product(
         title=payload.title.strip(),

@@ -97,6 +97,10 @@ export default async function EditProductPage({
     (taxonomy.items ?? []).map((c) => [c.id, c.specTemplate ?? []]),
   );
 
+  const specTemplateSources: Record<string, string | null> = Object.fromEntries(
+    (taxonomy.items ?? []).map((c) => [c.id, c.specTemplateSource ?? null]),
+  );
+
   return (
     <AdminPage
       title={product.title}
@@ -146,6 +150,7 @@ export default async function EditProductPage({
         brands={brands}
         badges={badges}
         specTemplates={specTemplates}
+        specTemplateSources={specTemplateSources}
       />
 
       {/* Media, retailer links, the score and the alternatives are edit-only:

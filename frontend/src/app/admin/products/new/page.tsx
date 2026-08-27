@@ -11,6 +11,8 @@ import { ProductForm } from "@/components/admin/ProductForm";
 interface CategoryRow {
   id: string;
   specTemplate?: SpecTemplateGroup[] | null;
+  /** Which category the template came from, when it is inherited. */
+  specTemplateSource?: string | null;
 }
 
 export const metadata: Metadata = { title: "New product", robots: { index: false } };
@@ -38,6 +40,13 @@ export default async function NewProductPage() {
 
   const specTemplates: Record<string, SpecTemplateGroup[]> = Object.fromEntries(
     (taxonomy.items ?? []).map((c) => [c.id, c.specTemplate ?? []]),
+  );
+
+  // So the specification editor can say "template inherited from Computers"
+  // rather than leaving an editor wondering why fields they never configured
+  // are on screen, and where to go to change them.
+  const specTemplateSources: Record<string, string | null> = Object.fromEntries(
+    (taxonomy.items ?? []).map((c) => [c.id, c.specTemplateSource ?? null]),
   );
 
   // Inactive badges stay out of the picker: a retired marker should not be
@@ -107,6 +116,7 @@ export default async function NewProductPage() {
             brands={brands}
             badges={badges}
             specTemplates={specTemplates}
+            specTemplateSources={specTemplateSources}
           />
         </>
       )}
