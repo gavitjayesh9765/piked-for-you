@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { readableError } from "@/lib/admin-errors";
+import { saveError } from "@/lib/admin-errors";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import type { ScoreCriterionDef, SpecTemplateGroup } from "@/lib/types";
 import {
@@ -116,7 +116,7 @@ export function CategoryTree({ initial }: { initial: AdminCategory[] }) {
         // "Duplicate group key: display", "Field x needs a label". Reading
         // only the string case turned every one of them into "Could not
         // save." and left the editor with no idea which row was wrong.
-        setError(readableError(d));
+        setError(saveError(res.status, d, { idempotent: Boolean(id) }));
         return false;
       }
       await refresh();
@@ -146,7 +146,7 @@ export function CategoryTree({ initial }: { initial: AdminCategory[] }) {
     if (!res.ok) {
       const d = await res.json().catch(() => null);
       // The API explains *what* is in the way — surface that, not a generic error.
-      setError(readableError(d, "Could not delete."));
+      setError(saveError(res.status, d, { idempotent: true, fallback: "Could not delete." }));
       return;
     }
     await refresh();

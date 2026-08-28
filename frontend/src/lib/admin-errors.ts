@@ -53,3 +53,45 @@ export function readableError(body: unknown, fallback = "Could not save."): stri
 
   return fallback;
 }
+
+/**
+ * The message for an admin write that failed, given the status as well as the
+ * body.
+ *
+ * Two statuses carry something no response body can, because our own proxy
+ * produces them after the upstream call failed rather than the API describing
+ * what it refused (`lib/admin-guard.ts`):
+ *
+ *   502 — the connection was refused. The request never reached the API, so
+ *         nothing was written and trying again costs nothing.
+ *   504 — the API accepted the request and never answered within the 15s
+ *         budget. It may have finished the work regardless: FastAPI does not
+ *         stop because the caller stopped listening, so a write can land
+ *         *after* the browser has been told it failed.
+ *
+ * The 504 case is the one worth spelling out, and it is not hypothetical — it
+ * is how this function came to exist. A bare "The API did not respond in time."
+ * invites the obvious response, pressing the button again, and on a create that
+ * is how one draft silently becomes two. Callers pass `idempotent` for writes
+ * where repeating is harmless — an update, a delete — and those get the
+ * shorter advice instead of a warning that does not apply to them.
+ */
+export function saveError(
+  status: number,
+  body: unknown,
+  options: { idempotent?: boolean; fallback?: string } = {},
+): string {
+  const { idempotent = false, fallback } = options;
+
+  if (status === 502) {
+    return "The API is unreachable, so nothing was saved. Check that it is running, then try again.";
+  }
+
+  if (status === 504) {
+    return idempotent
+      ? "The API did not respond in time. This may have gone through anyway — reload to check before retrying."
+      : "The API did not respond in time. It may have been saved anyway — check the list before trying again, or you may create a second copy.";
+  }
+
+  return readableError(body, fallback);
+}

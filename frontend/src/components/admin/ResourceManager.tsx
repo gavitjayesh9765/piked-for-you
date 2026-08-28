@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
-import { readableError } from "@/lib/admin-errors";
+import { saveError } from "@/lib/admin-errors";
 import { Badge as BadgeChip } from "@/components/ui/Badge";
 import type { BadgeStyle } from "@/lib/types";
 
@@ -111,7 +111,7 @@ export function ResourceManager({
         const d = await res.json().catch(() => null);
         // Named fields, not "Could not save." — a 422 already says which key
         // was refused, and throwing that away sends the editor hunting.
-        setError(readableError(d));
+        setError(saveError(res.status, d, { idempotent: Boolean(id) }));
         return;
       }
       await refresh();
@@ -132,7 +132,7 @@ export function ResourceManager({
     if (!res.ok) {
       const d = await res.json().catch(() => null);
       // The API says exactly what still depends on this row — show that.
-      setError(readableError(d, "Could not delete."));
+      setError(saveError(res.status, d, { idempotent: true, fallback: "Could not delete." }));
       return;
     }
     await refresh();

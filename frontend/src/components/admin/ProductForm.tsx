@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
-import { readableError } from "@/lib/admin-errors";
+import { saveError } from "@/lib/admin-errors";
 import type { Badge, Brand, Category, Product, SpecTemplateGroup } from "@/lib/types";
 import {
   SpecEditor,
@@ -274,7 +274,9 @@ export function ProductForm({
 
       if (!res.ok) {
         const detail = await res.json().catch(() => null);
-        setError(readableError(detail));
+        // `isEdit` decides how a timeout is phrased: repeating a PATCH is
+        // harmless, repeating a create is how one draft becomes two.
+        setError(saveError(res.status, detail, { idempotent: isEdit }));
         return;
       }
 
