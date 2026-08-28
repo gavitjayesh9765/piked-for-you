@@ -186,3 +186,152 @@ on conflict (slug) do nothing;
 -- Paths and depths are recomputed now that there is a second root and two more
 -- branches of Electronics.
 select public.rebuild_category_paths();
+
+-- ---------------------------------------------------------------------------
+-- Brands
+--
+-- All of them land on display_order 100 and `is_pinned = false`. The list
+-- endpoint orders by (display_order, name), so the ten curated rows keep the
+-- front of the directory and everything added here files alphabetically behind
+-- them. Pinning is an editorial act: the homepage strip should say "brands we
+-- cover", and a brand with nothing published under it is not one we cover yet.
+--
+-- `website` is left null wherever the official domain is genuinely ambiguous
+-- (regional sub-brands, licensees). A wrong outbound link is worse than a
+-- missing one, and the admin can fill it in when a product is filed.
+-- ---------------------------------------------------------------------------
+insert into public.brands (name, slug, website, description, is_active, is_pinned, display_order) values
+  -- Audio -------------------------------------------------------------------
+  ('JBL',            'jbl',            'https://www.jbl.com',            'Harman''s mass-market arm: portable speakers, soundbars and headphones, tuned bass-first.', true, false, 100),
+  ('boAt',           'boat',           'https://www.boat-lifestyle.com', 'India''s volume leader in earbuds and soundbars — aggressive pricing, very fast refresh cycles.', true, false, 100),
+  ('Marshall',       'marshall',       'https://www.marshall.com',       'Amp-styled speakers and headphones built under licence by Zound Industries.', true, false, 100),
+  ('Jabra',          'jabra',          'https://www.jabra.com',          'Comes from a headset and hearing business, and it shows in the call quality.', true, false, 100),
+  ('Anker',          'anker',          'https://www.anker.com',          'Charging, cables and power banks, plus Soundcore audio — the safe default in accessories.', true, false, 100),
+  ('Audio-Technica', 'audio-technica', 'https://www.audio-technica.com', 'Studio monitors, microphones and turntables; a reference point rather than a lifestyle brand.', true, false, 100),
+
+  -- Phones and tablets ------------------------------------------------------
+  ('OnePlus',    'oneplus',    'https://www.oneplus.com',  'Flagship hardware at a discount to the flagships, with a software record worth checking per model.', true, false, 100),
+  ('Xiaomi',     'xiaomi',     'https://www.mi.com',       'Phones, TVs and a very wide accessory catalogue, usually the price leader in its segment.', true, false, 100),
+  ('Poco',       'poco',       null,                       'Xiaomi''s performance-per-rupee sub-brand, sold almost entirely online.', true, false, 100),
+  ('Realme',     'realme',     'https://www.realme.com',   'Fast-moving budget and mid-range phones with frequent, overlapping model refreshes.', true, false, 100),
+  ('Vivo',       'vivo',       'https://www.vivo.com',     'Camera-led mid-rangers and a strong offline retail presence.', true, false, 100),
+  ('Oppo',       'oppo',       'https://www.oppo.com',     'Sibling of Vivo and OnePlus under BBK; design and fast charging are the pitch.', true, false, 100),
+  ('iQOO',       'iqoo',       null,                       'Vivo''s performance line — chipset and display first, cameras second.', true, false, 100),
+  ('Motorola',   'motorola',   'https://www.motorola.com', 'Lenovo-owned; close-to-stock Android and a long habit of undercutting on price.', true, false, 100),
+  ('Honor',      'honor',      'https://www.honor.com',    'Independent of Huawei since 2020, back to shipping with Google services.', true, false, 100),
+
+  -- Computing and components ------------------------------------------------
+  ('Dell',            'dell',            'https://www.dell.com',           'Laptops, monitors and desktops with the service network to match — plus Alienware for gaming.', true, false, 100),
+  ('HP',              'hp',              'https://www.hp.com',             'Laptops, printers and monitors; the printing arm is where the running costs live.', true, false, 100),
+  ('Lenovo',          'lenovo',          'https://www.lenovo.com',         'ThinkPad, IdeaPad and Legion — keyboards and repairability are the recurring strengths.', true, false, 100),
+  ('Acer',            'acer',            'https://www.acer.com',           'Aggressive on price across laptops and monitors, with Predator and Nitro for gaming.', true, false, 100),
+  ('MSI',             'msi',             'https://www.msi.com',            'Gaming laptops, motherboards and graphics cards, with strong thermals as the selling point.', true, false, 100),
+  ('Gigabyte',        'gigabyte',        'https://www.gigabyte.com',       'Motherboards, graphics cards and Aorus gaming gear.', true, false, 100),
+  ('Intel',           'intel',           'https://www.intel.com',          'Core processors and Arc graphics; the incumbent everything else is benchmarked against.', true, false, 100),
+  ('AMD',             'amd',             'https://www.amd.com',            'Ryzen processors and Radeon graphics — usually the value argument in both.', true, false, 100),
+  ('Nvidia',          'nvidia',          'https://www.nvidia.com',         'GeForce graphics cards, and the software stack that makes them hard to leave.', true, false, 100),
+  ('Microsoft',       'microsoft',       'https://www.microsoft.com',      'Surface hardware and the Xbox consoles, controllers and Game Pass ecosystem.', true, false, 100),
+  ('Seagate',         'seagate',         'https://www.seagate.com',        'Hard drives and external storage, including the console-certified expansion cards.', true, false, 100),
+  ('Western Digital', 'western-digital', 'https://www.westerndigital.com', 'WD and Black-series drives and SSDs, from NAS duty to gaming builds.', true, false, 100),
+  ('SanDisk',         'sandisk',         'https://www.sandisk.com',        'Memory cards, portable SSDs and flash drives — the default in a camera bag.', true, false, 100),
+  ('Crucial',         'crucial',         'https://www.crucial.com',        'Micron''s consumer arm: memory and SSDs, priced close to the silicon.', true, false, 100),
+  ('Kingston',        'kingston',        'https://www.kingston.com',       'Memory, SSDs and the FURY gaming line.', true, false, 100),
+
+  -- Printing ----------------------------------------------------------------
+  ('Epson',   'epson',   'https://www.epson.com',   'Ink-tank printers, where the cartridge economics stop being a trap.', true, false, 100),
+  ('Brother', 'brother', 'https://www.brother.com', 'Mono lasers and label printers with a reputation for outlasting their warranty.', true, false, 100),
+
+  -- Gaming ------------------------------------------------------------------
+  ('Razer',        'razer',        'https://www.razer.com',         'Peripherals and laptops built around a very specific aesthetic, with the software to match.', true, false, 100),
+  ('Corsair',      'corsair',      'https://www.corsair.com',       'Peripherals, memory, cases and power supplies — a whole build from one vendor.', true, false, 100),
+  ('HyperX',       'hyperx',       'https://www.hyperx.com',        'HP-owned; headsets and keyboards that hold up better than their price suggests.', true, false, 100),
+  ('SteelSeries',  'steelseries',  'https://steelseries.com',       'Esports-first mice and headsets, with a long history in competitive play.', true, false, 100),
+  ('Nintendo',     'nintendo',     'https://www.nintendo.com',      'The Switch platform, its controllers, and a library nobody else can sell you.', true, false, 100),
+  ('Valve',        'valve',        'https://www.valvesoftware.com', 'Steam Deck and the Index — PC gaming in handheld and headset form.', true, false, 100),
+  ('Cooler Master','cooler-master','https://www.coolermaster.com',  'Cooling, cases and peripherals; the cooling is still the reason to look.', true, false, 100),
+  ('Redragon',     'redragon',     null,                            'Budget mechanical keyboards and mice that undercut the name brands by a wide margin.', true, false, 100),
+  ('Secretlab',    'secretlab',    'https://secretlab.co',          'Gaming chairs sold on foam density and adjustment range rather than racing-seat styling.', true, false, 100),
+  ('Elgato',       'elgato',       'https://www.elgato.com',        'Capture cards, Stream Decks and lighting — the streaming half of a gaming desk.', true, false, 100),
+  ('Turtle Beach', 'turtle-beach', 'https://www.turtlebeach.com',   'Console-first headsets, with the compatibility caveats that implies.', true, false, 100),
+  ('Ant Esports',  'ant-esports',  null,                            'India-focused gaming peripherals, chairs and cases at entry prices.', true, false, 100),
+  ('Zebronics',    'zebronics',    'https://zebronics.com',         'Indian peripheral and audio maker with very broad, very cheap coverage.', true, false, 100),
+
+  -- Cameras and drones ------------------------------------------------------
+  ('Canon',     'canon',     'https://www.canon.com',        'The RF mirrorless system and its lenses, plus a large share of the home printer market.', true, false, 100),
+  ('Nikon',     'nikon',     'https://www.nikon.com',        'Z-series mirrorless bodies and glass, with a deep back catalogue behind them.', true, false, 100),
+  ('Fujifilm',  'fujifilm',  'https://www.fujifilm.com',     'X and GFX cameras, and the colour science people buy them for.', true, false, 100),
+  ('Panasonic', 'panasonic', 'https://www.panasonic.com',    'Lumix cameras for video, plus a wide home-appliance catalogue.', true, false, 100),
+  ('GoPro',     'gopro',     'https://www.gopro.com',        'Action cameras — stabilisation and durability over sensor size.', true, false, 100),
+  ('DJI',       'dji',       'https://www.dji.com',          'Drones, gimbals and increasingly the cameras on them.', true, false, 100),
+  ('Insta360',  'insta360',  'https://www.insta360.com',     '360 and action cameras, and the reframing software that makes them worth it.', true, false, 100),
+  ('Sigma',     'sigma',     'https://www.sigma-global.com', 'Third-party lenses that regularly out-spec the first-party option at the price.', true, false, 100),
+
+  -- Television and home entertainment ---------------------------------------
+  ('LG',      'lg',      'https://www.lg.com',      'OLED televisions, monitors and a full major-appliance line.', true, false, 100),
+  ('TCL',     'tcl',     'https://www.tcl.com',     'Mini-LED and QLED sets that keep resetting what a large screen costs.', true, false, 100),
+  ('Hisense', 'hisense', 'https://www.hisense.com', 'Televisions and appliances competing hard on brightness per rupee.', true, false, 100),
+
+  -- Networking --------------------------------------------------------------
+  ('TP-Link', 'tp-link', 'https://www.tp-link.com', 'Routers, mesh systems and the Tapo smart-home line.', true, false, 100),
+  ('Netgear', 'netgear', 'https://www.netgear.com', 'Nighthawk and Orbi — the expensive end of home networking, and often the fastest.', true, false, 100),
+  ('D-Link',  'd-link',  'https://www.dlink.com',   'Routers and extenders across the budget and small-office range.', true, false, 100),
+
+  -- Smart home and wearables ------------------------------------------------
+  ('Philips',    'philips',    'https://www.philips.com',   'Hue lighting, grooming, and a large kitchen-appliance catalogue including air fryers.', true, false, 100),
+  ('Amazon',     'amazon',     'https://www.amazon.com',    'Echo speakers, Fire TV and Ring — a smart home that assumes one account.', true, false, 100),
+  ('Garmin',     'garmin',     'https://www.garmin.com',    'Sports watches with the best battery life in the category and no subscription for the basics.', true, false, 100),
+  ('Amazfit',    'amazfit',    'https://www.amazfit.com',   'Zepp Health''s watch line — long battery life at a fraction of the flagship price.', true, false, 100),
+  ('Noise',      'noise',      null,                        'Indian wearables brand with very high volume in budget smartwatches and earbuds.', true, false, 100),
+  ('Fire-Boltt', 'fire-boltt', null,                        'Budget smartwatches sold on feature counts; tracking accuracy is the thing to check.', true, false, 100),
+  ('Syska',      'syska',      null,                        'Indian lighting and smart-lighting brand, widely stocked offline.', true, false, 100),
+  ('Roborock',   'roborock',   'https://www.roborock.com',  'Robot vacuums with the mapping and mopping most rivals are chasing.', true, false, 100),
+  ('Ecovacs',    'ecovacs',    'https://www.ecovacs.com',   'Deebot robot vacuums, usually the value pick against Roborock.', true, false, 100),
+
+  -- Charging and accessories ------------------------------------------------
+  ('Belkin',     'belkin',     'https://www.belkin.com',     'Chargers, docks and cables, with the certifications actually printed on the box.', true, false, 100),
+  ('UGREEN',     'ugreen',     'https://www.ugreen.com',     'Docks, hubs and GaN chargers at a consistent discount to the first-party option.', true, false, 100),
+  ('Portronics', 'portronics', 'https://www.portronics.com', 'Indian accessory brand covering power banks, chargers and desk gear.', true, false, 100),
+  ('Ambrane',    'ambrane',    null,                         'High-volume Indian power banks and cables at entry prices.', true, false, 100),
+  ('Baseus',     'baseus',     'https://www.baseus.com',     'Chargers, cables and car accessories; broad catalogue, variable quality by line.', true, false, 100),
+
+  -- Kitchen: everyday --------------------------------------------------------
+  ('Prestige',        'prestige',        'https://www.ttkprestige.com',    'TTK Prestige — pressure cookers and cookware, and the service network to go with them.', true, false, 100),
+  ('Hawkins',         'hawkins',         'https://www.hawkinscookers.com', 'Pressure cookers with spare gaskets and parts available for decades.', true, false, 100),
+  ('Butterfly',       'butterfly',       null,                             'Mixer grinders and gas stoves built for South Indian kitchens first.', true, false, 100),
+  ('Preethi',         'preethi',         null,                             'Mixer grinders with a strong reputation for motor life on wet grinding.', true, false, 100),
+  ('Bajaj',           'bajaj',           'https://www.bajajelectricals.com','Bajaj Electricals — kitchen appliances, fans and lighting across every price band.', true, false, 100),
+  ('Havells',         'havells',         'https://www.havells.com',        'Fans, water heaters and kitchen appliances, with Lloyd for cooling.', true, false, 100),
+  ('Usha',            'usha',            'https://www.usha.com',           'Fans, sewing machines and kitchen appliances — an old name with wide reach.', true, false, 100),
+  ('Morphy Richards','morphy-richards',  null,                             'British-origin small appliances, licensed and widely sold in India.', true, false, 100),
+  ('Wonderchef',      'wonderchef',      'https://www.wonderchef.com',     'Cookware and small appliances aimed squarely at the home cook.', true, false, 100),
+  ('Borosil',         'borosil',         'https://www.borosil.com',        'Glassware, ovenware and kitchen appliances; the glass is the reason to buy.', true, false, 100),
+  ('Pigeon',          'pigeon',          null,                             'Stovekraft''s value brand — cookware and appliances at the entry price.', true, false, 100),
+  ('Milton',          'milton',          null,                             'Flasks, bottles and food storage that survive being carried every day.', true, false, 100),
+  ('Cello',           'cello',           null,                             'Storage, bottles and plastic kitchenware, stocked almost everywhere.', true, false, 100),
+  ('Tefal',           'tefal',           'https://www.tefal.com',          'Groupe SEB''s non-stick line, including the thermo-spot pans it is known for.', true, false, 100),
+
+  -- Kitchen: premium and coffee ---------------------------------------------
+  ('KitchenAid', 'kitchenaid', 'https://www.kitchenaid.com',  'Stand mixers built to be inherited, and priced accordingly.', true, false, 100),
+  ('De''Longhi', 'delonghi',   'https://www.delonghi.com',    'Espresso and bean-to-cup machines, plus coffee grinders and kitchen appliances.', true, false, 100),
+  ('Nespresso',  'nespresso',  'https://www.nespresso.com',   'Pod espresso — convenience bought with a permanent capsule commitment.', true, false, 100),
+  ('Breville',   'breville',   'https://www.breville.com',    'Prosumer espresso machines and ovens; sold as Sage in parts of Europe.', true, false, 100),
+  ('Ninja',      'ninja',      'https://www.ninjakitchen.com','Blenders, air fryers and multi-cookers from SharkNinja.', true, false, 100),
+  ('Cuisinart',  'cuisinart',  'https://www.cuisinart.com',   'Food processors and countertop appliances, the category it largely created.', true, false, 100),
+  ('Lodge',      'lodge',      'https://www.lodgecastiron.com','Pre-seasoned cast iron that outlives everything else in the cupboard.', true, false, 100),
+
+  -- Large appliances and home ------------------------------------------------
+  ('Whirlpool',     'whirlpool',     'https://www.whirlpool.com',      'Refrigerators and washing machines across the mainstream range.', true, false, 100),
+  ('Godrej',        'godrej',        'https://www.godrejappliances.com','Indian appliance maker with deep service coverage outside the metros.', true, false, 100),
+  ('IFB',           'ifb',           'https://www.ifbappliances.com',  'Front-load washing machines and dishwashers sized for Indian homes.', true, false, 100),
+  ('Bosch',         'bosch',         'https://www.bosch-home.com',     'Washing machines and dishwashers with a build-quality premium you can hear.', true, false, 100),
+  ('Haier',         'haier',         'https://www.haier.com',          'Refrigerators, washing machines and air conditioners, usually undercutting on price.', true, false, 100),
+  ('Voltas',        'voltas',        'https://www.voltas.com',         'Tata-owned; the volume leader in Indian air conditioning.', true, false, 100),
+  ('Blue Star',     'blue-star',     'https://www.bluestarindia.com',  'Air conditioning and cooling, with a commercial engineering background.', true, false, 100),
+  ('Daikin',        'daikin',        'https://www.daikin.com',         'Air conditioners rated on efficiency and how quietly they hold a temperature.', true, false, 100),
+  ('Crompton',      'crompton',      'https://www.crompton.co.in',     'Fans, water heaters and pumps — the fittings half of an Indian home.', true, false, 100),
+  ('Kent',          'kent',          'https://www.kent.co.in',         'RO water purifiers, and the annual service contract that comes with them.', true, false, 100),
+  ('Eureka Forbes', 'eureka-forbes', 'https://www.eurekaforbes.com',   'Aquaguard purifiers and vacuum cleaners, sold on service reach.', true, false, 100),
+  ('AO Smith',      'ao-smith',      'https://www.aosmith.com',        'Water heaters and purifiers; the tank and element quality is the argument.', true, false, 100),
+  ('Dyson',         'dyson',         'https://www.dyson.com',          'Cordless vacuums, purifiers and hair care at the top of every price band.', true, false, 100),
+  ('Honeywell',     'honeywell',     'https://www.honeywell.com',      'Air purifiers and filters, licensed into consumer lines in several markets.', true, false, 100)
+on conflict (slug) do nothing;
