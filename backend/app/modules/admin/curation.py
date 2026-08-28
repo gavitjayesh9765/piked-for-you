@@ -31,6 +31,7 @@ from app.models import (
     HomepageSection,
     Product,
     ProductMedia,
+    ProductScore,
     Review,
     ReviewMedia,
     ReviewReport,
@@ -70,6 +71,10 @@ class TopPickOrder(Strict):
     ids: list[uuid.UUID]
 
 
+class TopPickPatch(Strict):
+    is_active: bool
+
+
 @router.get("/top-picks")
 async def list_top_picks(admin: CurrentAdmin, db: DbSession, response: Response) -> dict:
     _private(response)
@@ -105,6 +110,22 @@ async def list_top_picks(admin: CurrentAdmin, db: DbSession, response: Response)
         primary = min(imgs, key=lambda m: m.display_order)
         return urls.get(primary.storage_path or "", "")
 
+    # How many of these the homepage will actually render.
+    #
+    # The public query takes `limit` from the top_picks section's config and
+    # defaults to 8 (modules/homepage/router.py). Without this number the admin
+    # screen shows twenty picks and gives no hint that the last twelve are
+    # invisible — which is a curation tool lying about what it curates.
+    section = (
+        await db.execute(
+            select(HomepageSection).where(
+                HomepageSection.kind == "top_picks",
+                HomepageSection.is_active.is_(True),
+            )
+        )
+    ).scalars().first()
+    visible_limit = int((section.config or {}).get("limit", 8)) if section else None
+
     return {
         "items": [
             {
@@ -120,7 +141,11 @@ async def list_top_picks(admin: CurrentAdmin, db: DbSession, response: Response)
                 "isActive": r.is_active,
             }
             for r in rows
-        ]
+        ],
+        # None when the section is switched off entirely — a different fact
+        # from "the first eight", and the screen says so differently.
+        "visibleLimit": visible_limit,
+        "sectionActive": section is not None,
     }
 
 
@@ -137,15 +162,27 @@ async def pick_candidates(
     already = select(TopPick.product_id).where(TopPick.collection.is_(None))
     stmt = (
         select(Product)
+        # LEFT JOIN, not the relationship: a product with no score yet is a
+        # perfectly valid thing to feature and must not be dropped from the
+        # shortlist for lacking one.
+        .outerjoin(ProductScore, ProductScore.product_id == Product.id)
         .where(Product.status == "published", Product.id.not_in(already))
         .options(selectinload(Product.brand), selectinload(Product.score))
+        # Ordered BEFORE the limit, which is the whole fix. This used to take
+        # an arbitrary 50 rows — no ORDER BY at all — and then sort those 50 by
+        # score in Python, so the list was never "the fifty best": it was fifty
+        # rows in whatever order Postgres happened to return them. Combined
+        # with a client that filtered its one fetch locally instead of
+        # searching, a product outside that arbitrary window could not be found
+        # at all, and the screen said "nothing left to feature" about a
+        # catalogue that plainly had more.
+        .order_by(ProductScore.overall.desc().nullslast(), Product.title)
         .limit(50)
     )
-    if q:
+    if q and q.strip():
         stmt = stmt.where(Product.title.ilike(f"%{q.strip()}%"))
 
     rows = list((await db.execute(stmt)).unique().scalars().all())
-    rows.sort(key=lambda p: float(p.score.overall) if p.score else 0.0, reverse=True)
 
     return {
         "items": [
@@ -225,6 +262,37 @@ async def reorder_top_picks(
         db, actor_id=admin.id, action="toppick.reorder", entity_type="top_pick",
         summary="Reordered Top Picks", ip_address=client_ip(request),
     )
+
+
+@router.patch("/top-picks/{pick_id}")
+async def set_top_pick_active(
+    pick_id: uuid.UUID,
+    payload: Annotated[TopPickPatch, Body()],
+    admin: CurrentAdmin,
+    db: DbSession,
+    request: Request,
+) -> dict:
+    """Pause or resume a pick without losing its position.
+
+    `is_active` has been honoured by the public homepage query since it was
+    written and has never been settable from the admin, so the only way to take
+    something off the homepage was to remove it — which threw away the
+    editorial decision about where it sat. Pausing keeps the slot.
+    """
+    pick = await db.get(TopPick, pick_id)
+    if pick is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found")
+
+    pick.is_active = payload.is_active
+    await db.flush()
+
+    await audit.record(
+        db, actor_id=admin.id, action="toppick.pause" if not payload.is_active else "toppick.resume",
+        entity_type="top_pick", entity_id=pick_id,
+        summary=("Paused a Top Pick" if not payload.is_active else "Resumed a Top Pick"),
+        ip_address=client_ip(request),
+    )
+    return {"id": str(pick.id), "isActive": pick.is_active}
 
 
 @router.delete("/top-picks/{pick_id}", status_code=status.HTTP_204_NO_CONTENT, response_model=None)
