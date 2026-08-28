@@ -1,61 +1,57 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import Image from "next/image";
 import Link from "next/link";
 
 import { adminGet } from "@/lib/admin-api";
 import { AdminPage, FilterTabs } from "@/components/admin/Shell";
+import { AdminSearch } from "@/components/admin/AdminSearch";
 import { TableArriving } from "@/components/ui/Arriving";
+import { MediaGrid } from "@/components/admin/MediaGrid";
+import type { LibraryAsset } from "@/components/admin/MediaPicker";
 
 export const metadata: Metadata = { title: "Media library", robots: { index: false } };
 export const dynamic = "force-dynamic";
 
-interface Item {
-  id: string;
-  kind: string;
-  url: string;
-  thumbnailUrl: string;
-  provider: string | null;
-  productId: string;
-  productTitle: string;
-  sizeBytes: number | null;
-  width: number | null;
-  height: number | null;
-}
-
 /** The filters this screen offers. Anything else falls back to "all". */
 const KINDS = new Set(["all", "image", "video_link"]);
 
-function kb(bytes: number | null) {
-  if (!bytes) return "—";
-  return bytes > 1024 * 1024
-    ? `${(bytes / 1024 / 1024).toFixed(1)} MB`
-    : `${Math.round(bytes / 1024)} KB`;
-}
-
-/** Everything attached to a product, newest first. *
+/**
+ * Every file attached to a product, newest first.
+ *
  * ---------------------------------------------------------------------------
- * The filter tabs come from the query string and respond instantly; only the
- * count and the grid stream, keyed on the filter so a new tab replaces the old
- * items rather than appearing to amend them. The fallback holds the height and
- * is invisible for its first 420ms, so a warm switch shows nothing at all.
+ * LISTED BY FILE, NOT BY ATTACHMENT
+ *
+ * The API groups `product_media` rows by the object they point at, so an image
+ * shared between three products is one tile here saying "3 products" rather
+ * than three identical tiles. That distinction is the whole point: the screen
+ * exists to show what this site is actually storing, and a list of attachments
+ * would report the same photograph three times and make de-duplication look
+ * like it had failed.
+ *
+ * ---------------------------------------------------------------------------
+ * The filter tabs, the search and the pager all drive the query string, so a
+ * filtered view is shareable and the back button behaves. Only the grid
+ * streams, keyed on the whole query so a new filter replaces the old items
+ * rather than appearing to amend them.
  */
 export default async function AdminMediaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; page?: string }>;
 }) {
-  const { status = "all" } = await searchParams;
+  const { status = "all", q = "", page = "1" } = await searchParams;
+  const key = `${status}|${q}|${page}`;
 
   return (
     <AdminPage
       title="Media library"
       eyebrow="Content"
       description="Every image and video attached to a product. Uploads live in a private bucket and are served through signed URLs."
+      actions={<AdminSearch placeholder="Search by product…" defaultValue={q} />}
     >
       <FilterTabs
         basePath="/admin/media"
-        active={status}
+        active={KINDS.has(status) ? status : "all"}
         options={[
           { value: "all", label: "All" },
           { value: "image", label: "Images" },
@@ -63,73 +59,118 @@ export default async function AdminMediaPage({
         ]}
       />
 
-      <Suspense key={status} fallback={<TableArriving rows={6} />}>
-        <Library status={status} />
+      <Suspense key={key} fallback={<TableArriving rows={6} />}>
+        <Library status={status} q={q} page={page} seed={key} />
       </Suspense>
     </AdminPage>
   );
 }
 
-async function Library({ status }: { status: string }) {
+interface Payload {
+  items: LibraryAsset[];
+  total: number;
+  page: number;
+  hasMore: boolean;
+}
+
+async function Library({
+  status,
+  q,
+  page,
+  seed,
+}: {
+  status: string;
+  q: string;
+  page: string;
+  seed: string;
+}) {
   // `kind` came straight off the URL and was interpolated into the query
   // string unescaped, so `?status=all%26limit=99999` became a second parameter.
   // Checked against the tabs this page actually offers.
-  const data = await adminGet<{ items: Item[]; total: number }>(
+  const parsed = Number(page);
+  const current = Number.isInteger(parsed) && parsed > 0 ? parsed : 1;
+
+  const data = await adminGet<Payload>(
     "/media",
-    { items: [], total: 0 },
-    { kind: KINDS.has(status) ? status : "all" },
+    { items: [], total: 0, page: 1, hasMore: false },
+    { kind: KINDS.has(status) ? status : "all", q: q.trim() || undefined, page: current },
   );
+
+  // A file shared by two products is one file. Saying so is the only report
+  // this screen can give on whether de-duplication is doing anything.
+  const attachments = data.items.reduce((n, m) => n + m.usageCount, 0);
+  const shared = data.items.filter((m) => m.usageCount > 1).length;
 
   return (
     <>
-      <p className="tabular my-6 text-body-sm text-ink-subtle">{data.total} files</p>
+      <p className="tabular my-6 text-body-sm text-ink-subtle">
+        {data.total} {data.total === 1 ? "file" : "files"}
+        {q.trim() && <> matching “{q.trim()}”</>}
+        {shared > 0 && (
+          <>
+            {" · "}
+            <span className="text-ink-muted">
+              {shared} shared across {attachments} product slots
+            </span>
+          </>
+        )}
+      </p>
 
-      {data.items.length === 0 ? (
-        <div className="dot-matrix rounded-lg border border-line py-16 text-center">
-          <p className="text-body-md text-ink-muted">Nothing uploaded yet.</p>
-        </div>
-      ) : (
-        <ul
-          className="grid gap-3"
-          style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(170px, 100%), 1fr))" }}
+      <MediaGrid initial={data.items} seed={seed} />
+
+      {/* The API has always paged at 60 and the screen never offered a way to
+          reach page 2 — every file past the first sixty was unreachable. */}
+      {(current > 1 || data.hasMore) && (
+        <nav
+          aria-label="Pagination"
+          className="mt-8 flex items-center justify-between border-t border-line pt-5"
         >
-          {data.items.map((m) => (
-            <li key={m.id} className="panel overflow-hidden">
-              <div className="plate relative aspect-square">
-                {m.thumbnailUrl ? (
-                  <Image
-                    src={m.thumbnailUrl}
-                    alt=""
-                    fill
-                    sizes="200px"
-                    className={m.kind === "video_link" ? "object-cover" : "object-contain p-2"}
-                  />
-                ) : (
-                  <div className="dot-matrix h-full w-full" />
-                )}
-                {m.kind === "video_link" && (
-                  <span className="absolute left-2 top-2 rounded-xs bg-editorial-bg px-1.5 py-0.5 font-label text-[9px] font-bold uppercase tracking-[0.1em] text-editorial-fg">
-                    {m.provider}
-                  </span>
-                )}
-              </div>
-              <div className="border-t border-line px-3 py-2">
-                <Link
-                  href={`/admin/products/${m.productId}`}
-                  className="block truncate text-body-sm text-ink hover:text-brand"
-                >
-                  {m.productTitle}
-                </Link>
-                <span className="font-mono text-[10px] text-ink-faint">
-                  {m.kind === "video_link"
-                    ? "linked"
-                    : `${m.width ?? "?"}\u00d7${m.height ?? "?"} \u00b7 ${kb(m.sizeBytes)}`}
-                </span>
-              </div>
-            </li>
-          ))}
-        </ul>
+          <PageLink status={status} q={q} page={current - 1} disabled={current <= 1}>
+            ← Newer
+          </PageLink>
+          <span className="tabular text-label-xs text-ink-faint">Page {current}</span>
+          <PageLink status={status} q={q} page={current + 1} disabled={!data.hasMore}>
+            Older →
+          </PageLink>
+        </nav>
       )}
     </>
+  );
+}
+
+function PageLink({
+  status,
+  q,
+  page,
+  disabled,
+  children,
+}: {
+  status: string;
+  q: string;
+  page: number;
+  disabled: boolean;
+  children: React.ReactNode;
+}) {
+  if (disabled) {
+    return (
+      <span className="font-label text-label-xs uppercase tracking-[0.1em] text-ink-faint opacity-40">
+        {children}
+      </span>
+    );
+  }
+
+  const params = new URLSearchParams();
+  if (status !== "all") params.set("status", status);
+  if (q.trim()) params.set("q", q.trim());
+  if (page > 1) params.set("page", String(page));
+  const qs = params.toString();
+
+  return (
+    <Link
+      href={qs ? `/admin/media?${qs}` : "/admin/media"}
+      className="font-label text-label-xs uppercase tracking-[0.1em] text-ink-muted hover:text-brand"
+    >
+      {children}
+    </Link>
   );
 }

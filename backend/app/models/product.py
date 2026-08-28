@@ -174,6 +174,15 @@ class ProductMedia(UUIDMixin, TimestampMixin, Base):
     external_id: Mapped[Optional[str]] = mapped_column(String(64))
     title: Mapped[Optional[str]] = mapped_column(String(200))
 
+    # SHA-256 of the bytes we actually stored — the re-encoded, EXIF-stripped
+    # image, not the upload. Two uploads of the same photo produce identical
+    # stored bytes and therefore the same digest, which is what lets a second
+    # upload reuse the first one's object instead of writing a copy.
+    #
+    # Nullable: rows written before de-duplication existed were never hashed,
+    # and a NULL checksum simply never matches, so they never dedupe.
+    checksum: Mapped[Optional[str]] = mapped_column(String(64), index=True)
+
     mime_type: Mapped[Optional[str]] = mapped_column(String(100))
     size_bytes: Mapped[Optional[int]] = mapped_column(Integer)
     width: Mapped[Optional[int]] = mapped_column(Integer)

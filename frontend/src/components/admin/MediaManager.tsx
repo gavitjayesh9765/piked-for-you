@@ -4,10 +4,17 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { cn } from "@/lib/cn";
+import { MediaPicker } from "@/components/admin/MediaPicker";
 import type { MediaAsset } from "@/lib/types";
 
 /**
  * Product image manager (spec §19).
+ *
+ * Two ways in, and the second one matters more than it looks. Uploading is the
+ * obvious route; **choosing from the library** attaches an image this site
+ * already holds without uploading or copying anything, which is the only way
+ * to reuse a photograph across a product and its variants without a second
+ * copy of it in the bucket. See `MediaPicker`.
  *
  * Ordering matters: **position 1 is the primary image**, the one every card
  * and search result shows. That is stated on the tile rather than left to be
@@ -36,6 +43,7 @@ export function MediaManager({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [picking, setPicking] = useState(false);
 
   async function persistOrder(next: MediaAsset[]) {
     setItems(next);
@@ -109,6 +117,34 @@ export function MediaManager({
 
   return (
     <div>
+      {/* --- Two ways to add one --- */}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <p className="text-label-xs uppercase tracking-[0.1em] text-ink-subtle">
+          {items.length} {items.length === 1 ? "image" : "images"}
+        </p>
+        <button
+          type="button"
+          onClick={() => setPicking(true)}
+          className="inline-flex h-9 items-center gap-2 rounded-full border border-line-strong px-4
+                     font-label text-label-xs font-semibold uppercase tracking-[0.08em] text-ink
+                     transition-colors duration-fast hover:border-brand hover:text-brand"
+        >
+          <LibraryGlyph />
+          Choose from library
+        </button>
+      </div>
+
+      {picking && (
+        <MediaPicker
+          productId={productId}
+          onClose={() => {
+            setPicking(false);
+            router.refresh();
+          }}
+          onAttached={(media) => setItems((prev) => [...prev, media as MediaAsset])}
+        />
+      )}
+
       {/* --- Drop zone --- */}
       <label
         onDragOver={(e) => e.preventDefault()}
@@ -151,6 +187,13 @@ export function MediaManager({
         <>
           <p className="mt-6 text-label-xs uppercase tracking-[0.1em] text-ink-subtle">
             Position 1 is the primary image — shown on every card.
+          </p>
+          {/* ✕ detaches; it does not necessarily delete. Worth saying, because
+              the same button used to mean "destroy this file" and an editor who
+              believes that will not use the library. */}
+          <p className="mt-1 text-label-xs text-ink-faint">
+            Removing an image here takes it off this product. The file itself is kept
+            for as long as anything else still uses it.
           </p>
 
           <ul
@@ -202,7 +245,7 @@ export function MediaManager({
                     >
                       →
                     </IconBtn>
-                    <IconBtn label="Delete image" onClick={() => void remove(m.id)} danger>
+                    <IconBtn label="Remove from this product" onClick={() => void remove(m.id)} danger>
                       ✕
                     </IconBtn>
                   </div>
@@ -251,6 +294,16 @@ function IconBtn({
     >
       {children}
     </button>
+  );
+}
+
+function LibraryGlyph() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="m21 15-5-5L5 21" />
+    </svg>
   );
 }
 

@@ -21,7 +21,7 @@ from typing import Annotated
 from fastapi import APIRouter, Body, HTTPException, Query, Request, Response, status
 from pydantic import BaseModel, ConfigDict, Field
 from pydantic.alias_generators import to_camel
-from sqlalchemy import delete, func, select
+from sqlalchemy import String, cast, delete, desc, func, select
 from sqlalchemy.orm import selectinload
 
 from app.core import audit
@@ -558,76 +558,213 @@ async def moderate_user_media(
 # ====================================================================== #
 
 
+def _asset_key(m: ProductMedia) -> str:
+    """The identity of the *file*, not of the attachment.
+
+    Must stay in step with `_asset_key_sql` below — one groups in Postgres,
+    the other groups the rows that come back, and if the two disagree the page
+    silently drops tiles.
+    """
+    if m.storage_path:
+        return m.storage_path
+    if m.provider and m.external_id:
+        return f"{m.provider}:{m.external_id}"
+    return str(m.id)
+
+
+def _asset_key_sql():
+    # `||` rather than concat(): concat() treats NULL as '' and would collapse
+    # every row with no provider into one bogus group, where `||` yields NULL
+    # and lets the coalesce fall through to the row's own id.
+    return func.coalesce(
+        ProductMedia.storage_path,
+        ProductMedia.provider + ":" + ProductMedia.external_id,
+        cast(ProductMedia.id, String),
+    )
+
+
 @router.get("/media")
 async def media_library(
     admin: CurrentAdmin,
     db: DbSession,
     response: Response,
     kind: Annotated[str, Query()] = "all",
+    q: Annotated[str | None, Query(max_length=200)] = None,
     page: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 1,
 ) -> dict:
-    """Everything attached to a product, newest first."""
+    """The library, listed by FILE rather than by attachment.
+
+    One object can be attached to several products — that is the point of
+    de-duplication (see `admin/media.py`). Listing rows would therefore show
+    the same photograph three times over and re-create, inside the library,
+    exactly the duplicate wall the feature exists to remove. So rows are
+    grouped by the object they point at, and each tile carries the products
+    using it.
+
+    `q` matches product titles, which is the only text a media row has to be
+    searched on — nobody is going to type `a7f3…c2.jpg`.
+    """
     _private(response)
     page_size = 60
+    key = _asset_key_sql()
 
-    stmt = select(ProductMedia)
+    # --- which files, and in what order ---
+    keys_stmt = select(key.label("k"), func.max(ProductMedia.created_at).label("newest"))
     if kind != "all":
-        stmt = stmt.where(ProductMedia.kind == kind)
+        keys_stmt = keys_stmt.where(ProductMedia.kind == kind)
+    if q and q.strip():
+        keys_stmt = keys_stmt.join(Product, Product.id == ProductMedia.product_id).where(
+            Product.title.ilike(f"%{q.strip()}%")
+        )
+    keys_stmt = keys_stmt.group_by(key)
 
-    total = (await db.execute(select(func.count()).select_from(stmt.subquery()))).scalar_one()
-    rows = list(
-        (
+    total = (
+        await db.execute(select(func.count()).select_from(keys_stmt.subquery()))
+    ).scalar_one()
+
+    keys = [
+        r.k
+        for r in (
             await db.execute(
-                stmt.order_by(ProductMedia.created_at.desc())
+                keys_stmt.order_by(desc("newest"))
                 .offset((page - 1) * page_size)
                 .limit(page_size)
             )
-        ).scalars().all()
-    )
+        ).all()
+    ]
 
-    paths = [m.storage_path for m in rows if m.storage_path]
-    urls = await sign_many("product-media", paths) if paths else {}
+    if not keys:
+        return {
+            "items": [],
+            "total": total,
+            "page": page,
+            "pageSize": page_size,
+            "hasMore": False,
+        }
 
-    titles = {
-        pid: t
-        for pid, t in (
+    # --- every attachment of those files, however its product matched ---
+    #
+    # Deliberately NOT filtered by `q`: a file used by three products is used
+    # by three products whether or not all three matched the search, and a
+    # delete confirmation that under-reports its blast radius is dangerous.
+    #
+    # Outer join, because a media row whose product has gone should still be
+    # visible here — that is precisely the orphan an admin wants to find.
+    rows = list(
+        (
             await db.execute(
-                select(Product.id, Product.title).where(
-                    Product.id.in_([m.product_id for m in rows] or [uuid.uuid4()])
-                )
+                select(ProductMedia, Product.title)
+                .outerjoin(Product, Product.id == ProductMedia.product_id)
+                .where(_asset_key_sql().in_(keys))
+                .order_by(ProductMedia.created_at, ProductMedia.display_order)
             )
         ).all()
-    }
+    )
+
+    paths = [m.storage_path for m, _ in rows if m.storage_path]
+    urls = await sign_many("product-media", paths) if paths else {}
 
     from app.core.video_links import thumbnail_url
 
-    return {
-        "items": [
+    grouped: dict[str, list[tuple[ProductMedia, str | None]]] = {k: [] for k in keys}
+    for m, title in rows:
+        grouped.setdefault(_asset_key(m), []).append((m, title))
+
+    items = []
+    for k in keys:
+        group = grouped.get(k) or []
+        if not group:
+            continue
+        # The representative is the oldest attachment: it is the row that first
+        # introduced the file, and it is what DELETE is addressed to.
+        head, head_title = group[0]
+        signed = urls.get(head.storage_path or "", "")
+        items.append(
             {
-                "id": str(m.id),
-                "kind": m.kind,
-                "url": (
-                    m.source_url
-                    if m.kind == "video_link"
-                    else urls.get(m.storage_path or "", "")
-                ),
+                "id": str(head.id),
+                "kind": head.kind,
+                "url": head.source_url if head.kind == "video_link" else signed,
                 "thumbnailUrl": (
-                    thumbnail_url(m.provider or "", m.external_id or "")
-                    if m.kind == "video_link"
-                    else urls.get(m.storage_path or "", "")
+                    thumbnail_url(head.provider or "", head.external_id or "")
+                    if head.kind == "video_link"
+                    else signed
                 ),
-                "provider": m.provider,
-                "productId": str(m.product_id),
-                "productTitle": titles.get(m.product_id, "—"),
-                "sizeBytes": m.size_bytes,
-                "width": m.width,
-                "height": m.height,
-                "createdAt": m.created_at.isoformat(),
+                "provider": head.provider,
+                "alt": head.alt,
+                "productId": str(head.product_id),
+                "productTitle": head_title or "—",
+                "usedBy": [
+                    {"productId": str(m.product_id), "productTitle": t or "—"}
+                    for m, t in group
+                ],
+                "usageCount": len(group),
+                "sizeBytes": head.size_bytes,
+                "width": head.width,
+                "height": head.height,
+                "createdAt": head.created_at.isoformat(),
             }
-            for m in rows
-        ],
+        )
+
+    return {
+        "items": items,
         "total": total,
         "page": page,
         "pageSize": page_size,
-        "hasMore": (page - 1) * page_size + len(rows) < total,
+        "hasMore": (page - 1) * page_size + len(keys) < total,
     }
+
+
+@router.delete(
+    "/media/library/{media_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_model=None,
+)
+async def delete_library_asset(
+    media_id: uuid.UUID, admin: CurrentAdmin, db: DbSession, request: Request
+) -> None:
+    """Delete a FILE, everywhere it is used.
+
+    This is the library's delete, and it is a different verb from the product
+    page's. There, removing an image detaches it from one product and keeps the
+    file if anything else still points at it. Here the subject is the file
+    itself, so every attachment goes with it — which is why the UI has to name
+    the affected products before it asks.
+
+    Addressed by a media id rather than by a path, so nothing caller-supplied
+    ever reaches storage: the path is read out of the row.
+    """
+    media = await db.get(ProductMedia, media_id)
+    if media is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Media not found")
+
+    key = _asset_key(media)
+    if media.storage_path:
+        victims = ProductMedia.storage_path == media.storage_path
+    elif media.provider and media.external_id:
+        victims = (ProductMedia.provider == media.provider) & (
+            ProductMedia.external_id == media.external_id
+        )
+    else:
+        victims = ProductMedia.id == media.id
+
+    count = (
+        await db.execute(select(func.count()).select_from(ProductMedia).where(victims))
+    ).scalar_one()
+
+    await db.execute(delete(ProductMedia).where(victims))
+    await db.flush()
+
+    # Nothing references it now, by construction. A linked video has no object.
+    if media.storage_path:
+        await remove("product-media", [media.storage_path])
+
+    await audit.record(
+        db,
+        actor_id=admin.id,
+        action="media.library.delete",
+        entity_type="product_media",
+        entity_id=media_id,
+        summary=f"Deleted a library file used by {count} product(s)",
+        meta={"asset": key, "attachments_removed": count},
+        ip_address=client_ip(request),
+    )
