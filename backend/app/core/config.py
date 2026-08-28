@@ -39,6 +39,19 @@ class Settings(BaseSettings):
     )
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 20
+    # Three separate ceilings, because "the database is slow" has three very
+    # different causes and only bounding all of them stops a request hanging
+    # forever. Without these a network stall on the pooler left the request
+    # open indefinitely — long past the point the browser had given up — while
+    # the write it carried still landed. Generous against measured figures
+    # (connect 0.7s, statements 20-90ms); these are backstops, not budgets.
+    #: Waiting for a free connection from the pool.
+    DB_POOL_TIMEOUT: int = 10
+    #: Establishing a new connection to Postgres.
+    DB_CONNECT_TIMEOUT: int = 10
+    #: Any single statement. Applies per statement, not per session, so the
+    #: price-scrape runner holding one session open for minutes is unaffected.
+    DB_STATEMENT_TIMEOUT: int = 30
 
     # --- Authorization ---
     # Admins must have completed MFA. Supabase reports this as the token's

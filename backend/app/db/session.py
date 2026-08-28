@@ -10,6 +10,18 @@ engine = create_async_engine(
     max_overflow=settings.DB_MAX_OVERFLOW,
     pool_pre_ping=True,
     echo=settings.DEBUG,
+    # Fail fast instead of queueing behind an exhausted pool. The default is
+    # 30s, which is twice the frontend's own upstream budget — so a request
+    # that waited it out could only ever end as a timeout the caller had
+    # already stopped listening for.
+    pool_timeout=settings.DB_POOL_TIMEOUT,
+    connect_args={
+        # asyncpg's connect timeout. `pool_pre_ping` reconnects transparently
+        # when a pooled connection has gone stale, and without this that
+        # reconnect had no ceiling at all.
+        "timeout": settings.DB_CONNECT_TIMEOUT,
+        "command_timeout": settings.DB_STATEMENT_TIMEOUT,
+    },
 )
 
 async_session_factory = async_sessionmaker(

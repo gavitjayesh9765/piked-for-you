@@ -18,6 +18,7 @@ claim about what it would like us to use.
 
 from __future__ import annotations
 
+import logging
 import threading
 import time
 import uuid
@@ -28,6 +29,8 @@ import jwt
 from jwt import InvalidTokenError, PyJWKClient
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 # Algorithms we will ever accept. Deriving this from the token header alone
 # would allow an "alg": "none" or HS256-signed-with-the-public-key attack —
@@ -84,10 +87,45 @@ class TokenError(Exception):
 _jwk_client: PyJWKClient | None = None
 _jwk_lock = threading.Lock()
 _jwk_created_at: float = 0.0
+_jwk_refreshing = False
 
-# Rebuild the client periodically so a signing-key rotation is picked up
-# without a restart. PyJWKClient caches keys internally between rebuilds.
+# How long a fetched key set is served before a refresh is *started*. The
+# refresh happens on a background thread and the existing keys keep serving
+# until it lands (see `_jwks`), so this is a staleness budget, not a stall.
 _JWKS_TTL_SECONDS = 600
+
+# How long to wait before re-arming after a refresh fails. Without this a
+# Supabase blip would put a fetch attempt on every subsequent request.
+_JWKS_RETRY_SECONDS = 30
+
+# Ceiling on one JWKS HTTP fetch.
+#
+# This number is load-bearing. `PyJWKClient` performs a *blocking* urllib
+# request, and `_decode` is called from async code — including the rate-limit
+# key function, which runs in middleware ahead of every route. So for as long
+# as a fetch is outstanding, this single-worker process answers nothing at all:
+# not the request that triggered it, and not the dozen behind it. PyJWT's own
+# default is 30 seconds, doubled by the retry below to a full minute of a dead
+# API, which reaches the frontend as "The API did not respond in time."
+# Measured fetches take 0.16-0.42s, so this leaves an order of magnitude.
+_JWKS_HTTP_TIMEOUT = 4.0
+
+# Staleness is decided here, so PyJWKClient must never choose to refetch in the
+# middle of a request on its own. Its internal cache is given a lifespan long
+# enough that only the background refresh below ever replaces a key set.
+_JWKS_CLIENT_LIFESPAN = 86_400
+
+
+def _new_client() -> PyJWKClient:
+    """A client for the project's key set. Construction does no network I/O —
+    the fetch happens on first use, or on the refresh thread."""
+    url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
+    return PyJWKClient(
+        url,
+        cache_keys=True,
+        lifespan=_JWKS_CLIENT_LIFESPAN,
+        timeout=_JWKS_HTTP_TIMEOUT,
+    )
 
 
 def _reset_jwks() -> None:
@@ -110,14 +148,63 @@ def warm_jwks() -> bool:
         return False
 
 
+def _refresh_jwks() -> None:
+    """Fetch a new key set and swap it in. Runs on a background thread.
+
+    The swap only happens on success. A refresh that fails leaves the previous
+    keys in place: they are almost certainly still valid — signing keys change
+    on rotation, not on our timer — and signing every admin out because
+    Supabase was briefly unreachable would be a far worse failure than serving
+    a key set a few minutes past its refresh point.
+    """
+    global _jwk_client, _jwk_created_at, _jwk_refreshing
+
+    client: PyJWKClient | None = None
+    try:
+        candidate = _new_client()
+        candidate.get_jwk_set()  # the actual network call, off the event loop
+        client = candidate
+    except Exception:
+        logger.warning("JWKS refresh failed; continuing with the cached key set", exc_info=True)
+
+    with _jwk_lock:
+        if client is not None:
+            _jwk_client = client
+            _jwk_created_at = time.monotonic()
+        else:
+            # Back off rather than retrying on every request that follows.
+            _jwk_created_at = time.monotonic() - _JWKS_TTL_SECONDS + _JWKS_RETRY_SECONDS
+        _jwk_refreshing = False
+
+
+def _start_refresh() -> None:
+    """Kick off a background refresh, at most one at a time.
+
+    Caller must hold `_jwk_lock`.
+    """
+    global _jwk_refreshing
+    if _jwk_refreshing:
+        return
+    _jwk_refreshing = True
+    threading.Thread(target=_refresh_jwks, name="jwks-refresh", daemon=True).start()
+
+
 def _jwks() -> PyJWKClient:
+    """The current client, without ever blocking on the network to get it.
+
+    Only the very first call can pay for a fetch, and `warm_jwks()` at startup
+    exists so that call is not a user's. Afterwards an expired TTL starts a
+    background refresh and hands back the keys we already have.
+    """
     global _jwk_client, _jwk_created_at
     with _jwk_lock:
-        expired = (time.monotonic() - _jwk_created_at) > _JWKS_TTL_SECONDS
-        if _jwk_client is None or expired:
-            url = f"{settings.SUPABASE_URL.rstrip('/')}/auth/v1/.well-known/jwks.json"
-            _jwk_client = PyJWKClient(url, cache_keys=True, lifespan=_JWKS_TTL_SECONDS)
+        if _jwk_client is None:
+            _jwk_client = _new_client()
             _jwk_created_at = time.monotonic()
+            return _jwk_client
+
+        if (time.monotonic() - _jwk_created_at) > _JWKS_TTL_SECONDS:
+            _start_refresh()
         return _jwk_client
 
 
@@ -140,6 +227,12 @@ def _decode(token: str) -> dict[str, Any]:
         # Retry once. The first call after a cold start pays the JWKS fetch,
         # and a transient failure there would sign every user out — so a
         # single retry with a fresh client is worth far more than it costs.
+        #
+        # This is the one path that can still fetch inline, and it is reached
+        # only when the cached key set genuinely cannot verify the token (a
+        # rotation, or a cold start that `warm_jwks` did not cover). Both
+        # attempts are bounded by `_JWKS_HTTP_TIMEOUT`, so the worst case is
+        # ~8s rather than the minute PyJWT's default would allow.
         signing_key = None
         for attempt in (1, 2):
             try:
