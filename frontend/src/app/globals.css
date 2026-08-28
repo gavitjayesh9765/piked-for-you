@@ -1227,4 +1227,256 @@
   .group:focus-visible .arrow-slide {
     transform: translateX(4px);
   }
+
+  /* ------------------------------------------------------------------
+     THE ASCENT DIAL — the back-to-top control.
+     Behaviour and the reasoning behind it: components/layout/BackToTop.tsx.
+
+     The contract with that file is four custom properties, all written by its
+     animation-frame loop straight onto `.totop`, never through React:
+
+       --totop-p      0–100, reading position. Drives the arc and the comet.
+       --totop-lift   px the dial rises to clear the footer or a fixed bar.
+       --totop-near   0–1, cursor proximity. Drives the halo.
+       --totop-x/y    px of magnetic lean toward the cursor.
+
+     Two elements carry transforms on purpose. `.totop` owns the arrival, at
+     `--d-slow`, because an entrance should feel unhurried. `.totop__body` owns
+     the magnet, at `--d-fast`, because cursor tracking on a slow curve reads as
+     lag rather than as weight. Composing both onto one node would force a
+     single duration and one of the two would be wrong.
+     ------------------------------------------------------------------ */
+  .totop {
+    position: fixed;
+    /* Follows the page gutter so it lines up with the content edge, but stops
+       growing past 2.5rem — at ultrawide the gutter is 5rem and the dial would
+       drift into the middle of nowhere. */
+    right: clamp(1rem, var(--gutter), 2.5rem);
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 1.25rem + var(--totop-lift, 0px));
+    z-index: var(--z-toast);
+    border: 0;
+    padding: 0;
+    background: none;
+    -webkit-tap-highlight-color: transparent;
+    transition:
+      opacity var(--d-base) var(--ease),
+      transform var(--d-slow) var(--ease),
+      bottom var(--d-base) var(--ease);
+  }
+
+  /* Parked. `inert` on the element already removes it from the tab order and
+     from hit-testing; this is only the look of being away. */
+  .totop[data-visible="false"] {
+    opacity: 0;
+    transform: translateY(14px) scale(0.84);
+  }
+  .totop[data-visible="true"] {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* The focus ring belongs on the disc, not on the button box — the button box
+     is a bare wrapper and a rounded rectangle around a circle looks broken. */
+  .totop:focus-visible {
+    outline: none;
+  }
+  .totop:focus-visible .totop__body {
+    outline: 2px solid var(--c-focus);
+    outline-offset: 3px;
+  }
+
+  .totop__body {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 3.25rem;
+    height: 3.25rem;
+    border-radius: var(--r-full);
+    color: var(--c-ink);
+    /* Same treatment as `.glass`, restated rather than composed: that class
+       carries a `border-bottom` for the nav bar, which on a circle paints one
+       heavy edge. */
+    background-color: var(--c-glass);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--c-glass-line);
+    box-shadow: var(--e-3);
+    transform: translate3d(var(--totop-x, 0px), var(--totop-y, 0px), 0)
+      scale(var(--totop-press, 1));
+    transition:
+      transform var(--d-fast) var(--ease),
+      box-shadow var(--d-base) var(--ease),
+      border-color var(--d-fast) var(--ease);
+  }
+
+  @media (min-width: 768px) {
+    .totop__body {
+      width: 3.5rem;
+      height: 3.5rem;
+    }
+  }
+
+  .totop:hover .totop__body {
+    border-color: var(--c-brand-line);
+    box-shadow: var(--e-brand);
+  }
+
+  /* Pressed. A variable rather than a second `transform`, so the magnet offset
+     survives the press instead of being overwritten by it. */
+  .totop:active .totop__body {
+    --totop-press: 0.93;
+    transition-duration: 90ms;
+  }
+
+  /* The halo. Sits behind everything, brightens as the cursor closes in — so
+     the dial acknowledges an approach it has not yet received. */
+  .totop__body::before {
+    content: "";
+    position: absolute;
+    inset: -7px;
+    border-radius: inherit;
+    background: radial-gradient(closest-side, var(--c-brand-vivid), transparent 72%);
+    filter: blur(11px);
+    opacity: calc(var(--totop-near, 0) * 0.55);
+    transition: opacity var(--d-base) var(--ease);
+    pointer-events: none;
+  }
+  .totop:hover .totop__body::before,
+  .totop:focus-visible .totop__body::before {
+    opacity: 0.72;
+  }
+
+  /* --- the ring, i.e. the reading position ------------------------- */
+
+  .totop__ring {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    /* Starts the arc at twelve o'clock instead of three. */
+    transform: rotate(-90deg);
+    overflow: visible;
+  }
+
+  .totop__track {
+    fill: none;
+    stroke: var(--c-line);
+    stroke-width: 2.5;
+  }
+
+  .totop__arc {
+    fill: none;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    /* `pathLength="100"` on the circle makes these a percentage. The `* 1px` is
+       what lets a unitless custom property be used as an SVG length: inside a
+       viewBox, one CSS px is one user unit. */
+    stroke-dasharray: 100;
+    stroke-dashoffset: calc((100 - var(--totop-p, 0)) * 1px);
+  }
+
+  /* The lit head of the arc. `r = 15.5` of an 18-unit half-box puts the stroke
+     at 43.06% out from the centre, hence 6.94% down from the top edge. */
+  .totop__comet {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    transform: rotate(calc(var(--totop-p, 0) * 3.6deg));
+    pointer-events: none;
+  }
+  .totop__comet::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 6.94%;
+    width: 5px;
+    height: 5px;
+    border-radius: var(--r-full);
+    background-color: var(--c-brand-vivid);
+    box-shadow: 0 0 9px 1px var(--c-brand-vivid);
+    transform: translate(-50%, -50%);
+    opacity: 0;
+    transition: opacity var(--d-base) var(--ease);
+  }
+  .totop[data-visible="true"] .totop__comet::after {
+    opacity: 1;
+  }
+
+  /* --- the glyph, on a conveyor ------------------------------------ */
+
+  .totop__glyph {
+    position: relative;
+    z-index: 1;
+    display: block;
+    width: 1.125rem;
+    height: 1.125rem;
+    /* The clip is the whole effect: the outgoing arrow leaves through the top
+       edge as the incoming one arrives through the bottom. */
+    overflow: hidden;
+  }
+  .totop__glyphTrack {
+    display: flex;
+    flex-direction: column;
+    transition: transform var(--d-base) var(--ease);
+  }
+  .totop__glyphTrack > svg {
+    flex: none;
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+  .totop:hover .totop__glyphTrack,
+  .totop:focus-visible .totop__glyphTrack {
+    transform: translateY(-1.125rem);
+  }
+
+  /* --- the label ---------------------------------------------------- */
+
+  .totop__pill {
+    position: absolute;
+    right: calc(100% + 0.625rem);
+    top: 50%;
+    white-space: nowrap;
+    border-radius: var(--r-full);
+    padding: 0.375rem 0.625rem;
+    background-color: var(--c-surface-inverse);
+    color: var(--c-on-surface-inverse);
+    font-family: var(--font-label);
+    font-size: var(--t-label-xs);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    box-shadow: var(--e-2);
+    opacity: 0;
+    transform: translateY(-50%) translateX(8px);
+    transition:
+      opacity var(--d-fast) var(--ease),
+      transform var(--d-base) var(--ease);
+    pointer-events: none;
+  }
+  .totop:hover .totop__pill,
+  .totop:focus-visible .totop__pill {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+  /* No hover on a touch screen, so the pill would only ever appear stuck to a
+     tapped button. The `aria-label` is the name either way. */
+  @media (hover: none) {
+    .totop__pill {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    /* The base reset collapses durations, which would make the conveyor a
+       one-frame jump-cut — worse than not moving. */
+    .totop__glyphTrack {
+      transform: none !important;
+    }
+  }
+
+  /* A floating control has no meaning on paper. */
+  @media print {
+    .totop {
+      display: none;
+    }
+  }
 }

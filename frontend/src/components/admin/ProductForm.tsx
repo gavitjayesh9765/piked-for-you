@@ -697,7 +697,12 @@ export function ProductForm({
       </Section>
 
       {/* --- Sticky save bar --- */}
-      <div className="fixed inset-x-0 bottom-0 z-sticky border-t border-line bg-surface-0/95 backdrop-blur-md lg:left-64">
+      <div
+        // Read by <BackToTop>, which lifts itself above this bar rather than
+        // parking the dial on top of the Save button.
+        data-dock-obstacle
+        className="fixed inset-x-0 bottom-0 z-sticky border-t border-line bg-surface-0/95 backdrop-blur-md lg:left-64"
+      >
         <div className="mx-auto flex max-w-wide items-center justify-between gap-4 px-6 py-4">
           <div className="min-w-0">
             {error ? (

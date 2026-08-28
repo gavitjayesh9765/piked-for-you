@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { Hanken_Grotesk, Inter, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { BackToTop } from "@/components/layout/BackToTop";
 import { themeInitScript } from "@/components/layout/ThemeToggle";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
 
@@ -266,6 +267,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           Skip to content
         </a>
         {children}
+        {/* Mounted on the ROOT layout, not the site group, because "every page"
+            has to include the ones with no chrome: /admin/**, the styleguide,
+            and the error and not-found boundaries. It costs nothing on a short
+            page — it stays parked until the reader is a viewport deep — and it
+            docks above the footer and any fixed bar rather than over them. */}
+        <BackToTop />
       </body>
     </html>
   );
