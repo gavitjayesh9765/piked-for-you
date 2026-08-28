@@ -22,10 +22,13 @@ import { resolveDisplayName } from "@/lib/display-name";
  * The sub-nav is entirely data-driven — categories come from the API and are
  * never hard-coded (spec §6, §13).
  *
- * BELOW `md` the sub-nav, the search field and the account control all have to
- * go — a 360px bar cannot hold them. They are not dropped, they move: see
- * <MobileNav>, which is the only route to a category, to Top Picks or to the
- * login form on a phone.
+ * BELOW `md` the search field and the account control have to go — a 360px bar
+ * cannot hold them. They are not dropped, they move: see <MobileNav>, which is
+ * where Top Picks and the login form live on a phone.
+ *
+ * The sub-nav stays. It is a horizontal scroller, so it never needed to fit;
+ * hiding it made the category — the thing this site is for — the one control
+ * you had to open a modal to reach. <CategoryNav> has the full argument.
  *
  * ---------------------------------------------------------------------------
  * WHY THIS COMPONENT IS NO LONGER `async`

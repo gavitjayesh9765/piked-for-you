@@ -97,11 +97,17 @@
   --card-min: 150px;
 
   --nav-h: 68px; /* primary nav height */
-  /* The category sub-nav is `hidden md:block` (SiteHeader), so below that
-     breakpoint it occupies no space. Anything that offsets against the header
-     stack — scroll-padding, sticky rails, the hero's height cap — has to agree
-     with that, or it reserves 44px of nothing on every phone. */
-  --subnav-h: 0px;
+  /* The category sub-nav is on EVERY viewport now, so it always occupies
+     space. It used to be `hidden md:block`, which left a phone with no route
+     to a category except opening the sheet — two taps for the site's primary
+     navigation. It is a touch-scrolling strip below `md` and 2px shorter than
+     the desktop bar, because 110px of sticky chrome is already as much as a
+     phone should give up before the content starts.
+
+     Anything that offsets against the header stack — scroll-padding, sticky
+     rails, the hero's height cap — reads this token, so it has to stay in
+     agreement with what the bar actually measures. */
+  --subnav-h: 42px;
 
   /* ---------------------------------------------------------------------
      RADIUS — "controlled and sophisticated"
@@ -143,7 +149,7 @@
     --card-min: 175px;
   }
 }
-/* The category sub-nav appears here — see --subnav-h above. */
+/* The sub-nav gains its two pixels back once there is room for them. */
 @media (min-width: 768px) {
   :root {
     --subnav-h: 44px;

@@ -72,6 +72,24 @@ export type NavItem = {
  * **An edge that admits it is cut off.** The strip scrolls with its scrollbar
  * hidden, so an overflowing rail simply ended mid-word with no signal. It now
  * fades at whichever edge has more behind it.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY IT IS NO LONGER `md:block`
+ *
+ * The bar used to be desktop-only, on the reasoning that a 360px viewport
+ * cannot hold nine items. It cannot hold them *at once* — but this has always
+ * been a horizontal scroller, and a scroller does not need to fit. Hidden, the
+ * only route to a category on a phone was the hamburger, so the site's primary
+ * navigation cost two taps and a modal on the devices most likely to use it,
+ * while the search field and the account menu — which genuinely have no
+ * narrow-viewport form — kept the sheet to themselves.
+ *
+ * Everything the bar already does is what makes it work small: it scrolls, it
+ * fades the edge that has more behind it, it keeps the active item in view, and
+ * each item is a full-height box rather than bare text. The only additions for
+ * touch are `overscroll-x-contain` (below) and `--subnav-h` finally being a
+ * real height on mobile — see tokens.css, since every sticky offset on the site
+ * measures the header stack through it.
  */
 export function CategoryNav({ items }: { items: NavItem[] }) {
   const pathname = usePathname();
@@ -190,13 +208,17 @@ export function CategoryNav({ items }: { items: NavItem[] }) {
   useEffect(() => cancelIntent, [cancelIntent]);
 
   return (
-    <div className="relative hidden overflow-hidden border-b border-line bg-bg/95 backdrop-blur-md md:block">
+    <div className="relative overflow-hidden border-b border-line bg-bg/95 backdrop-blur-md">
+      {/* `overscroll-x-contain`: without it, swiping the strip past its last
+          item hands the gesture to the browser, which reads it as a back
+          navigation. Losing the page because you scrolled the nav too far is
+          not a trade any reader agreed to. */}
       <div
         ref={scrollerRef}
         onScroll={syncEdges}
         data-edge={edge}
         className="edge-fade shell relative flex h-subnav items-stretch gap-1 overflow-x-auto
-                   [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                   overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {items.map((item, i) => {
           const isActive = i === active;

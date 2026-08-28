@@ -23,10 +23,12 @@ export const metadata: Metadata = {
  * All categories (spec §13).
  *
  * Deliberately NOT a bigger version of the homepage tile grid. Tiles are an
- * *entry* affordance — good for eight, illegible for thirty-six, and they
+ * *entry* affordance — good for eight, illegible for a hundred, and they
  * flatten a three-level taxonomy into one undifferentiated wall. This page is
- * the contents page of the publication instead: numbered chapters, leaf
- * categories as typographic rows, counts right-aligned in tabular numerals.
+ * the contents page of the publication instead: numbered departments, each
+ * dividing into headed groups of shelves, counts right-aligned in tabular
+ * numerals. The three levels of the taxonomy are the three levels of the
+ * page — that correspondence is the whole design.
  *
  * The coverage meter is the honest part. Most categories have nothing
  * researched yet, and a directory that hides that would be selling a promise
@@ -94,10 +96,10 @@ export default function AllCategoriesPage() {
       <section className="relative overflow-hidden border-b border-line bg-bg">
         <div className="dot-matrix pointer-events-none absolute inset-0 opacity-50" aria-hidden="true" />
 
-        <div className="shell relative py-12 lg:py-16">
+        <div className="shell relative py-10 sm:py-12 lg:py-16">
           <Breadcrumbs items={[{ label: "Home", href: "/" }, { label: "All categories" }]} />
 
-          <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div className="mt-6 grid gap-8 sm:mt-8 sm:gap-10 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div className="max-w-3xl">
               <p className="t-eyebrow mb-4">The index</p>
               <h1 className="t-display text-ink">Everything we cover.</h1>
@@ -116,7 +118,7 @@ export default function AllCategoriesPage() {
       </section>
 
       {/* --- Chapters --- */}
-      <Suspense fallback={<div className="shell-wide pb-24 pt-14 lg:pt-20" aria-hidden="true" />}>
+      <Suspense fallback={<div className="shell-wide pb-20 pt-10 lg:pb-28 lg:pt-16" aria-hidden="true" />}>
         <Chapters />
       </Suspense>
       {/* No `itemListId`: this is a DIRECTORY, not a ranking. The order on
@@ -151,14 +153,69 @@ function Ledger({ value, label, accent }: { value: number; label: string; accent
 /* Chapter                                                             */
 /* ------------------------------------------------------------------ */
 
+/**
+ * One block of the index: a heading and the shelves under it.
+ *
+ * `head` is null for shelves filed straight onto a department when that
+ * department has nothing else — a heading that repeats the chapter title
+ * directly beneath the chapter title labels nothing.
+ */
+type Block = { key: string; head: Node | null; leaves: Node[] };
+
+/**
+ * How a department divides into blocks.
+ *
+ * A child with children of its own is a group — "Audio", holding six shelves.
+ * A child without is a shelf hanging directly off the department, which has no
+ * group to belong to and so is collected into one block at the end.
+ */
+function blocksOf(chapter: Node): Block[] {
+  const groups = chapter.children.filter((c) => c.children.length > 0);
+  const loose = chapter.children.filter((c) => c.children.length === 0);
+
+  const blocks: Block[] = groups.map((group) => ({
+    key: group.id,
+    head: group,
+    // The group's branch, flattened. The reader wants the destination, not the
+    // shape of our database — and below a group the tree is one level deep.
+    leaves: group.children.length ? group.children.flatMap(flatten) : [group],
+  }));
+
+  if (loose.length) {
+    // Heading only when there are groups to distinguish these from.
+    blocks.push({ key: `${chapter.id}:direct`, head: groups.length ? chapter : null, leaves: loose });
+  }
+
+  // A department with nothing under it is still a destination.
+  if (!blocks.length) blocks.push({ key: chapter.id, head: null, leaves: [chapter] });
+
+  return blocks;
+}
+
+/**
+ * A department — Electronics, Home & Kitchen — and everything filed under it.
+ *
+ * WHAT THIS REPLACED. The chapter used to flatten its whole branch into a
+ * single list: `chapter.children.flatMap(flatten)`. That was fine when the
+ * catalogue had one root and eight shallow sections. Against two departments
+ * of ~50 categories each it produced two columns fifty rows deep and the best
+ * part of four thousand pixels tall, in which "Audio" — a section holding six
+ * shelves — and "Earbuds" — one of those shelves — were the same row at the
+ * same indent. The taxonomy this page exists to show was the one thing it did
+ * not show, and on a phone the whole thing was a single unbroken scroll.
+ *
+ * Now the department's children are blocks, each with its own heading and its
+ * own shelves beneath it, and the blocks flow into columns: one on a phone,
+ * two from `sm`, up to four on a wide display. `columns` rather than `grid`
+ * because the blocks are wildly uneven — six shelves under Audio, two under
+ * Coffee & Beverage — and a grid row is as tall as its tallest cell, so every
+ * short block would sit above a hole. Columns pack them instead.
+ */
 function Chapter({ chapter, index }: { chapter: Node; index: number }) {
-  // Two different sets, deliberately. `listed` is what the reader sees — the
-  // branch flattened, because they want the destination, not the shape of our
-  // database. `subtree` includes the chapter node itself, because products are
-  // filed against whichever node an editor chose: "Audio" holds two directly
-  // while every one of its leaves holds none. Measuring coverage over `listed`
+  // The subtree includes the chapter node itself, because products are filed
+  // against whichever node an editor chose: "Audio" holds two directly while
+  // every one of its leaves holds none. Measuring coverage over the leaves
   // alone reported 0% for a branch that is demonstrably covered.
-  const listed = chapter.children.length ? chapter.children.flatMap(flatten) : [chapter];
   const subtree = flatten(chapter);
   const covered = subtree.filter((n) => (n.productCount ?? 0) > 0).length;
   const total = subtreeCount(chapter);
@@ -167,9 +224,9 @@ function Chapter({ chapter, index }: { chapter: Node; index: number }) {
   return (
     <section aria-labelledby={`chapter-${chapter.slug}`}>
       {/* --- Chapter head --- */}
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-3 sm:gap-4">
         <span
-          className="tabular mt-0.5 shrink-0 font-mono text-label-xs font-medium tracking-[0.14em] text-ink-faint"
+          className="tabular mt-1 shrink-0 font-mono text-label-xs font-medium tracking-[0.14em] text-ink-faint"
           aria-hidden="true"
         >
           {String(index).padStart(2, "0")}
@@ -180,13 +237,13 @@ function Chapter({ chapter, index }: { chapter: Node; index: number }) {
             <Link
               href={categoryHref(chapter)}
               id={`chapter-${chapter.slug}`}
-              className="group inline-flex items-center gap-2.5 text-ink transition-colors duration-fast hover:text-brand"
+              className="group inline-flex min-w-0 items-center gap-2.5 text-ink transition-colors duration-fast hover:text-brand"
             >
               <CategoryIcon
                 name={chapter.icon}
-                className="h-4.5 w-4.5 shrink-0 text-ink-subtle transition-colors duration-fast group-hover:text-brand"
+                className="h-5 w-5 shrink-0 text-ink-subtle transition-colors duration-fast group-hover:text-brand"
               />
-              <span className="font-display text-headline-sm font-semibold tracking-[-0.02em]">
+              <span className="truncate font-display text-headline-sm font-semibold tracking-[-0.02em]">
                 {chapter.name}
               </span>
             </Link>
@@ -212,13 +269,52 @@ function Chapter({ chapter, index }: { chapter: Node; index: number }) {
         </div>
       </div>
 
-      {/* --- Leaves --- */}
-      <ul className="mt-1 lg:pl-[2.1rem]">
-        {listed.map((leaf) => (
+      {/* --- Blocks --- */}
+      <div className="mt-8 gap-x-10 sm:columns-2 lg:pl-[2.1rem] xl:columns-3 2xl:gap-x-14 2xl:columns-4">
+        {blocksOf(chapter).map((block) => (
+          <IndexBlock key={block.key} block={block} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * `break-inside-avoid` is what makes the column layout legible rather than
+ * merely compact: without it a group's heading lands at the foot of one column
+ * with its shelves at the head of the next, and the reader has to reassemble
+ * the grouping by eye.
+ */
+function IndexBlock({ block }: { block: Block }) {
+  const { head, leaves } = block;
+  const count = head ? subtreeCount(head) : 0;
+
+  return (
+    <div className="mb-9 break-inside-avoid">
+      {head ? (
+        <Link
+          href={categoryHref(head)}
+          className="group flex items-baseline justify-between gap-3 border-b border-line pb-2.5"
+        >
+          <span className="truncate font-display text-body-lg font-semibold tracking-[-0.015em] text-ink transition-colors duration-fast group-hover:text-brand">
+            {head.name}
+          </span>
+          <span
+            className={`tabular shrink-0 font-mono text-label-xs ${
+              count > 0 ? "text-ink-muted" : "text-ink-faint"
+            }`}
+          >
+            {count > 0 ? count : "—"}
+          </span>
+        </Link>
+      ) : null}
+
+      <ul>
+        {leaves.map((leaf) => (
           <Leaf key={leaf.id} leaf={leaf} />
         ))}
       </ul>
-    </section>
+    </div>
   );
 }
 
@@ -293,7 +389,7 @@ async function Ledgers() {
   const products = every.reduce((sum, c) => sum + (c.productCount ?? 0), 0);
 
   return (
-    <dl className="flex flex-wrap gap-x-10 gap-y-6 lg:justify-end">
+    <dl className="flex flex-wrap gap-x-8 gap-y-6 sm:gap-x-10 lg:justify-end">
       <Ledger value={every.length} label="Categories" />
       <Ledger value={researched} label="With research" accent />
       <Ledger value={products} label="Products" />
@@ -303,7 +399,7 @@ async function Ledgers() {
 
 function LedgerArriving() {
   return (
-    <dl className="flex flex-wrap gap-x-10 gap-y-6 lg:justify-end">
+    <dl className="flex flex-wrap gap-x-8 gap-y-6 sm:gap-x-10 lg:justify-end">
       {["Categories", "With research", "Products"].map((label) => (
         <div key={label}>
           <dd className="tabular font-display text-headline-lg font-bold leading-none text-ink">
@@ -320,13 +416,21 @@ async function Chapters() {
   const { chapters } = await tree();
 
   return (
-    <div className="shell-wide pb-24 pt-14 lg:pt-20">
-      <div
-        className="stagger grid gap-x-16 gap-y-14"
-        style={{ gridTemplateColumns: "repeat(auto-fill, minmax(min(340px, 100%), 1fr))" }}
-      >
+    <div className="shell-wide pb-20 pt-10 lg:pb-28 lg:pt-16">
+      {/* Departments are stacked, not tiled. They used to be tracks in an
+          `auto-fill` grid, which was right for eight small chapters and wrong
+          for two large ones: at any width above 700px the page became two tall
+          columns with the entire right-hand half of a 1900px screen left empty.
+          A department is now a full-width band that divides internally, so the
+          available width is spent on the shelves rather than on whitespace. */}
+      <div className="stagger flex flex-col">
         {chapters.map((chapter, i) => (
-          <Chapter key={chapter.id} chapter={chapter} index={i + 1} />
+          <div
+            key={chapter.id}
+            className="border-t border-line pt-10 mt-12 first:mt-0 first:border-t-0 first:pt-0 lg:pt-14 lg:mt-16"
+          >
+            <Chapter chapter={chapter} index={i + 1} />
+          </div>
         ))}
       </div>
     </div>
