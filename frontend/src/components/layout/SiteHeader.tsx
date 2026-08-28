@@ -182,9 +182,13 @@ function navItems(categories: Category[]): NavItem[] {
   const depthOf = (c: Category) => (c.path?.length ? c.path.length : 1);
 
   // The shallowest level that is actually a level — a single root is a trunk,
-  // not a navigation, so we descend past it to its branches.
+  // not a navigation, so we descend past it to its branches. Two roots are a
+  // fork rather than a navigation for the same reason: once the catalogue grew
+  // a second department, "Electronics · Home & Kitchen" was the whole bar, and
+  // a reader looking for headphones could no longer see that we cover them.
+  // Three is the point where the level starts carrying information.
   const depths = [...new Set(active.map(depthOf))].sort((a, b) => a - b);
-  const depth = depths.find((d) => active.filter((c) => depthOf(c) === d).length > 1) ?? depths[0];
+  const depth = depths.find((d) => active.filter((c) => depthOf(c) === d).length > 2) ?? depths[0];
   const sections = active.filter((c) => depthOf(c) === depth);
 
   return [

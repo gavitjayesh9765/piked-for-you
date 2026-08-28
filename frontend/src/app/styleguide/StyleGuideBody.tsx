@@ -175,7 +175,12 @@ export function StyleGuideBody() {
 
         <Block title="Icons" note="Linear, 1.7px stroke, rounded terminals — matched to the type.">
           <div className="flex flex-wrap gap-6 text-ink-muted">
-            {["headphones", "laptop", "smartphone", "gamepad", "camera", "watch", "home", "cable", "monitor", "speaker"].map(
+            {[
+              "headphones", "laptop", "smartphone", "gamepad", "camera", "watch", "home", "cable",
+              "monitor", "speaker", "tv", "wifi", "mic", "cpu", "printer", "keyboard", "mouse",
+              "chair", "vr", "drone", "lock", "chef-hat", "oven", "coffee", "blender", "pot",
+              "fridge", "washer", "fan", "droplet",
+            ].map(
               (n) => (
                 <div key={n} className="flex flex-col items-center gap-2">
                   <CategoryIcon name={n} className="h-6 w-6" />
