@@ -1,31 +1,47 @@
 import Link from "next/link";
 import { cn } from "@/lib/cn";
+import { RefreshButton } from "@/components/admin/RefreshButton";
 
 /**
  * Shared admin chrome.
  *
- * These exist so the 13 admin screens are variations on one layout rather than
- * 13 bespoke pages. Same design tokens as the public site, tighter density —
- * this is a tool, not a storefront (docs/01-design-brainstorm.md §6).
+ * These exist so the admin screens are variations on one layout rather than
+ * twenty bespoke pages. Same design tokens as the public site, tighter density
+ * — this is a tool, not a storefront (docs/01-design-brainstorm.md §6).
  */
 
+/**
+ * Every admin screen's outer frame.
+ *
+ * **There is deliberately no width option.** There used to be, and exactly one
+ * screen passed it: Settings rendered at `--shell-content` (1100px) while the
+ * other nineteen rendered at `--shell-wide` (1920px), so its title started in a
+ * different place and the page read as broken rather than as narrow. A
+ * per-screen escape hatch that one screen uses is not a feature, it is drift.
+ *
+ * The frame is now always `wide`, so headings line up across the whole panel.
+ * A screen whose *body* wants a shorter measure — a form, a reference list —
+ * says so with `<Contained>` inside its children, which keeps the heading
+ * aligned with everywhere else and constrains only the part that needs it.
+ */
 export function AdminPage({
   title,
   eyebrow,
   description,
   actions,
   children,
-  width = "wide",
+  refreshable = true,
 }: {
   title: string;
   eyebrow?: string;
   description?: string;
   actions?: React.ReactNode;
   children: React.ReactNode;
-  width?: "wide" | "content";
+  /** Off for screens with nothing to re-fetch — a static reference page. */
+  refreshable?: boolean;
 }) {
   return (
-    <div className={cn("mx-auto w-full", width === "wide" ? "max-w-wide" : "max-w-content")}>
+    <div className="mx-auto w-full max-w-wide">
       <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0">
           {eyebrow && <p className="t-eyebrow mb-2">{eyebrow}</p>}
@@ -34,11 +50,30 @@ export function AdminPage({
             <p className="mt-2 max-w-2xl text-body-md text-ink-muted">{description}</p>
           )}
         </div>
-        {actions && <div className="flex shrink-0 items-center gap-3">{actions}</div>}
+        {(actions || refreshable) && (
+          <div className="flex shrink-0 items-center gap-3">
+            {/* Secondary, so it sits inboard of the screen's own primary
+                action rather than competing with it. */}
+            {refreshable && <RefreshButton />}
+            {actions}
+          </div>
+        )}
       </header>
       {children}
     </div>
   );
+}
+
+/** A shorter measure for a screen body — forms, reference lists, prose. The
+ *  page frame stays wide so the heading still aligns with every other screen. */
+export function Contained({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <div className={cn("w-full max-w-content", className)}>{children}</div>;
 }
 
 /** Horizontal filter tabs that drive a URL query param, so a filtered view is

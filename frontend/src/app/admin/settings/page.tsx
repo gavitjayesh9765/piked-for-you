@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import { AdminPage } from "@/components/admin/Shell";
+import { AdminPage, Contained } from "@/components/admin/Shell";
 
 export const metadata: Metadata = { title: "Settings", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -49,9 +49,12 @@ export default function AdminSettingsPage() {
       title="Settings"
       eyebrow="System"
       description="A reference, not a control panel. Configuration lives in environment variables."
-      width="content"
+      refreshable={false}
     >
-      <div className="grid gap-6">
+      {/* The frame stays wide so this heading lines up with every other admin
+          screen; only the body takes the shorter measure, because these are
+          label/value pairs and a 1920px dl is unreadable. */}
+      <Contained className="grid gap-6">
         {GROUPS.map((g) => (
           <section key={g.title} className="panel p-6">
             <h2 className="t-eyebrow mb-4">{g.title}</h2>
@@ -65,7 +68,7 @@ export default function AdminSettingsPage() {
             </dl>
           </section>
         ))}
-      </div>
+      </Contained>
     </AdminPage>
   );
 }

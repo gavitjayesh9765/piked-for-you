@@ -60,6 +60,7 @@ export default async function NewProductPage() {
       title="New product"
       eyebrow="Content · Products"
       description="Saves as a draft. Nothing is public until you publish it."
+      refreshable={false}
       actions={
         <Link
           href="/admin/products"

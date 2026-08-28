@@ -32,7 +32,7 @@ export const metadata: Metadata = {
  * through <DocumentPage>, which renders the date and emits it as
  * `dateModified`; this page is hand-built, so it does both jobs itself below.
  */
-const UPDATED = "2026-08-20";
+const UPDATED = "2026-08-28";
 
 /**
  * The chapters, mirrored as data for the structured-data block.
@@ -84,26 +84,54 @@ const COMMITMENTS = [
   },
 ] as const;
 
+/**
+ * The pipeline, as it is actually run.
+ *
+ * ⚠ These are stages of work, not a marketing ladder. Each one exists because
+ * it catches something the one before it cannot: the manual read catches spec
+ * errors, the multi-source pass catches one reviewer's taste, owner reports
+ * catch month-eight failures, hands-on catches what no write-up records, and
+ * the adversarial AI pass catches our own thin reasoning. If a stage stops
+ * being run, it comes out of this list — a published method nobody follows is
+ * worse than no published method.
+ */
 const STAGES = [
   {
-    title: "Define what actually matters",
-    body: "The rubric is set per category before any product is opened. Headphones are judged on noise cancellation and call quality; a laptop on thermals and battery. A shared five-star scale across unrelated things measures nothing.",
+    title: "Set the rubric before anything is opened",
+    body: "What counts is decided per category, in advance. Headphones are judged on noise cancellation and call quality; a laptop on thermals and battery. Deciding what matters after seeing the contenders is how a favourite quietly gets a rubric built around it.",
   },
   {
-    title: "Gather the evidence",
-    body: "Manufacturer specifications, independent measurements, long-form reviews, teardowns, and the pattern in owner reports once a product has been out long enough to have one.",
+    title: "Do the reading by hand",
+    body: "Someone sits with the primary material — spec sheets, manuals, teardowns, independent measurements, the fine print on the retailer listing. It is slow and it is not delegated, and it is where most of the errors that would survive every later stage get caught.",
   },
   {
-    title: "Score each criterion",
-    body: "Every criterion is scored on its own from 0 to 10 against the category rubric, not against the other products in the round-up. A weak field does not promote a mediocre product.",
+    title: "Watch the reviews. Plural.",
+    body: "Long-form video and written reviews from several independent sources, picked to disagree with each other rather than to agree with us. One reviewer's verdict is one pair of ears, one desk, one review unit. A claim is not evidence until it survives more than one of them.",
   },
   {
-    title: "Write the verdict",
-    body: "One line on who this is for and one on who should skip it. If that line cannot be written, the research is not finished and nothing is published.",
+    title: "Read the owners, not the launch week",
+    body: "Owner reports across retailers, forums and communities, read for pattern rather than sentiment: the hinge that fails at month eight, the app that got worse after an update. Launch coverage cannot see any of that, and one furious review is not a fault.",
+  },
+  {
+    title: "Use it ourselves where we can",
+    body: "Some of what we cover we buy, borrow, or already own — and then it gets lived with rather than unboxed. Hands-on changes a verdict more than anything else on this list, so we say plainly when it happened and never imply it when it did not.",
+  },
+  {
+    title: "Argue the case with an AI, on purpose",
+    body: "The assembled evidence is put to an AI model and pushed back on: what have we missed, which claim is thinly sourced, what is the strongest case against the conclusion we are heading towards. It is a tireless second reader, and it is checked exactly like any other source. It scores nothing and it writes nothing.",
+    link: { href: "/editorial-policy#ai", label: "Our policy on automated tools" },
+  },
+  {
+    title: "Score each criterion on its own",
+    body: "Every criterion is scored from 0 to 10 against the category rubric, not against the other products in the round-up. A weak field does not promote a mediocre product.",
+  },
+  {
+    title: "Write the verdict a person can be held to",
+    body: "One line on who this is for, one on who should skip it, and the reason attached to both. If neither line can be written yet, the research is not finished and nothing is published.",
   },
   {
     title: "Revisit when the facts move",
-    body: "Prices move, firmware changes things, and successors arrive. A score carries the date it was last reviewed so you can judge how much to trust it.",
+    body: "Prices move, firmware changes behaviour, successors arrive. A score carries the date it was last reviewed so you can judge how much of it is still true.",
   },
 ] as const;
 
@@ -162,7 +190,12 @@ export default async function HowWeResearchPage() {
         </Chapter>
 
         {/* --- 2. The pipeline -------------------------------------- */}
-        <Chapter number="02" title="How a verdict gets made" id="method">
+        <Chapter
+          number="02"
+          title="How a verdict gets made"
+          id="method"
+          lede="Nine stages, in this order, every time. None of it is automatic: software and an AI reader help us cover more ground, but the score at the end and the sentence next to it are written by a person who can be argued with."
+        >
           <ol className="border-t border-line">
             {STAGES.map((stage, i) => (
               <li
@@ -176,7 +209,21 @@ export default async function HowWeResearchPage() {
                   {String(i + 1).padStart(2, "0")}
                 </span>
                 <h3 className="text-headline-sm text-ink">{stage.title}</h3>
-                <p className="max-w-prose text-body-sm text-ink-muted">{stage.body}</p>
+                <p className="max-w-prose text-body-sm text-ink-muted">
+                  {stage.body}
+                  {"link" in stage ? (
+                    <>
+                      {" "}
+                      <Link
+                        href={stage.link.href}
+                        className="text-brand underline decoration-brand-line underline-offset-4 transition-colors duration-fast hover:decoration-brand"
+                      >
+                        {stage.link.label}
+                      </Link>
+                      .
+                    </>
+                  ) : null}
+                </p>
               </li>
             ))}
           </ol>

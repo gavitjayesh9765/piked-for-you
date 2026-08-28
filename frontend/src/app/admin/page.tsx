@@ -19,6 +19,7 @@ import { ScoreRing } from "@/components/product/ScoreRing";
 import { RowsArriving, ValueArriving } from "@/components/ui/Arriving";
 import { Sparkline } from "@/components/admin/analytics/Charts";
 import { StatTile } from "@/components/admin/analytics/StatTile";
+import { AdminPage } from "@/components/admin/Shell";
 
 export const metadata: Metadata = { title: "Dashboard", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -102,39 +103,40 @@ const TILE_GRID = "repeat(auto-fit, minmax(min(220px, 100%), 1fr))";
 
 export default function AdminDashboard() {
   return (
-    <div className="mx-auto flex w-full max-w-wide flex-col gap-8">
-      <header>
-        <h1 className="font-display text-display-lg text-ink">Platform overview</h1>
-        <p className="t-eyebrow mt-2">What needs you, and what happened</p>
-      </header>
-
-      {/* --- 1. Queues with work in them (spec §35) --- */}
-      <Suspense fallback={<AttentionArriving />}>
-        <Attention />
-      </Suspense>
-
-      {/* --- 2. Readership (see components/analytics/PageView.tsx) --- */}
-      <Suspense fallback={<PulseArriving />}>
-        <Pulse />
-      </Suspense>
-
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)]">
-        {/* --- 3. Product catalogue (spec §36) --- */}
-        <Suspense fallback={<CataloguePanelArriving />}>
-          <Catalogue />
+    <AdminPage
+      title="Platform overview"
+      eyebrow="Overview"
+      description="What needs you, and what happened. Ordered by urgency rather than by entity."
+    >
+      <div className="flex flex-col gap-8">
+        {/* --- 1. Queues with work in them (spec §35) --- */}
+        <Suspense fallback={<AttentionArriving />}>
+          <Attention />
         </Suspense>
 
-        {/* --- 4. Activity log (spec §60) --- */}
-        <Suspense fallback={<ActivityPanelArriving />}>
-          <Activity />
+        {/* --- 2. Readership (see components/analytics/PageView.tsx) --- */}
+        <Suspense fallback={<PulseArriving />}>
+          <Pulse />
+        </Suspense>
+
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)]">
+          {/* --- 3. Product catalogue (spec §36) --- */}
+          <Suspense fallback={<CataloguePanelArriving />}>
+            <Catalogue />
+          </Suspense>
+
+          {/* --- 4. Activity log (spec §60) --- */}
+          <Suspense fallback={<ActivityPanelArriving />}>
+            <Activity />
+          </Suspense>
+        </div>
+
+        {/* --- 5. Reference counts --- */}
+        <Suspense fallback={null}>
+          <Library />
         </Suspense>
       </div>
-
-      {/* --- 5. Reference counts --- */}
-      <Suspense fallback={null}>
-        <Library />
-      </Suspense>
-    </div>
+    </AdminPage>
   );
 }
 

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { createClient, getAdminGate, isConfigured } from "@/lib/supabase/server";
 import { MfaChallenge } from "@/components/admin/MfaChallenge";
 import { MfaEnrolment } from "@/components/admin/MfaEnrolment";
+import { AdminPage, Contained } from "@/components/admin/Shell";
 
 export const metadata: Metadata = {
   title: "Security",
@@ -57,13 +58,8 @@ export default async function AdminSecurityPage() {
     enrolled = (factors?.totp ?? []).some((f) => f.status === "verified");
   }
 
-  return (
-    <div className="mx-auto w-full max-w-content">
-      <header className="mb-8">
-        <h1 className="font-display text-display-lg text-ink">Security</h1>
-        <p className="t-eyebrow mt-2">{email}</p>
-      </header>
-
+  const body = (
+    <>
       {!verified && (
         <div className="mb-6 rounded-lg border border-warn bg-warn-soft px-5 py-4">
           <p className="text-body-sm font-medium text-warn-on-soft">
@@ -111,6 +107,31 @@ export default async function AdminSecurityPage() {
           <li>Every change you make is written to the audit log, which cannot be edited or deleted.</li>
         </ul>
       </section>
-    </div>
+    </>
+  );
+
+  // An unverified session never reaches the admin layout's chrome — the gate
+  // in layout.tsx renders these children bare, with no sidebar and no padded
+  // <main>. So this state supplies its own frame, the way the sign-in screen
+  // does. It is a checkpoint, not an admin screen.
+  if (!verified) {
+    return (
+      <div className="mx-auto w-full max-w-content px-4 py-10 sm:px-6 sm:py-14">
+        <header className="mb-8">
+          <h1 className="font-display text-display-lg text-ink">Security</h1>
+          <p className="t-eyebrow mt-2">{email}</p>
+        </header>
+        {body}
+      </div>
+    );
+  }
+
+  // Past the gate this is an ordinary admin screen, so it wears the ordinary
+  // admin frame — it used to roll its own at `--shell-content`, which put its
+  // heading 820px inboard of every other page in the panel.
+  return (
+    <AdminPage title="Security" eyebrow="System" description={email ?? undefined} refreshable={false}>
+      <Contained>{body}</Contained>
+    </AdminPage>
   );
 }

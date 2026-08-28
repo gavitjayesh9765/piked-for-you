@@ -14,6 +14,7 @@ import { StatusPill } from "@/components/ui/Badge";
 import { RowsArriving, ValueArriving } from "@/components/ui/Arriving";
 import { BarList, TrafficChart } from "@/components/admin/analytics/Charts";
 import { StatTile } from "@/components/admin/analytics/StatTile";
+import { AdminPage } from "@/components/admin/Shell";
 
 export const metadata: Metadata = { title: "Analytics", robots: { index: false } };
 export const dynamic = "force-dynamic";
@@ -63,13 +64,11 @@ export default async function AnalyticsPage({
     : 30;
 
   return (
-    <div className="mx-auto w-full max-w-wide">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="font-display text-display-lg text-ink">Analytics</h1>
-          <p className="t-eyebrow mt-2">Readership and outbound clicks</p>
-        </div>
-
+    <AdminPage
+      title="Analytics"
+      eyebrow="Overview"
+      description="Readership and outbound clicks, counted daily with no visitor identity behind them."
+      actions={
         <nav aria-label="Time window" className="flex gap-1 rounded-full border border-line p-1">
           {WINDOWS.map((w) => (
             <Link
@@ -87,12 +86,12 @@ export default async function AnalyticsPage({
             </Link>
           ))}
         </nav>
-      </header>
-
+      }
+    >
       <Suspense key={days} fallback={<AnalyticsArriving />}>
         <Report days={days} />
       </Suspense>
-    </div>
+    </AdminPage>
   );
 }
 

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/editorial-policy" },
 };
 
-const UPDATED = "2026-08-20";
+const UPDATED = "2026-08-28";
 
 export default function EditorialPolicyPage() {
   return (
@@ -148,6 +148,12 @@ export default function EditorialPolicyPage() {
               <p>
                 We use software to gather specifications, track prices, and surface patterns across
                 large numbers of owner reports. That is research assistance, and it is checked.
+              </p>
+              <p>
+                We also put finished research to an AI model as an adversarial second reader — to
+                ask what we have missed, which claim is thinly sourced, and what the best argument
+                against our conclusion looks like. It is questioned and verified like any other
+                source, and where it and the evidence disagree, the evidence wins.
               </p>
               <p>
                 <strong>No verdict on this site is generated automatically.</strong> A person

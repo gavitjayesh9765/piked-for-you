@@ -49,6 +49,7 @@ export default function AdminGuidePage() {
       title="How to add things"
       eyebrow="Reference"
       description="What every field on every form is for, what publishing demands, and prompts you can hand to an AI to draft the writing."
+      refreshable={false}
     >
       <div className="grid gap-8 xl:grid-cols-[210px_minmax(0,1fr)]">
         <Contents />
