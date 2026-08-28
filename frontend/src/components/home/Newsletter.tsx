@@ -82,7 +82,7 @@ export function Newsletter() {
       <div className="shell-wide py-16 lg:py-20">
         <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-16">
           {/* --- Pitch --- */}
-          <div className="max-w-xl">
+          <div className="reveal max-w-xl">
             <p className="t-eyebrow mb-3">Stay in the loop</p>
             <h2 className="t-headline text-ink">Intelligence, delivered.</h2>
             <p className="mt-4 text-body-lg text-ink-muted">
@@ -96,15 +96,21 @@ export function Newsletter() {
           </div>
 
           {/* --- Form --- */}
-          <div className="panel dot-matrix p-6 lg:p-8">
+          <div className="panel dot-matrix reveal p-6 lg:p-8">
             {state === "done" ? (
+              /* The one place on this page that overshoots. The disc pops, the
+                  tick draws itself inside it, and the two lines of confirmation
+                  follow — a sequence, because the reader has just handed over an
+                  address and the interface should look like it caught it. */
               <div className="flex flex-col items-start gap-3 py-6">
-                <span className="grid h-11 w-11 place-items-center rounded-full bg-value-soft text-value-on-soft">
+                <span className="pop-in grid h-11 w-11 place-items-center rounded-full bg-value-soft text-value-on-soft">
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="m4 12.5 5 5L20 6.5" />
+                    <path className="check-draw" d="m4 12.5 5 5L20 6.5" />
                   </svg>
                 </span>
-                <h3 className="text-headline-sm text-ink">You're in.</h3>
+                <h3 className="pop-in text-headline-sm text-ink" style={{ "--pop-delay": "140ms" } as React.CSSProperties}>
+                  You're in.
+                </h3>
                 {/* Two messages, because only one of them is ever true. The
                     first promises an email; saying that while the transport is
                     off sends a reader to an inbox to wait for something that
@@ -145,7 +151,7 @@ export function Newsletter() {
                         <label
                           key={opt.value}
                           className={cn(
-                            "flex cursor-pointer flex-col gap-1 rounded-md border p-3.5 transition-all duration-fast ease-ease",
+                            "press flex cursor-pointer flex-col gap-1 rounded-md border p-3.5",
                             selected
                               ? "border-brand-line bg-brand-soft"
                               : "border-line bg-surface-0 hover:border-line-strong",
@@ -187,17 +193,18 @@ export function Newsletter() {
                       placeholder="you@example.com"
                       autoComplete="email"
                       className="h-14 w-full rounded-full border border-line bg-surface-0 px-5 text-body-md
-                                 text-ink outline-none transition-colors duration-fast
-                                 placeholder:text-ink-faint focus:border-brand-vivid"
+                                 text-ink outline-none transition-[border-color,box-shadow] duration-base ease-ease
+                                 placeholder:text-ink-faint focus:border-brand-vivid
+                                 focus:shadow-[0_0_0_4px_var(--c-brand-soft)]"
                     />
                   </label>
                   <button
                     type="submit"
                     disabled={state === "loading" || email.trim().length < 4}
-                    className="inline-flex h-14 items-center justify-center gap-2 rounded-full bg-brand-fill
-                               px-8 font-label text-label font-semibold uppercase tracking-[0.06em]
-                               text-brand-on shadow-brand transition-all duration-fast ease-ease
-                               hover:brightness-110 disabled:pointer-events-none disabled:opacity-45"
+                    className="press inline-flex h-14 items-center justify-center gap-2 rounded-full
+                               bg-brand-fill px-8 font-label text-label font-semibold uppercase
+                               tracking-[0.06em] text-brand-on shadow-brand hover:brightness-110
+                               disabled:pointer-events-none disabled:translate-y-0 disabled:opacity-45"
                   >
                     {state === "loading" ? "Subscribing…" : "Subscribe"}
                   </button>

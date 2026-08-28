@@ -2,6 +2,7 @@ import Image from "next/image";
 import { ButtonLink } from "@/components/ui/Button";
 import { SearchField } from "@/components/ui/SearchField";
 import { HeroWordCycle } from "./HeroWordCycle";
+import { HeroStat } from "./HeroStat";
 
 /**
  * Hero (spec §14).
@@ -13,11 +14,19 @@ import { HeroWordCycle } from "./HeroWordCycle";
  * the copy column stays inside the gutter, so the section uses the entire
  * display width without the text losing its measure.
  *
- * SIZING: on `lg` and up the section is capped to the space below the sticky
+ * SIZING: on `lg` and up the GRID is capped to the space below the sticky
  * header stack (`100svh` minus nav and sub-nav) rather than growing to fit its
  * content. Everything down to the CTA row has to land above the fold on a 1080p
  * screen — a hero whose call to action needs a scroll is not doing its job.
  * `svh` rather than `vh` so mobile browser chrome doesn't push the CTA off-screen.
+ * The cap is on the grid and not the section for the reason spelled out at the
+ * grid itself: on the section it produced a band of bare background under the
+ * image column.
+ *
+ * MOTION: the copy block arrives in one staggered wave (`.hero-rise`, see
+ * globals.css) and the photograph settles out of a slight over-scale behind it.
+ * Both are `opacity`/`transform` only, run once, and collapse to an instant
+ * appearance under `prefers-reduced-motion`.
  *
  * MOBILE: the two columns stack, so a viewport-height cap would only stretch
  * the copy. Below `lg` the section is therefore left at its natural height and
@@ -25,12 +34,21 @@ import { HeroWordCycle } from "./HeroWordCycle";
  */
 export function Hero() {
   return (
-    <section className="relative border-b border-line bg-bg lg:min-h-[calc(100svh-var(--nav-h)-var(--subnav-h))]">
-      <div className="grid h-full items-stretch lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
+    <section className="relative border-b border-line bg-bg">
+      {/* The viewport cap belongs to the GRID, not to the section.
+          `min-height` on the section left the grid free to be shorter than it —
+          `height: 100%` against a parent with only a `min-height` resolves to
+          `auto`, so the grid sized to its tallest child and the section then
+          stretched past it. The difference was empty page background BELOW the
+          image column but INSIDE the hero: 31px at 1440x900 and 211px at
+          1920x1080, which read as the photograph having failed to load its
+          bottom edge. Capping the grid instead makes the section wrap it
+          exactly, and `items-stretch` runs the image to the border. */}
+      <div className="grid items-stretch lg:min-h-[calc(100svh-var(--nav-h)-var(--subnav-h))] lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)]">
         {/* --- Copy --- */}
         <div className="shell flex flex-col justify-center py-8 sm:py-12 lg:py-14">
           <div className="max-w-2xl">
-            <div className="mb-5 flex flex-wrap items-center gap-x-3 gap-y-2 sm:mb-6">
+            <div className="hero-rise mb-5 flex flex-wrap items-center gap-x-3 gap-y-2 sm:mb-6">
               <span className="rounded-full bg-editorial-bg px-3 py-1.5 font-label text-label-xs font-bold uppercase tracking-[0.14em] text-editorial-fg">
                 Independent research
               </span>
@@ -47,7 +65,7 @@ export function Hero() {
                 The second word cycles through the same halftone — see
                 HeroWordCycle. "Start" is deliberately left in this file and
                 outside the animation: only the verb changes. */}
-            <h1 className="headline-matrix t-display text-ink">
+            <h1 className="headline-matrix hero-rise t-display text-ink" style={{ "--i": 1 } as React.CSSProperties}>
               Stop researching.
               <br />
               Start <HeroWordCycle />
@@ -58,21 +76,21 @@ export function Hero() {
                 a badge bolted onto it. One step down the body scale from the
                 paragraph below it, which keeps the order of the page's voice:
                 headline, promise, then the detail. */}
-            <p className="mt-3 max-w-lg text-body-sm text-brand sm:mt-4 sm:text-body-md">
+            <p className="hero-rise mt-3 max-w-lg text-body-sm text-brand sm:mt-4 sm:text-body-md" style={{ "--i": 2 } as React.CSSProperties}>
               We test products ourselves, give you a clear yes or no, and never take money to
               change that.
             </p>
 
-            <p className="mt-4 max-w-xl text-body-md text-ink-muted sm:mt-5 sm:text-body-lg">
+            <p className="hero-rise mt-4 max-w-xl text-body-md text-ink-muted sm:mt-5 sm:text-body-lg" style={{ "--i": 3 } as React.CSSProperties}>
               We read the reviews, compare the specs that actually matter, and tell you which
               products are worth your money — and which are not. Then you buy wherever you like.
             </p>
 
-            <div className="mt-6 max-w-xl sm:mt-7">
+            <div className="hero-rise mt-6 max-w-xl sm:mt-7" style={{ "--i": 4 } as React.CSSProperties}>
               <SearchField size="lg" placeholder="What are you trying to buy?" />
             </div>
 
-            <div className="mt-6 flex flex-col gap-3 sm:mt-7 sm:flex-row sm:items-center sm:gap-4">
+            <div className="hero-rise mt-6 flex flex-col gap-3 sm:mt-7 sm:flex-row sm:items-center sm:gap-4" style={{ "--i": 5 } as React.CSSProperties}>
               <ButtonLink href="/top-picks" size="lg">
                 Explore Top Picks →
               </ButtonLink>
@@ -84,14 +102,19 @@ export function Hero() {
             {/* Proof of the research layer, stated as data rather than adjectives.
                 Drops away on short viewports so it can never be the thing that
                 pushes the CTA below the fold. */}
-            <dl className="mt-7 hidden max-w-lg grid-cols-3 gap-4 border-t border-line pt-6 sm:gap-6 lg:mt-9 [@media(min-height:800px)]:grid">
+            <dl
+              className="hero-rise rule-draw mt-7 hidden max-w-lg grid-cols-3 gap-4 pt-6 sm:gap-6 lg:mt-9 [@media(min-height:800px)]:grid"
+              style={{ "--i": 6 } as React.CSSProperties}
+            >
               {[
                 ["340+", "Products researched"],
                 ["28", "Categories covered"],
                 ["0", "Paid placements"],
-              ].map(([value, label]) => (
+              ].map(([value, label], i) => (
                 <div key={label}>
-                  <dt className="tabular text-headline-md font-bold text-ink">{value}</dt>
+                  <dt className="tabular text-headline-md font-bold text-ink">
+                    <HeroStat value={value} delayMs={640 + i * 110} />
+                  </dt>
                   <dd className="mt-1 font-label text-label-xs uppercase tracking-[0.1em] text-ink-subtle">
                     {label}
                   </dd>
@@ -126,7 +149,13 @@ export function Hero() {
             alt=""
             fill
             sizes="50vw"
-            className="object-cover"
+            /* `hero-plate` settles the photograph out of a 4% over-scale as it
+               fades in, which is what stops the column reading as a rectangle
+               that snapped into place after the copy had already arrived. It
+               animates `transform` and `opacity` on an element that is already
+               its own layer, so it costs nothing on the main thread and cannot
+               shift anything around it. */
+            className="hero-plate object-cover"
           />
           {/* Softens the seam between copy and image without dimming the product */}
           <div

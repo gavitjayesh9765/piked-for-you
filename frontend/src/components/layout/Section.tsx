@@ -45,7 +45,9 @@ export function SectionHeader({
                        uppercase tracking-[0.08em] text-ink transition-colors duration-fast hover:text-brand"
           >
             {hrefLabel}
-            <span className="transition-transform duration-fast ease-ease group-hover:translate-x-1">→</span>
+            {/* `arrow-slide` is the same travel the CTA and the footer links
+                use, defined once in globals.css instead of re-spelled here. */}
+            <span className="arrow-slide">→</span>
           </Link>
         ) : null}
       </div>

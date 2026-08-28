@@ -839,3 +839,374 @@
       opacity var(--d-base) var(--ease);
   }
 }
+
+/* ==========================================================================
+   THE REVEAL LAYER — motion that follows the SCROLL, not a timer.
+
+   Everything above this point animates on MOUNT: `.enter` and `.stagger` fire
+   the moment their element is inserted, which is right for content arriving
+   from a fetch and wrong for a long page. On the homepage the whole document
+   mounts at once, so every rail below the fold played its entrance into an
+   empty viewport and was already sitting still by the time the reader scrolled
+   to it. The choreography existed and nobody ever saw it.
+
+   These primitives are driven by `animation-timeline: view()`, which ties an
+   animation's progress to the element's own passage through the viewport. No
+   IntersectionObserver, no scroll listener, no state — the work happens on the
+   compositor, and a fast scroll cannot fall behind it.
+
+   ---------------------------------------------------------------------------
+   THE SAFETY PROPERTY, WHICH IS THE WHOLE REASON THIS SHAPE WAS CHOSEN
+
+   The opening keyframe is `opacity: 0`. Content that starts invisible and is
+   revealed by a feature the browser may not have is content that can be lost
+   entirely — the worst failure mode a decorative effect has available to it.
+   So the animation is declared ONLY inside
+   `@supports (animation-timeline: view())`. A browser without view timelines
+   never sees the rule, never applies the opening keyframe, and renders the
+   page fully visible and completely still.
+
+   The same is true under `prefers-reduced-motion: reduce`, which is excluded
+   here explicitly rather than left to the global duration reset in @layer
+   base: that reset zeroes `animation-duration`, and a scroll-driven animation
+   does not have one to zero.
+
+   ---------------------------------------------------------------------------
+   RANGES
+
+   Every range is stated inside `entry` — from the element's top edge reaching
+   the bottom of the viewport to its bottom edge clearing it. `entry` is the
+   one range whose length is the element's own height, so it behaves the same
+   for a section header as for a product card, and it cannot invert on an
+   element taller than the viewport the way a mixed `entry ... cover ...` range
+   can.
+   ========================================================================== */
+@layer components {
+  @keyframes reveal-rise {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 24px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+
+  /* A single block: a section header, a panel, one step of the method list. */
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .reveal {
+        animation: reveal-rise 1s linear both;
+        animation-timeline: view();
+        animation-range: entry 6% entry 62%;
+      }
+
+      /* A grid or list whose children arrive as a wave rather than a wall.
+
+         The stagger is expressed as a per-child RANGE rather than a delay: a
+         view timeline has no clock for a delay to sit on, so each child is
+         given a slightly later window instead. Children in one row share a
+         scroll position and therefore reveal in DOM order across it, which is
+         the diagonal cascade the mount-time `.stagger` produces — except this
+         one plays while the reader is looking at it.
+
+         `:nth-child(n)` on the base rule rather than a bare `> *`, so it
+         outranks the `.stagger > *:nth-child()` delays these same grids carry
+         for browsers that get no further than that. */
+      .reveal-group > *:nth-child(n) {
+        animation: reveal-rise 1s linear both;
+        animation-timeline: view();
+        animation-range: entry 4% entry 60%;
+        animation-delay: 0s;
+      }
+      .reveal-group > *:nth-child(2) { animation-range: entry 9% entry 65%; }
+      .reveal-group > *:nth-child(3) { animation-range: entry 14% entry 70%; }
+      .reveal-group > *:nth-child(4) { animation-range: entry 19% entry 75%; }
+      /* Capped at the fifth. Past that the wave is no longer legible as one,
+         and a tile in the tenth position would be waiting on a window most of
+         the way up the viewport for no benefit. */
+      .reveal-group > *:nth-child(n + 5) { animation-range: entry 22% entry 78%; }
+    }
+  }
+
+  /* PRINT, and anything else that renders the document without scrolling it.
+
+     A scroll-driven animation has no scroll to be driven by on a printed page,
+     so every `.reveal` would commit its opening keyframe and print blank. The
+     same is true of a full-page headless capture — which is exactly how this
+     was found: the homepage screenshotted as a hero above nine screens of
+     nothing.
+
+     Stated as `!important` because it has to beat the `animation-range` rules
+     above, which are more specific than any selector that could be written
+     here without repeating the whole list. */
+  @media print {
+    .reveal,
+    .reveal-group > *,
+    .hero-rise,
+    .hero-plate,
+    .pop-in,
+    .check-draw {
+      animation: none !important;
+      opacity: 1 !important;
+      transform: none !important;
+    }
+    .rule-draw::before,
+    .rule-accent::after {
+      animation: none !important;
+      transform: none !important;
+    }
+  }
+
+  /* ------------------------------------------------------------------
+     RULES THAT DRAW THEMSELVES
+
+     A hairline is this site's main structural device — every section header,
+     every method step, the hero's proof row. Fading one in with its block
+     makes it a rectangle that appeared; drawing it makes it a line somebody
+     ruled. `transform: scaleX` on a 1px element, so it costs nothing.
+     ------------------------------------------------------------------ */
+  @keyframes rule-draw {
+    from {
+      transform: scaleX(0);
+    }
+    to {
+      transform: scaleX(1);
+    }
+  }
+
+  /* A top rule, standing in for `border-top` where the line should arrive. */
+  .rule-draw {
+    position: relative;
+  }
+  .rule-draw::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 1px;
+    background-color: var(--c-line);
+    transform-origin: left center;
+  }
+
+  /* The brand-coloured segment that runs along a section header's bottom
+     border. Sits ON the existing hairline rather than replacing it, so the
+     structure is unchanged for anyone who never sees it draw. */
+  .rule-accent {
+    position: relative;
+  }
+  .rule-accent::after {
+    content: "";
+    position: absolute;
+    inset: auto auto -1px 0;
+    width: 4.5rem;
+    height: 2px;
+    background-color: var(--c-brand);
+    border-radius: 2px;
+    transform-origin: left center;
+  }
+
+  @supports (animation-timeline: view()) {
+    @media (prefers-reduced-motion: no-preference) {
+      .rule-draw::before,
+      .rule-accent::after {
+        animation: rule-draw 1s linear both;
+        animation-timeline: view();
+        animation-range: entry 10% entry 68%;
+      }
+    }
+  }
+
+  /* ------------------------------------------------------------------
+     HERO ENTRANCE
+
+     Mount-time, not scroll-driven: the hero is the top of the document and
+     there is no scroll to drive it. One wave down the copy column, with the
+     photograph settling behind it out of a slight over-scale.
+
+     `backwards` holds the opening frame through the delay, so a block is not
+     briefly painted in its final position and then yanked back to its start —
+     the same reason `.enter` uses it.
+     ------------------------------------------------------------------ */
+  @keyframes hero-rise {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 16px, 0);
+    }
+  }
+
+  @keyframes hero-plate {
+    from {
+      opacity: 0;
+      transform: scale(1.04);
+    }
+  }
+
+  .hero-rise {
+    animation: hero-rise 760ms var(--ease) backwards;
+    animation-delay: calc(var(--i, 0) * 85ms);
+  }
+
+  .hero-plate {
+    animation: hero-plate 1100ms var(--ease) backwards;
+  }
+
+  /* ------------------------------------------------------------------
+     LIFT — the shared hover physics.
+
+     `.panel-raise` already transitioned `transform` and nothing ever set one,
+     so a card's hover was a border and a shadow appearing under an object that
+     had not moved. Two pixels is the whole change, and it is the difference
+     between an element that is highlighted and one that is picked up.
+     ------------------------------------------------------------------ */
+  .panel-raise:hover {
+    transform: translateY(-2px);
+  }
+
+  /* A card being pressed should settle back under the finger. */
+  .panel-raise:active {
+    transform: translateY(0);
+    transition-duration: var(--d-fast);
+  }
+
+  /* ------------------------------------------------------------------
+     TILE — the category and brand entry blocks.
+
+     A sweep of brand tint crosses the tile, under the label rather than over
+     it. `transform` on a pseudo-element, so nothing about the tile's own box
+     changes and no neighbour can be pushed.
+     ------------------------------------------------------------------ */
+  .tile-sweep {
+    position: relative;
+    overflow: hidden;
+    isolation: isolate;
+  }
+  .tile-sweep::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: linear-gradient(
+      135deg,
+      transparent 0%,
+      color-mix(in srgb, var(--c-brand-vivid) 10%, transparent) 50%,
+      transparent 100%
+    );
+    transform: translate3d(-101%, 0, 0);
+    transition: transform var(--d-slow) var(--ease);
+  }
+  .tile-sweep:hover::before,
+  .tile-sweep:focus-visible::before {
+    transform: translate3d(0, 0, 0);
+  }
+
+  /* ------------------------------------------------------------------
+     PRESS — the tactile half of a control.
+
+     A hover state says "this is a target". A press state says "that
+     registered", and the buttons here had none: they changed brightness under
+     the pointer and did nothing at all on the click itself.
+     ------------------------------------------------------------------ */
+  /* The list is exhaustive over what the button variants actually change, and
+     has to stay that way — it replaced `transition-all`, which needed no such
+     bookkeeping. `opacity` is here for the editorial variant (`hover:opacity-90`)
+     and for every control's `disabled:opacity-45`; `filter` for the brightness
+     shift the brand and retail fills use. */
+  .press {
+    transition:
+      transform var(--d-fast) var(--ease),
+      box-shadow var(--d-base) var(--ease),
+      filter var(--d-fast) var(--ease),
+      opacity var(--d-fast) var(--ease),
+      background-color var(--d-fast) var(--ease),
+      border-color var(--d-fast) var(--ease),
+      color var(--d-fast) var(--ease);
+  }
+  .press:hover {
+    transform: translateY(-1px);
+  }
+  .press:active {
+    transform: translateY(1px);
+    transition-duration: 80ms;
+  }
+
+  /* ------------------------------------------------------------------
+     FOCUS RULE — for the fields that are the page's front door.
+
+     The global `:focus-visible` outline is untouched; this is the rule-only
+     field's own bottom hairline thickening into brand, drawn from the left,
+     where an outline has no filled box to sit on.
+     ------------------------------------------------------------------ */
+  .field-rule {
+    position: relative;
+  }
+  .field-rule::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 -1px 0;
+    height: 2px;
+    background-color: var(--c-brand-vivid);
+    border-radius: 2px;
+    transform: scaleX(0);
+    transform-origin: left center;
+    transition: transform var(--d-base) var(--ease);
+    pointer-events: none;
+  }
+  .field-rule:focus-within::after {
+    transform: scaleX(1);
+  }
+
+  /* ------------------------------------------------------------------
+     POP — a state that has just become true.
+
+     The newsletter's confirmation tick, and nothing else. Deliberately the
+     only overshoot in the system: it is the one moment on this page where
+     something the reader did has succeeded.
+     ------------------------------------------------------------------ */
+  @keyframes pop-in {
+    0% {
+      opacity: 0;
+      transform: scale(0.72);
+    }
+    62% {
+      opacity: 1;
+      transform: scale(1.06);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  .pop-in {
+    animation: pop-in 520ms var(--ease) backwards;
+    animation-delay: var(--pop-delay, 0ms);
+  }
+
+  /* The tick's own stroke, drawn rather than revealed. */
+  @keyframes check-draw {
+    from {
+      stroke-dashoffset: 26;
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  .check-draw {
+    stroke-dasharray: 26;
+    stroke-dashoffset: 0;
+    animation: check-draw 420ms var(--ease) 200ms backwards;
+  }
+
+  /* ------------------------------------------------------------------
+     ARROW — the "view all" and CTA affordance, stated once instead of
+     re-spelled per call site.
+     ------------------------------------------------------------------ */
+  .arrow-slide {
+    display: inline-block;
+    transition: transform var(--d-base) var(--ease);
+  }
+  .group:hover .arrow-slide,
+  .group:focus-visible .arrow-slide {
+    transform: translateX(4px);
+  }
+}

@@ -15,11 +15,21 @@ import { cn } from "@/lib/cn";
 type Variant = "brand" | "ghost" | "outline" | "subtle" | "editorial";
 type Size = "sm" | "md" | "lg";
 
+/**
+ * `press` (globals.css) carries the transition list AND the two states the
+ * buttons here were missing: a one-pixel lift under the pointer and a
+ * one-pixel push on the click. It replaces `transition-all`, which animated
+ * every property a variant might touch — including, on the outline variant,
+ * the border colour and the text colour at two different intended speeds.
+ *
+ * `disabled:translate-y-0` because a disabled control must not appear to
+ * respond; `disabled:pointer-events-none` already stops hover, but a button
+ * disabled mid-press would otherwise keep the pushed offset.
+ */
 const base =
   "inline-flex items-center justify-center gap-2 font-label font-semibold " +
-  "tracking-[0.06em] uppercase whitespace-nowrap select-none " +
-  "transition-all duration-fast ease-ease " +
-  "disabled:opacity-45 disabled:pointer-events-none";
+  "tracking-[0.06em] uppercase whitespace-nowrap select-none press " +
+  "disabled:opacity-45 disabled:pointer-events-none disabled:translate-y-0";
 
 const variants: Record<Variant, string> = {
   brand:

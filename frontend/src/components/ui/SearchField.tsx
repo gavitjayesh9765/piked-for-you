@@ -37,9 +37,13 @@ export function SearchField({
     <form
       role="search"
       onSubmit={submit}
+      /* `field-rule` draws a 2px brand rule across the field's own hairline
+         from the left on focus, rather than recolouring the hairline in place.
+         A rule-only field has no filled box for the global focus outline to
+         sit on, so this IS the focus affordance — and a line that draws reads
+         as the field opening, where a colour swap reads as a state flag. */
       className={cn(
-        "group relative flex items-center gap-3 border-b border-line",
-        "transition-colors duration-fast ease-ease focus-within:border-brand-vivid",
+        "group field-rule relative flex items-center gap-3 border-b border-line",
         size === "lg" ? "pb-3" : "pb-2",
         className,
       )}
