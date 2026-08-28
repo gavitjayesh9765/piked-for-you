@@ -71,42 +71,59 @@ export const metadata: Metadata = {
    * This used to be `app/icon.tsx` and `app/apple-icon.tsx` — two `ImageResponse`
    * routes drawing a purple "S" monogram, written as a placeholder when there
    * was no brand asset to point at. There is one now, so both files are gone.
-   * A real 512px mark beats a generated letterform, and a static PNG beats
-   * rendering one per request.
-   *
-   * With the artwork in `public/`, the file convention no longer applies, so the
-   * <link> tags have to be declared. That is also what makes the pair below
-   * possible, which the convention could not express.
+   * A real mark beats a generated letterform, and a static PNG beats rendering
+   * one per request.
    *
    * ---------------------------------------------------------------------------
-   * THE LIGHT/DARK PAIR, AND ITS ONE LIMITATION
+   * WHY THE ICON IS NOT THE FULL LOGO
    *
-   * The mark is monochrome: `mark-dark.png` is near-black ink, `mark-light.png`
-   * is near-white, both on transparency. A single one of them is invisible in
-   * half of all browser chrome — black ink vanishes into a dark tab strip — so
-   * both are offered and `media` lets the browser pick.
+   * `mark-dark.png` — the hand lifting a box, over two more on the floor — is
+   * the site header logo and stays that way. It is NOT what these files are cut
+   * from, and the difference is deliberate.
    *
-   * ⚠ That `media` query is `prefers-color-scheme`, i.e. the OS setting. It is
-   * NOT this site's theme: the toggle writes `data-theme` on <html>, and no
-   * amount of it reaches browser chrome. So a reader on a light OS who switches
-   * the page to dark keeps the dark-ink favicon. That is correct — the icon
-   * lives in the tab strip, which is still light — and it is worth stating
-   * because it looks like a bug the first time you notice it.
+   * Google renders a favicon at roughly 16px in a result row. Five separate
+   * shapes at 16px is not a small logo, it is a grey smudge; downscaling the
+   * full mark produced exactly that. So the icon is the CENTRE BOX ALONE,
+   * which is the one element that still reads as an object at that size.
    *
-   * `/favicon.ico` (dark ink) stays at the web root as the unconditional
-   * fallback, for the clients that request it by path and ignore <link> tags
-   * entirely — feed readers, chat unfurlers, older bookmark managers.
+   * Two marks, one brand. Do not "fix" this by pointing the icons back at
+   * mark-dark.png — that regresses to the smudge.
    *
-   * The Apple touch icon is the LIGHT-ink cut on purpose. iOS ignores the alpha
-   * channel and composites the tile onto black, so the dark cut would render as
-   * a black mark on a black square.
+   * ---------------------------------------------------------------------------
+   * WHY A SOLID TILE, AND WHY THAT KILLED THE LIGHT/DARK PAIR
+   *
+   * These used to be a monochrome mark on transparency, offered as a pair with
+   * `media: (prefers-color-scheme: ...)` so black ink did not vanish into a dark
+   * tab strip. Every one of those files is gone, because an OPAQUE tile — cream
+   * box on brand purple — solves the same problem without the machinery:
+   *
+   *   - It is visible on any background, so one file serves light and dark.
+   *   - It removes the trap that every `rel="icon"` carried a `media` filter,
+   *     leaving a crawler that evaluates media with nothing to match.
+   *   - Purple is load-bearing, not decoration. In a Google result list where
+   *     nearly every favicon is dark-on-white, a coloured tile is the thing
+   *     that gets the row noticed.
+   *
+   * ⚠ The touch icon and the manifest icons are FULL-BLEED squares with no
+   * corner rounding of their own. iOS and Android apply their own mask; if we
+   * rounded first, the corners would be cut twice and show gaps. The manifest
+   * pair additionally carries ~20% padding to stay inside Android's maskable
+   * safe zone. Do not crop that padding out to make the art look bigger.
+   *
+   * Sizes are 16/32/48/96 because Google asks for multiples of 48 and rescales
+   * to ~16; 48 and 96 exist so it never has to upscale a 32.
+   *
+   * `/favicon.ico` (16/32/48, same art) stays at the web root as the
+   * unconditional fallback, for clients that request it by path and ignore
+   * <link> tags entirely — feed readers, chat unfurlers, bookmark managers.
    */
   icons: {
     icon: [
-      { url: "/brand/favicon-32-dark.png", type: "image/png", sizes: "32x32", media: "(prefers-color-scheme: light)" },
-      { url: "/brand/favicon-16-dark.png", type: "image/png", sizes: "16x16", media: "(prefers-color-scheme: light)" },
-      { url: "/brand/favicon-32-light.png", type: "image/png", sizes: "32x32", media: "(prefers-color-scheme: dark)" },
-      { url: "/brand/favicon-16-light.png", type: "image/png", sizes: "16x16", media: "(prefers-color-scheme: dark)" },
+      { url: "/brand/favicon-96.png", type: "image/png", sizes: "96x96" },
+      { url: "/brand/favicon-48.png", type: "image/png", sizes: "48x48" },
+      { url: "/brand/favicon-32.png", type: "image/png", sizes: "32x32" },
+      { url: "/brand/favicon-16.png", type: "image/png", sizes: "16x16" },
+      { url: "/favicon.ico", sizes: "48x48 32x32 16x16" },
     ],
     apple: [{ url: "/brand/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
   },
