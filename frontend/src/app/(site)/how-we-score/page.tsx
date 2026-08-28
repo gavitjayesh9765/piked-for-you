@@ -155,6 +155,51 @@ export default function HowWeScorePage() {
           ),
         },
         {
+          id: "our-view",
+          title: "It is our view, and yours may differ",
+          body: (
+            <>
+              <p>
+                A score is a judgement, not a measurement, and it is written from somewhere: a
+                general reader in India, buying at today&rsquo;s price, with no strong prior
+                commitments. That reader is a composite. You are not them, and where you differ,
+                our number may be the wrong number for you.
+              </p>
+              <p>The weights are where this shows up most:</p>
+              <ul>
+                <li>
+                  <strong>We chose them; you did not.</strong> If a category rubric puts battery at
+                  25% and you never leave a desk, a quarter of the score is measuring something
+                  irrelevant to you. The breakdown is published on every product page for exactly
+                  this reason — read the criterion you care about rather than the total.
+                </li>
+                <li>
+                  <strong>Price is inside the judgement.</strong> Most verdicts are as much about
+                  what a thing costs as about what it is, so a discount can turn a &ldquo;wait&rdquo;
+                  into a &ldquo;buy&rdquo; without a single fact about the product changing.
+                </li>
+                <li>
+                  <strong>Fit beats rank.</strong> An 8.6 that is wrong for your use loses to a 7.2
+                  that is right for it. <strong>Best for</strong> and{" "}
+                  <strong>Not ideal for</strong> on each page are there to be read before the
+                  number, not after.
+                </li>
+                <li>
+                  <strong>Some of it is taste.</strong> Sound signature, screen tuning, keyboard
+                  feel. We describe these as precisely as we can and we try not to dress a
+                  preference up as a defect.
+                </li>
+              </ul>
+              <p>
+                So: disagree with us. A reader who reads the breakdown, decides our weighting is
+                wrong for them, and buys the product we ranked second has used this site correctly.
+                The fuller version of this is in our{" "}
+                <DocLink href="/disclaimer#varies">disclaimer</DocLink>.
+              </p>
+            </>
+          ),
+        },
+        {
           id: "not-for-sale",
           title: "What cannot influence a score",
           body: (

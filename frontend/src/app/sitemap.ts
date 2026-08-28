@@ -95,6 +95,8 @@ const STATIC_ROUTES: Array<{
   { path: "/privacy", changeFrequency: "yearly", priority: 0.2 },
   { path: "/terms", changeFrequency: "yearly", priority: 0.2 },
   { path: "/cookies", changeFrequency: "yearly", priority: 0.2 },
+  { path: "/disclaimer", changeFrequency: "yearly", priority: 0.2 },
+  { path: "/grievance", changeFrequency: "yearly", priority: 0.2 },
 ];
 
 /**

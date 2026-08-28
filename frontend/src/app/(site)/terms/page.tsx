@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
 import { DocumentPage, DocLink } from "@/components/layout/DocumentPage";
+import {
+  GRIEVANCE_OFFICER,
+  legalMailto,
+  LEGAL_EMAIL,
+  OPERATOR_COUNTRY,
+  OPERATOR_DESCRIPTION,
+} from "@/lib/legal";
 
 export const metadata: Metadata = {
   title: "Terms of service",
@@ -25,7 +32,9 @@ export default function TermsPage() {
             <>
               <p>
                 SortedChoice publishes independent research and recommendations about consumer
-                products. By using the site you agree to these terms.
+                products. It is operated by {OPERATOR_DESCRIPTION}, contactable at{" "}
+                <DocLink href={legalMailto("Terms of service")}>{LEGAL_EMAIL}</DocLink>. By using
+                the site you agree to these terms.
               </p>
               <p>
                 <strong>We are a publisher, not a shop.</strong> We do not sell products, take
@@ -45,6 +54,13 @@ export default function TermsPage() {
                 by the method set out in{" "}
                 <DocLink href="/how-we-research">How we research</DocLink>. They are information to
                 help you decide — not professional, financial, medical, or safety advice.
+              </p>
+              <p>
+                They are written for a general reader and they are not a finding of fact about any
+                product. What is right for you turns on your use, your budget, what you already
+                own, and where you are — all of which we cannot see. Our{" "}
+                <DocLink href="/disclaimer">disclaimer</DocLink> sets out where our judgement stops
+                and yours begins, and it forms part of these terms.
               </p>
               <p>
                 Specifications, prices, and availability change constantly and may be out of date.
@@ -163,6 +179,51 @@ export default function TermsPage() {
           ),
         },
         {
+          id: "complaints",
+          title: "Complaints",
+          body: (
+            <>
+              <p>
+                Complaints about anything published here, about content another reader has posted,
+                or about your personal data go to our {GRIEVANCE_OFFICER.role},{" "}
+                {GRIEVANCE_OFFICER.name}, at{" "}
+                <DocLink href={legalMailto("Grievance")}>{GRIEVANCE_OFFICER.email}</DocLink>. We
+                acknowledge within 24 hours and resolve within 15 days.
+              </p>
+              <p>
+                The full process — including what to put in a copyright or trademark notice, what
+                happens if we have written about your product, and where to escalate if we get it
+                wrong — is set out in{" "}
+                <DocLink href="/grievance">grievance redressal</DocLink>. This is published under
+                rule 3(2) of the Information Technology (Intermediary Guidelines and Digital Media
+                Ethics Code) Rules, 2021.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: "governing-law",
+          title: "Governing law",
+          body: (
+            <>
+              <p>
+                These terms, and any dispute arising out of them or out of your use of the site,
+                are governed by the laws of {OPERATOR_COUNTRY}, and the courts of{" "}
+                {OPERATOR_COUNTRY} have exclusive jurisdiction.
+              </p>
+              <p>
+                If you are a consumer resident elsewhere, this does not deprive you of the
+                protection of any mandatory consumer law of your own country, and it does not take
+                away a right to bring proceedings there where the law gives you one.
+              </p>
+              <p>
+                If any part of these terms is found unenforceable, the rest continues to apply. A
+                delay in enforcing a term is not a waiver of it.
+              </p>
+            </>
+          ),
+        },
+        {
           id: "changes",
           title: "Changes and ending",
           body: (
@@ -185,7 +246,8 @@ export default function TermsPage() {
         <p>
           Questions about these terms? <DocLink href="/contact">Ask us</DocLink>. See also the{" "}
           <DocLink href="/privacy">privacy policy</DocLink>,{" "}
-          <DocLink href="/cookies">cookie policy</DocLink>, and{" "}
+          <DocLink href="/cookies">cookie policy</DocLink>,{" "}
+          <DocLink href="/disclaimer">disclaimer</DocLink>, and{" "}
           <DocLink href="/affiliate-disclosure">affiliate disclosure</DocLink>.
         </p>
       }

@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
 import { DocumentPage, DocLink } from "@/components/layout/DocumentPage";
+import {
+  GRIEVANCE_OFFICER,
+  legalMailto,
+  LEGAL_EMAIL,
+  OPERATOR_COUNTRY,
+  OPERATOR_DESCRIPTION,
+} from "@/lib/legal";
 
 export const metadata: Metadata = {
   title: "Privacy policy",
@@ -28,6 +35,31 @@ export default function PrivacyPage() {
                 anyone. You can read every verdict on SortedChoice without an account, without
                 logging in, and without telling us who you are.
               </p>
+            </>
+          ),
+        },
+        {
+          id: "who",
+          title: "Who is responsible for it",
+          body: (
+            <>
+              <p>
+                SortedChoice is operated by {OPERATOR_DESCRIPTION}. For the purposes of the Digital
+                Personal Data Protection Act, 2023 we are the <strong>data fiduciary</strong> for
+                the data described here; under the UK and EU GDPR, where those apply to you, we are
+                the <strong>controller</strong>.
+              </p>
+              <ul>
+                <li>
+                  <strong>Contact for privacy matters:</strong>{" "}
+                  <DocLink href={legalMailto("Data request")}>{LEGAL_EMAIL}</DocLink>
+                </li>
+                <li>
+                  <strong>{GRIEVANCE_OFFICER.role}:</strong> {GRIEVANCE_OFFICER.name} — see{" "}
+                  <DocLink href="/grievance">grievance redressal</DocLink> for the process and the
+                  deadlines we hold ourselves to.
+                </li>
+              </ul>
             </>
           ),
         },
@@ -127,6 +159,31 @@ export default function PrivacyPage() {
           ),
         },
         {
+          id: "transfers",
+          title: "Where it is stored",
+          body: (
+            <>
+              <p>
+                The site runs on infrastructure operated by providers whose servers may sit outside{" "}
+                {OPERATOR_COUNTRY} — our database and authentication provider, our host and CDN,
+                and our email provider all operate globally. Your data may therefore be stored or
+                processed in another country.
+              </p>
+              <p>
+                Where that happens we rely on the transfer safeguards those providers offer —
+                contractual protections including, where relevant, the European Commission&rsquo;s
+                standard contractual clauses — and we do not transfer data to any country the
+                Indian government has restricted under the DPDP Act.
+              </p>
+              <p>
+                Want to know the current list of providers and where they process? Ask us at{" "}
+                <DocLink href={legalMailto("Sub-processors")}>{LEGAL_EMAIL}</DocLink> and we will
+                tell you.
+              </p>
+            </>
+          ),
+        },
+        {
           id: "how-long",
           title: "How long we keep it",
           body: (
@@ -165,8 +222,18 @@ export default function PrivacyPage() {
               <p>
                 Most of this you can do yourself from{" "}
                 <DocLink href="/account/settings">your account settings</DocLink>. For anything
-                else, <DocLink href="/contact">ask us</DocLink> and we will respond within 30 days.
-                We will not make the site worse for you because you exercised a right.
+                else, <DocLink href="/contact">ask us</DocLink> or write to{" "}
+                <DocLink href={legalMailto("Data request")}>{LEGAL_EMAIL}</DocLink>, and we will
+                respond within 30 days. We will not make the site worse for you because you
+                exercised a right.
+              </p>
+              <p>
+                Where you gave consent — the newsletter, non-essential analytics — you can withdraw
+                it at any time, and withdrawing is as easy as giving it was. If we handle a request
+                badly, take it to our {GRIEVANCE_OFFICER.role} through{" "}
+                <DocLink href="/grievance">grievance redressal</DocLink>; if that does not resolve
+                it, you can complain to the Data Protection Board of India, or to your own
+                supervisory authority if you are in the EU or UK.
               </p>
             </>
           ),

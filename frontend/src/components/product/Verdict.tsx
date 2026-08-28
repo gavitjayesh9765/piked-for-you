@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { cn } from "@/lib/cn";
 import type { SpecGroup } from "@/lib/types";
 
@@ -28,6 +30,23 @@ export function VerdictBlock({ verdict, className }: { verdict: string; classNam
           <p key={i}>{para}</p>
         ))}
       </div>
+
+      {/* The line that keeps the panel above honest.
+          A verdict rendered as a bordered pronouncement reads as a finding of
+          fact, and it is not one — it is one opinion, written for a general
+          reader at today's price. Saying so here rather than only in the
+          footer is the difference between a disclosure someone sees and a
+          disclosure that technically exists: this is the paragraph a reader
+          acts on, so this is where the caveat has to sit. Kept to one quiet
+          line so it qualifies the verdict without arguing with it. */}
+      <p className="mt-6 border-t border-line pt-4 text-label-xs leading-relaxed text-ink-faint">
+        Our editorial opinion at the time of writing, formed for a typical buyer at the current
+        price — not a statement of fact, and not advice. What suits you may differ.{" "}
+        <Link href="/disclaimer" className="underline hover:text-ink-subtle">
+          Why
+        </Link>
+        .
+      </p>
     </section>
   );
 }

@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
 import { DocumentPage, DocLink } from "@/components/layout/DocumentPage";
+import {
+  AMAZON_ASSOCIATES_DISCLOSURE,
+  AMAZON_TRADEMARK_NOTICE,
+  FLIPKART_TRADEMARK_NOTICE,
+  legalMailto,
+  LEGAL_EMAIL,
+} from "@/lib/legal";
 
 export const metadata: Metadata = {
   title: "Affiliate disclosure",
@@ -33,6 +40,13 @@ export default function AffiliateDisclosurePage() {
               <p>
                 That commission is the whole business model. We do not sell products, we do not
                 run a basket, we do not hold stock, and we do not charge you.
+              </p>
+              {/* ⚠ Prescribed verbatim by the Amazon Associates Operating
+                  Agreement. Rendered from the constant rather than typed here
+                  so the footer and this page cannot drift apart — one edited
+                  pronoun is a breach. See lib/legal.ts. */}
+              <p>
+                <strong>{AMAZON_ASSOCIATES_DISCLOSURE}</strong>
               </p>
             </>
           ),
@@ -83,6 +97,20 @@ export default function AffiliateDisclosurePage() {
                 because doing so would imply the others deserve more suspicion — the rules in{" "}
                 <DocLink href="#what-it-cannot-touch">§02</DocLink> apply to every link equally.
               </p>
+              <p>
+                Every commissionable link on this site is marked as an affiliate link where it
+                appears, and carries <code>rel=&quot;sponsored&quot;</code> so that search engines
+                are told the same thing you are. We are a participant in the Amazon Services LLC
+                Associates Program and its Indian equivalent, an affiliate advertising programme
+                designed to provide a means for sites to earn advertising fees by advertising and
+                linking to Amazon.
+              </p>
+              <p className="text-ink-subtle">
+                {AMAZON_TRADEMARK_NOTICE} {FLIPKART_TRADEMARK_NOTICE} Product names, logos and
+                brands are the property of their respective owners and are used here only to
+                identify the products discussed; their use implies no affiliation with, or
+                endorsement by, those owners.
+              </p>
             </>
           ),
         },
@@ -114,8 +142,10 @@ export default function AffiliateDisclosurePage() {
                 we treat it like one.
               </p>
               <p>
-                <DocLink href="/contact">Tell us what you found</DocLink> and we will look at the
-                page and reply.
+                <DocLink href="/contact">Tell us what you found</DocLink>, or write to{" "}
+                <DocLink href={legalMailto("Affiliate disclosure")}>{LEGAL_EMAIL}</DocLink>, and we
+                will look at the page and reply. Complaints that need a formal route, with a clock
+                on them, go through <DocLink href="/grievance">grievance redressal</DocLink>.
               </p>
             </>
           ),

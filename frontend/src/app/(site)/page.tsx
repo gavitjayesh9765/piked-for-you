@@ -7,6 +7,7 @@ import { categoryHref } from "@/lib/format";
 import type { HomepageSection, ProductSummary } from "@/lib/types";
 import { jsonLd } from "@/lib/json-ld";
 import { SITE_DESCRIPTION, SITE_NAME, SITE_TAGLINE, absoluteUrl } from "@/lib/site";
+import { LEGAL_EMAIL, OPERATOR_COUNTRY } from "@/lib/legal";
 
 import { Section, SectionHeader } from "@/components/layout/Section";
 import { Hero } from "@/components/home/Hero";
@@ -109,6 +110,23 @@ function SiteStructuredData() {
             // these verdicts are independent is looking for exactly this.
             publishingPrinciples: absoluteUrl("/editorial-policy"),
             ethicsPolicy: absoluteUrl("/affiliate-disclosure"),
+            // A reachable human, declared. Every "is this site trustworthy"
+            // heuristic — Google's quality-rater guidance, an answer engine
+            // deciding whether to cite us, a rights holder looking for someone
+            // to write to — asks for a contact, and a form with no address
+            // behind it does not answer the question. The same address is
+            // published in prose on /grievance; this is the machine-readable
+            // half of the same claim.
+            email: LEGAL_EMAIL,
+            areaServed: OPERATOR_COUNTRY,
+            contactPoint: {
+              "@type": "ContactPoint",
+              contactType: "customer support",
+              email: LEGAL_EMAIL,
+              url: absoluteUrl("/contact"),
+              areaServed: OPERATOR_COUNTRY,
+              availableLanguage: ["en"],
+            },
           },
           {
             "@context": "https://schema.org",

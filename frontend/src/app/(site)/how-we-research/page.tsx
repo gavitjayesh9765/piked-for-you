@@ -49,6 +49,7 @@ const CHAPTERS = [
   { id: "method", title: "How a verdict gets made" },
   { id: "example", title: "A real one, taken apart" },
   { id: "two-numbers", title: "Two numbers, kept apart" },
+  { id: "your-call", title: "Where our verdict stops" },
   { id: "money", title: "How we pay for this" },
 ];
 
@@ -318,8 +319,45 @@ export default async function HowWeResearchPage() {
           </p>
         </Chapter>
 
-        {/* --- 5. Money --------------------------------------------- */}
-        <Chapter number="05" title="How we pay for this" id="money">
+        {/* --- 5. The limit of the method ---------------------------- */}
+        <Chapter
+          number="05"
+          title="Where our verdict stops"
+          id="your-call"
+          lede="Everything above produces one opinion, held by us, written for a reader we had to invent. It is the start of your decision, not the end of it."
+        >
+          <p className="max-w-prose text-body-md text-ink-muted">
+            The rubric in §02 is a set of choices — which criteria count, and how much. We make
+            those choices for a general reader in India buying at today&rsquo;s price, because a
+            score has to be written for somebody. It is not written for you specifically, and the
+            distance between the two is real: what you are buying it for, what you already own,
+            what you would pay, where you live, and plain preference all move the answer, and none
+            of them are visible from here.
+          </p>
+          <p className="mt-6 max-w-prose text-body-md text-ink-muted">
+            So the pages are built to be argued with rather than obeyed. Every score publishes its
+            criterion breakdown, so you can ignore the total and read the one line you care about.
+            Every verdict carries <span className="text-ink">Best for</span> and{" "}
+            <span className="text-ink">Not ideal for</span>, so you can find yourself in the second
+            column and buy it anyway on grounds we could not see. A reader who does that has used
+            this site correctly.
+          </p>
+          <p className="mt-6 max-w-prose text-body-md text-ink-muted">
+            What we will not do is hedge our way out of a conclusion. &ldquo;It depends&rdquo; is
+            not a verdict, and a recommendation that cannot be wrong is not worth reading. We say
+            what we think, we show the working, and we leave the disagreeing to you —{" "}
+            <Link
+              href="/disclaimer"
+              className="text-brand underline decoration-brand-line underline-offset-4 transition-colors duration-fast hover:decoration-brand"
+            >
+              the full version of that boundary is in our disclaimer
+            </Link>
+            .
+          </p>
+        </Chapter>
+
+        {/* --- 6. Money --------------------------------------------- */}
+        <Chapter number="06" title="How we pay for this" id="money">
           <p className="max-w-prose text-body-md text-ink-muted">
             When you follow a link to a retailer we may earn a commission, at no extra cost to
             you. That is the whole business model, and it is the reason the order of operations
