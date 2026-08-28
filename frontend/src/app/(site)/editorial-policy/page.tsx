@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import { DocumentPage, DocLink } from "@/components/layout/DocumentPage";
+import { OPERATOR_NAME } from "@/lib/legal";
 
 export const metadata: Metadata = {
   title: "Editorial policy",
   description:
-    "The rules our editors work under: independence, corrections, review units, and community moderation.",
+    "The rules the verdicts are written under: independence, corrections, samples, and community moderation.",
   alternates: { canonical: "/editorial-policy" },
 };
 
@@ -15,7 +16,7 @@ export default function EditorialPolicyPage() {
     <DocumentPage
       eyebrow="Editorial"
       title="Editorial policy"
-      lede="The rules our editors work under. Published so you can tell when we have broken them."
+      lede="The rules the verdicts are written under. Published so you can tell when we have broken them."
       updated={UPDATED}
       path="/editorial-policy"
       sections={[
@@ -26,13 +27,23 @@ export default function EditorialPolicyPage() {
             <>
               <p>
                 No advertiser, affiliate partner, or brand has any input into what we cover, what
-                we conclude, or where a product ranks. Nobody outside the editorial team sees a
-                verdict before it is published, and no verdict is shared with a brand for comment.
+                we conclude, or where a product ranks. Nobody outside SortedChoice sees a verdict
+                before it is published, and no verdict is shared with a brand for comment.
               </p>
               <p>
-                Editors do not accept payment, gifts, hospitality, or equity from companies whose
-                products they cover. Where an editor holds a personal interest that a reasonable
-                reader might see as a conflict, they do not work on that product.
+                SortedChoice is written by one person, {OPERATOR_NAME} — see{" "}
+                <DocLink href="/about#who">who is actually writing this</DocLink>. That is stated
+                here rather than left to inference, because a rule about &ldquo;our
+                editors&rdquo; means something different when there is one of them: there is no
+                colleague to catch a conflict, so the conflict has to be declared and avoided
+                rather than managed.
+              </p>
+              <p>
+                So: no payment, gifts, hospitality, or equity from companies whose products are
+                covered here. Where a personal interest exists that a reasonable reader might see
+                as a conflict — a holding, a relationship, a former employer — that product does
+                not get written up, and if it is already on the site the interest is disclosed on
+                the page.
               </p>
             </>
           ),
@@ -70,7 +81,7 @@ export default function EditorialPolicyPage() {
           body: (
             <>
               <p>
-                Every PickD Score is built from a per-category rubric fixed before testing begins,
+                Every SortedChoice Score is built from a per-category rubric fixed before testing begins,
                 and each criterion is scored against that rubric rather than against the other
                 products in the round-up. A weak field does not promote a mediocre product.
               </p>

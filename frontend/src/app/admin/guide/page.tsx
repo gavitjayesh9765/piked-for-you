@@ -166,7 +166,7 @@ const STEPS: { title: string; body: string; href?: string; hrefLabel?: string }[
   },
   {
     title: "Then everything that needs an id",
-    body: "Images, videos, retailer links, the price history and the PickD Score all attach to a product that has to exist first, so they are sections 08–13 on the edit screen and are not on the create form at all.",
+    body: "Images, videos, retailer links, the price history and the SortedChoice Score all attach to a product that has to exist first, so they are sections 08–13 on the edit screen and are not on the create form at all.",
   },
   {
     title: "Publish",
@@ -288,7 +288,7 @@ function ProductFields() {
         <p className="text-body-sm text-ink-muted">
           <strong className="text-ink">Sections 08–13, on the edit screen:</strong> Images ·
           Videos · Where to buy (the Amazon / Flipkart / official links, each with its own price)
-          · Price history · PickD Score · Better alternatives. None of them can exist before the
+          · Price history · SortedChoice Score · Better alternatives. None of them can exist before the
           draft does, which is why the create form has no room for a retailer price.
         </p>
       </div>
@@ -445,7 +445,7 @@ function Prompts() {
     >
       <div className="mb-6 rounded-md border border-warn bg-warn-soft px-4 py-3 text-body-sm text-warn-on-soft">
         <strong>Three things no model may decide.</strong> The price — you read that off a live
-        listing. The PickD Score — that is your judgement and the API checks it against the
+        listing. The SortedChoice Score — that is your judgement and the API checks it against the
         category. And the hands-on checkbox — a claim that somebody used the product is only ever
         true because a person ticked it.
       </div>

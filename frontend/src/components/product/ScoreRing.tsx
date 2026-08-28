@@ -1,7 +1,7 @@
 import { cn } from "@/lib/cn";
 
 /**
- * The PickD Score ring — the single most branded object in the product.
+ * The SortedChoice Score ring — the single most branded object in the product.
  * Purple arc, Geist Mono numeral, tabular figures.
  *
  * This is OUR evaluation (0–10, spec §24). It is never rendered anywhere near
@@ -45,7 +45,7 @@ export function ScoreRing({
         className="relative grid place-items-center rounded-full bg-surface-0 border border-line"
         style={{ width: dims.box, height: dims.box }}
         role="img"
-        aria-label={`PickD Score ${clamped.toFixed(1)} out of 10`}
+        aria-label={`SortedChoice Score ${clamped.toFixed(1)} out of 10`}
       >
         <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90" width={dims.box} height={dims.box}>
           <circle
@@ -74,9 +74,20 @@ export function ScoreRing({
           {clamped.toFixed(1)}
         </span>
       </div>
-      {showLabel && (
-        <span className="t-eyebrow text-[9px] leading-none">PickD Score</span>
-      )}
+      {/* "Our score", not the full "SortedChoice Score", and not a bare
+          "Score".
+
+          The ring is as small as 34px in the phone grid, and a 9px uppercase
+          eyebrow with 0.14em tracking runs about 120px at the full name —
+          three and a half times the width of the object it labels, which turns
+          a compact plate into a caption with a ring on top.
+
+          "Score" alone would fit and would be wrong: the entire point of this
+          component is that it is NOT the community star rating sitting a few
+          pixels away (spec §32), and the possessive is what carries that. The
+          full name is still on the aria-label above, in the ScorePanel heading,
+          and everywhere a heading has room for it. */}
+      {showLabel && <span className="t-eyebrow text-[9px] leading-none">Our score</span>}
     </div>
   );
 }
@@ -148,7 +159,7 @@ export function ScorePanel({
       <div className="grid gap-8 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] lg:gap-12">
         <div>
           <h2 id="score-heading" className="t-eyebrow text-brand">
-            PickD Score
+            SortedChoice Score
           </h2>
 
           <div className="mt-5 flex items-center gap-5">

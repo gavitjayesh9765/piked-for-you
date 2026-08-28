@@ -92,7 +92,7 @@ a return or a warranty claim.
   buys through a link, at no extra cost to them. There is no rate card, and no
   brand can purchase a score, a placement, or a review. See the affiliate
   disclosure below.
-- **The PickD Score is editorial, not a user average.** It is our own 0–10
+- **The SortedChoice Score is editorial, not a user average.** It is our own 0–10
   rating against a rubric fixed per category before testing begins, and it is
   never merged with the community star rating shown alongside it. The two are
   deliberately kept separate; averaging them misrepresents both.
@@ -106,7 +106,7 @@ a return or a warranty claim.
 ## How we work
 
 - [How we research](${absoluteUrl("/how-we-research")}): the method behind every verdict, with a worked example.
-- [How we score](${absoluteUrl("/how-we-score")}): what the PickD Score measures and what it deliberately ignores.
+- [How we score](${absoluteUrl("/how-we-score")}): what the SortedChoice Score measures and what it deliberately ignores.
 - [Editorial policy](${absoluteUrl("/editorial-policy")}): independence rules, corrections policy, and the grounds on which a review is removed.
 - [Affiliate disclosure](${absoluteUrl("/affiliate-disclosure")}): exactly how we make money and what it cannot influence.
 - [About](${absoluteUrl("/about")}): who we are.

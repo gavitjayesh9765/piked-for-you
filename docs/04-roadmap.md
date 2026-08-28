@@ -65,7 +65,7 @@ the phase that unblocks everything else.
 - [ ] Badge CRUD
 - [ ] Product CRUD (§37 form sections)
 - [ ] Media upload to object storage + drag-and-drop ordering (§19)
-- [ ] PickD Score editor, validated against the category's criteria (§24)
+- [ ] SortedChoice Score editor, validated against the category's criteria (§24)
 - [ ] Retailer link management (§26)
 - [ ] Publish/unpublish with completeness validation (§62)
 - [ ] Top Picks curation (§15)

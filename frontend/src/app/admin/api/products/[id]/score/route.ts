@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { NO_STORE, badBody, badId, forward, guard, isId, readJson } from "@/lib/admin-guard";
 
 /**
- * Set the PickD Score (spec §24).
+ * Set the SortedChoice Score (spec §24).
  *
  * This route did not exist, and neither did any UI that reached it — while a
  * score is one of the six hard requirements `publish_blockers` checks

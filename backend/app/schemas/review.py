@@ -25,7 +25,7 @@ class ReviewOut(Wire):
     id: uuid.UUID
     product_id: uuid.UUID
     author: ReviewAuthorOut
-    # 1–5, the community scale. Distinct from the 0–10 PickD Score (spec §32).
+    # 1–5, the community scale. Distinct from the 0–10 SortedChoice Score (spec §32).
     rating: int
     title: Optional[str] = None
     body: str

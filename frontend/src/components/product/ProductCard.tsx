@@ -178,7 +178,7 @@ export function ProductCard({
         </div>
 
         {/* Community rating sits below a hairline, visually separated from the
-            PickD Score above — two different sources, never merged (spec §32) */}
+            SortedChoice Score above — two different sources, never merged (spec §32) */}
         {communityRating && communityRating.count > 0 && (
           <div className="hairline mt-3 pt-3 lg:mt-4">
             <CommunityRating average={communityRating.average} count={communityRating.count} compact />

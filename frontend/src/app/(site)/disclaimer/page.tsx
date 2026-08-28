@@ -48,7 +48,7 @@ export default function DisclaimerPage() {
           body: (
             <>
               <p>
-                A PickD Score is not a measurement of a product the way a weight or a battery
+                A SortedChoice Score is not a measurement of a product the way a weight or a battery
                 capacity is a measurement. It is a <strong>judgement</strong> — evidence assembled
                 by people, weighed against a rubric those same people wrote, and expressed as a
                 number so it can be compared. Two careful teams working from the same evidence can

@@ -13,7 +13,7 @@ import { ReviewForm } from "./ReviewForm";
  * Two rules encoded here:
  *  - The label is "User Review", never "Verified Buyer" — we have no purchase
  *    verification mechanism yet, so claiming one would be a lie (spec §31).
- *  - This block is visually distinct from the PickD verdict above it. Different
+ *  - This block is visually distinct from the SortedChoice verdict above it. Different
  *    source, different treatment (spec §32).
  */
 export function ReviewList({

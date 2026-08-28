@@ -4,11 +4,11 @@ import { DocumentPage, DocLink } from "@/components/layout/DocumentPage";
 export const metadata: Metadata = {
   title: "How we score products",
   description:
-    "What the PickD Score is, what the four verdicts mean, how criteria are set per category, and why our score is never merged with the community rating.",
+    "What the SortedChoice Score is, what the four verdicts mean, how criteria are set per category, and why our score is never merged with the community rating.",
   alternates: { canonical: "/how-we-score" },
 };
 
-const UPDATED = "2026-08-25";
+const UPDATED = "2026-08-28";
 
 /**
  * How we score products.
@@ -71,11 +71,11 @@ export default function HowWeScorePage() {
         },
         {
           id: "the-score",
-          title: "What the PickD Score is",
+          title: "What the SortedChoice Score is",
           body: (
             <>
               <p>
-                The PickD Score runs from 0 to 10 with one decimal place. It is our
+                The SortedChoice Score runs from 0 to 10 with one decimal place. It is our
                 evaluation of a product against the standard for its category — not against
                 the other products that happen to be in the same round-up, and not against
                 everything ever made.
@@ -141,7 +141,7 @@ export default function HowWeScorePage() {
             <>
               <p>
                 Two numbers appear on a product page and they measure different things. The
-                PickD Score is ours, on a 0–10 scale, and it is an evaluation. The community
+                SortedChoice Score is ours, on a 0–10 scale, and it is an evaluation. The community
                 rating is yours, on a 1–5 scale, and it is a report of experience.
               </p>
               <p>
@@ -219,7 +219,7 @@ export default function HowWeScorePage() {
                 Where a product page earns us a commission, the link itself says so — not just
                 the footer. See{" "}
                 <DocLink href="/affiliate-disclosure">how we make money</DocLink> and{" "}
-                <DocLink href="/editorial-policy">what our editors may and may not do</DocLink>.
+                <DocLink href="/editorial-policy">the rules the verdicts are written under</DocLink>.
               </p>
             </>
           ),

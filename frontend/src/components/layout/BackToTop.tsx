@@ -310,7 +310,7 @@ export function BackToTop() {
           <circle className="totop__track" cx="18" cy="18" r="15.5" pathLength={100} />
           {/* `pathLength={100}` renormalises the circumference so the dash
               figures in CSS are a plain 0–100 percentage — the same trick the
-              PickD score ring uses, kept identical on purpose. */}
+              SortedChoice score ring uses, kept identical on purpose. */}
           <circle
             className="totop__arc"
             cx="18"

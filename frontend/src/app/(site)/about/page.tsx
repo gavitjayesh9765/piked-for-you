@@ -1,13 +1,15 @@
 import type { Metadata } from "next";
 import { DocumentPage, DocLink } from "@/components/layout/DocumentPage";
+import { legalMailto, LEGAL_EMAIL, OPERATOR_COUNTRY, OPERATOR_NAME } from "@/lib/legal";
 
 export const metadata: Metadata = {
   title: "Our story",
-  description: "Why SortedChoice exists, what it refuses to be, and who it is for.",
+  description:
+    "Why SortedChoice exists, what it refuses to be, and who is actually writing it.",
   alternates: { canonical: "/about" },
 };
 
-const UPDATED = "2026-08-20";
+const UPDATED = "2026-08-28";
 
 export default function AboutPage() {
   return (
@@ -83,8 +85,8 @@ export default function AboutPage() {
                 The pressure to become those things is real and it is mostly financial, which is
                 why the rules are written down in public rather than kept as good intentions. Read{" "}
                 <DocLink href="/affiliate-disclosure">how we make money</DocLink> and{" "}
-                <DocLink href="/editorial-policy">what our editors may and may not do</DocLink>. If
-                we ever drift, those pages are what you hold us to.
+                <DocLink href="/editorial-policy">the rules the verdicts are written under</DocLink>.
+                If we ever drift, those pages are what you hold us to.
               </p>
             </>
           ),
@@ -103,6 +105,44 @@ export default function AboutPage() {
                 If you own something we have covered,{" "}
                 <DocLink href="/c">leave a rating</DocLink> — the long-term experience is the part
                 no rubric can reach.
+              </p>
+            </>
+          ),
+        },
+        {
+          id: "who",
+          title: "Who is actually writing this",
+          body: (
+            <>
+              <p>
+                <strong>{OPERATOR_NAME}.</strong> One person, in {OPERATOR_COUNTRY}, running
+                SortedChoice as a sole proprietor. Not a masthead, not a newsroom, and not a
+                content agency with a rotating byline.
+              </p>
+              <p>
+                The site says &ldquo;we&rdquo; throughout, because that is how a publication
+                talks and because the verdicts speak for the site rather than for a mood on a
+                given afternoon. But it should not be read as a room full of staff. Every
+                rubric, every score and every verdict here has one author, and the reason to
+                tell you that is the same reason for publishing the method at all: you cannot
+                weigh a recommendation without knowing who is making it.
+              </p>
+              <p>
+                What follows from being one person is worth saying plainly. Coverage is narrower
+                than a large site&rsquo;s and grows more slowly. There is no separate fact-checking
+                desk, so the checks are procedural instead — a published rubric fixed before the
+                research starts, an{" "}
+                <DocLink href="/editorial-policy#ai">adversarial AI pass</DocLink> whose job is to
+                attack the conclusion, and{" "}
+                <DocLink href="/editorial-policy#corrections">corrections recorded on the page</DocLink>{" "}
+                rather than quietly edited in. When a page says nobody has held the product, that
+                is not modesty, it is the default.
+              </p>
+              <p>
+                It also means there is a name attached to every mistake. Write to{" "}
+                <DocLink href={legalMailto("SortedChoice")}>{LEGAL_EMAIL}</DocLink> and it reaches
+                the person who wrote the thing you are complaining about — the formal route, with
+                deadlines on it, is <DocLink href="/grievance">grievance redressal</DocLink>.
               </p>
             </>
           ),

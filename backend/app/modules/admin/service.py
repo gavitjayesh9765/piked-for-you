@@ -40,7 +40,7 @@ from app.schemas.product import ProductCreate, ProductUpdate, ScoreUpsert
 PUBLISH_REQUIREMENTS = (
     ("primary image", lambda p: any(m.kind == "image" for m in p.media)),
     ("current price", lambda p: p.price_current is not None),
-    ("PickD Score", lambda p: p.score is not None),
+    ("SortedChoice Score", lambda p: p.score is not None),
     # The buy recommendation and the line that argues it. These are the two
     # things a reader came for, and a page that leads with a verdict banner
     # cannot be published with the banner empty — it would render a hole where
@@ -374,7 +374,7 @@ async def delete_product(
 async def set_score(
     db: AsyncSession, product: Product, payload: ScoreUpsert, actor_id: uuid.UUID, ip: str | None
 ) -> Product:
-    """Set the PickD Score, validated against the category's configured criteria.
+    """Set the SortedChoice Score, validated against the category's configured criteria.
 
     A headphone cannot be scored on refresh rate: the criteria come from the
     category (spec §24), so an unknown key is rejected rather than stored.

@@ -389,7 +389,7 @@ function MixedCategories({ products }: { products: Product[] }) {
       <p className="t-eyebrow mb-4">Not comparable</p>
       <h2 className="t-headline text-ink">These are in different categories.</h2>
       <p className="mx-auto mt-5 max-w-lg text-body-md text-ink-muted">
-        You have picked from {names.join(" and ")}. Every PickD Score is built from a rubric
+        You have picked from {names.join(" and ")}. Every SortedChoice Score is built from a rubric
         specific to its category, so putting these numbers in one table would imply a comparison
         that our own method says is meaningless.{" "}
         <Link

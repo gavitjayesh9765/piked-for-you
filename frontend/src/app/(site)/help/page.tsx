@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/help" },
 };
 
-const UPDATED = "2026-08-20";
+const UPDATED = "2026-08-28";
 const PATH = "/help";
 
 /**
@@ -92,7 +92,7 @@ const GROUPS: HelpGroup[] = [
     title: "Scores and verdicts",
     questions: [
       {
-        question: "What is a PickD Score?",
+        question: "What is a SortedChoice Score?",
         answer: (
           <>
             Our verdict as one number out of ten, built from a rubric fixed per category before

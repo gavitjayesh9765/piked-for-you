@@ -7,7 +7,7 @@ import { Shuttle } from "@/components/ui/Shuttle";
 
 /** Sort control (spec §17). Default is score_desc — our verdict leads, not price. */
 const options: { value: SortOption; label: string }[] = [
-  { value: "score_desc", label: "PickD Score" },
+  { value: "score_desc", label: "SortedChoice Score" },
   { value: "rating_desc", label: "Community rating" },
   { value: "price_asc", label: "Price: low to high" },
   { value: "price_desc", label: "Price: high to low" },

@@ -28,7 +28,7 @@ The palette carries meaning. A user learns it without being told.
 
 | Role | Meaning | Where it may appear |
 |---|---|---|
-| **Purple** | **Deciding** — our intelligence | PickD Score, verdict rule, internal CTAs, brand moments |
+| **Purple** | **Deciding** — our intelligence | SortedChoice Score, verdict rule, internal CTAs, brand moments |
 | **Orange** | **Getting** — leaving for a retailer | `RetailButton` only. Nothing else, ever. |
 | **Green** | **Value** — worth-it signal | Value chips, pros, in-stock, price-drop markers |
 | **Obsidian** | **Editorial** — curatorial authority | Editorial badges, structural type |

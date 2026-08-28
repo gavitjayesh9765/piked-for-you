@@ -8,7 +8,7 @@ import type { ScoreCriterionDef, SpecTemplateField, SpecTemplateGroup } from "@/
  * Category template editor (spec §24, §41).
  *
  * A category owns the vocabulary its products are described in: which criteria
- * the PickD Score is broken down by, and which specification fields the
+ * the SortedChoice Score is broken down by, and which specification fields the
  * product page may list. Before this existed, criteria were seeded onto eight
  * categories and specifications had no schema at all, so a mouse was scored on
  * noise cancellation and listed a frequency response.
@@ -159,7 +159,7 @@ export function CategoryTemplateEditor({
         <div className="mt-5 grid gap-6">
           {/* ---------------- Scoring criteria ---------------- */}
           <Block
-            title="PickD Score criteria"
+            title="SortedChoice Score criteria"
             hint="The breakdown shown under the score. The API rejects any criterion not listed here."
             inherited={Boolean(criteriaInherited)}
             source={criteriaSource}

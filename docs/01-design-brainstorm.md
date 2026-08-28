@@ -43,7 +43,7 @@ recommendation is complex, the presentation is not.
 The Stitch guidelines encode a **color-as-grammar** rule, and it is genuinely good:
 
 ```
-PURPLE  #6C5CE7   ->  DECIDING.  Our intelligence. Scores, verdicts, PickD moments.
+PURPLE  #6C5CE7   ->  DECIDING.  Our intelligence. Scores, verdicts, brand moments.
 ORANGE  #FF6B35   ->  GETTING.   Leaving for a retailer. Amazon / Flipkart. Nothing else.
 GREEN   #16A34A   ->  VALUE.     Worth-it markers, in-stock, good-price signals.
 BLACK   #0A0A0A   ->  EDITORIAL. Badges, structure, authority.
@@ -121,7 +121,7 @@ hero communicates the value proposition, and (§51) that cards prioritize
 ```
 +-------------------------------------+
 | . TOP RECOMMENDATION          ,---. |   editorial badge (obsidian)
-|                               |8.8| |   PickD Score ring (purple)
+|                               |8.8| |   SortedChoice Score ring (purple)
 |                               `---' |
 |            [ product ]              |   image, background removed
 |                                     |
@@ -140,7 +140,7 @@ hero communicates the value proposition, and (§51) that cards prioritize
 The verdict line is what separates this from a marketplace tile. A card without one is a
 listing; a card with one is a recommendation.
 
-**PickD Score and community rating are never merged** (§32). They sit in different places,
+**SortedChoice Score and community rating are never merged** (§32). They sit in different places,
 in different type, in different colours: the score is a purple ring (ours), the rating is a
 grey star line (theirs). Merging them into one number would be the most damaging trust
 mistake this product could make.
@@ -212,7 +212,7 @@ tabular, and keyboard-shaped: same tokens, a tighter density scale.
 ## 7. Non-negotiables
 
 - Never imply SortedChoice sells or fulfils anything (§4.5). No cart, no basket glyph, no "Add to".
-- PickD Score is not the community rating is not the marketplace rating. Three sources, three treatments (§32).
+- SortedChoice Score is not the community rating is not the marketplace rating. Three sources, three treatments (§32).
 - No "Verified Buyer" until a real verification mechanism exists. Say "User Review" (§31).
 - Affiliate disclosure is visible on any page carrying a retailer link (§59).
 - No product-specific logic in the frontend. Data in, layout out (§54).

@@ -58,7 +58,7 @@ class Product(UUIDMixin, TimestampMixin, Base):
     price_max: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2))
     price_updated_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
-    # --- PickD Verdict (spec §25). Arrays of short strings, hence JSONB. ---
+    # --- SortedChoice Verdict (spec §25). Arrays of short strings, hence JSONB. ---
     #
     # `verdict_stance` is the answer to the only question the reader came with.
     # It is a closed set rather than free text because the page leads with it:
@@ -201,7 +201,7 @@ class ProductMedia(UUIDMixin, TimestampMixin, Base):
 
 
 class ProductScore(UUIDMixin, TimestampMixin, Base):
-    """PickD Score (spec §24).
+    """SortedChoice Score (spec §24).
 
     `overall` is a queryable column because it is sorted and filtered on;
     `criteria` is JSONB because the criteria themselves are category-specific

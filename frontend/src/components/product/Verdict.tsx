@@ -4,7 +4,7 @@ import { cn } from "@/lib/cn";
 import type { SpecGroup } from "@/lib/types";
 
 /**
- * The PickD Verdict (spec §25) — admin-authored prose, the reason this platform
+ * The SortedChoice Verdict (spec §25) — admin-authored prose, the reason this platform
  * exists. Marked with a purple rule because it is *our* judgement (the colour
  * grammar: purple = deciding).
  *

@@ -140,7 +140,7 @@ boundaries, one deployable API.
 These are enforced in code, not just documented:
 
 - **Never imply we sell anything** (§4.5). No cart, no basket glyph, no "Add to".
-- **PickD Score ≠ community rating.** Different scales, different components,
+- **SortedChoice Score ≠ community rating.** Different scales, different components,
   different colours. Merging them is the most damaging trust mistake available (§32).
 - **No "Verified Buyer"** until a real verification mechanism exists. The schema
   offers no column to claim one (§31).

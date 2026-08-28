@@ -74,7 +74,7 @@ export function ValueChip({ label = "Worth it", className }: { label?: string; c
 /**
  * Community rating (spec §32). Deliberately quiet, grey-and-gold, and always
  * carries its review count so it reads as "what other people said" rather than
- * as a second PickD verdict.
+ * as a second SortedChoice verdict.
  */
 export function CommunityRating({
   average,

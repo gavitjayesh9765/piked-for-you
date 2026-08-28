@@ -272,7 +272,7 @@ function SectionRenderer({ section }: { section: HomepageSection }) {
       return (
         <Section>
           <SectionHeader
-            eyebrow="Curated by our editors"
+            eyebrow="Chosen, not sorted"
             title={section.title ?? "Top Picks"}
             subtitle={section.subtitle}
             href="/top-picks"

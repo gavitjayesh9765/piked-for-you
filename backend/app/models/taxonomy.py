@@ -39,7 +39,7 @@ class Category(UUIDMixin, TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
     show_on_homepage: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
-    # Which filters this category exposes, which criteria its PickD Score uses,
+    # Which filters this category exposes, which criteria its SortedChoice Score uses,
     # and which specification fields its products may carry (spec §17, §24,
     # §41). Genuinely variable per category, so JSONB is right.
     #

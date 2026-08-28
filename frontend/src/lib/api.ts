@@ -389,7 +389,7 @@ export async function getFacets(categorySlug?: string): Promise<FilterFacet[]> {
       },
       {
         key: "score",
-        label: "PickD Score",
+        label: "SortedChoice Score",
         options: [
           { value: "9", label: "9.0 and above", count: pool.filter((p) => (p.score?.overall ?? 0) >= 9).length },
           { value: "8", label: "8.0 and above", count: pool.filter((p) => (p.score?.overall ?? 0) >= 8).length },

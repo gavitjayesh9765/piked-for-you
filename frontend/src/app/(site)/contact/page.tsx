@@ -89,7 +89,7 @@ export default async function ContactPage() {
               },
               {
                 q: "How do you score products?",
-                a: "Category-specific criteria, applied consistently, so a comparison actually compares. The PickD Score is ours and is never merged with community ratings.",
+                a: "Category-specific criteria, applied consistently, so a comparison actually compares. The SortedChoice Score is ours and is never merged with community ratings.",
                 href: "/how-we-research",
                 cta: "How we research",
               },

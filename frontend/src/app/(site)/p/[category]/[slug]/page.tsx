@@ -435,8 +435,8 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
         </Suspense>
       </main>
 
-      {/* Structured data (spec §47). Uses the community rating, never the PickD
-          Score — aggregateRating has a defined meaning and conflating our
+      {/* Structured data (spec §47). Uses the community rating, never the
+          SortedChoice Score — aggregateRating has a defined meaning and conflating our
           editorial score with it would misrepresent both. */}
       <script
         type="application/ld+json"

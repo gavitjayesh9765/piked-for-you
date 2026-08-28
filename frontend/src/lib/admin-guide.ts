@@ -81,7 +81,7 @@ export const PRODUCT_FIELDS: FieldDoc[] = [
     label: "Category",
     key: "categoryId",
     need: "save",
-    what: "The most specific one that fits. This choice decides which specification fields section 05 offers and which criteria the PickD Score accepts — the API refuses any key outside them.",
+    what: "The most specific one that fits. This choice decides which specification fields section 05 offers and which criteria the SortedChoice Score accepts — the API refuses any key outside them.",
     where: "The URL path, the breadcrumb, the category listing, the sub-nav.",
     example: "Electronics › Audio › Headphones",
   },
@@ -311,7 +311,7 @@ export const STANCES = [
 export const PUBLISH_CHECKLIST: { label: string; where: string }[] = [
   { label: "A primary image", where: "Section 08 · Images, on the edit screen" },
   { label: "A current price", where: "Section 02 · Pricing" },
-  { label: "A PickD Score", where: "Section 12, on the edit screen" },
+  { label: "A SortedChoice Score", where: "Section 12, on the edit screen" },
   { label: "A buy recommendation", where: "Section 03 · The verdict" },
   { label: "A recommendation summary", where: "Section 03 · The verdict" },
   { label: "The verdict itself", where: "Section 03 · The verdict" },
@@ -340,7 +340,7 @@ export const CATEGORY_FIELDS: SimpleFieldDoc[] = [
   { label: "Order", key: "displayOrder", what: "Lower sorts first among siblings. Ties break alphabetically." },
   { label: "Active", key: "isActive", what: "Off hides the category from the site AND from the product form's category select. Its products stay where they are." },
   { label: "Homepage tile", key: "showOnHomepage", what: "Works best at the second level — the root is too broad, the leaves are too many." },
-  { label: "Scoring criteria", key: "scoreCriteria", what: "What the PickD Score may be broken down into for products here. Leave empty to inherit from the parent. The API refuses any criterion key outside the resolved set." },
+  { label: "Scoring criteria", key: "scoreCriteria", what: "What the SortedChoice Score may be broken down into for products here. Leave empty to inherit from the parent. The API refuses any criterion key outside the resolved set." },
   { label: "Specification template", key: "specTemplate", what: "Groups of fields products here may carry. Leave empty to inherit. Adding a field here is the ONLY way to make it available in a product's section 05." },
 ];
 

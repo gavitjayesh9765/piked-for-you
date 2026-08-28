@@ -13,7 +13,7 @@ import { absoluteUrl } from "@/lib/site";
 export const metadata: Metadata = {
   title: "How we research",
   description:
-    "What goes into a PickD Score, what cannot buy its way in, and a worked example using a real verdict.",
+    "What goes into a SortedChoice Score, what cannot buy its way in, and a worked example using a real verdict.",
   alternates: { canonical: "/how-we-research" },
 };
 
@@ -81,7 +81,7 @@ const COMMITMENTS = [
   },
   {
     title: "Your rating and our score never merge.",
-    body: "The PickD Score is ours and is measured. The community rating is yours and is reported. Averaging them into one number would hide both.",
+    body: "The SortedChoice Score is ours and is measured. The community rating is yours and is reported. Averaging them into one number would hide both.",
   },
 ] as const;
 
@@ -295,7 +295,7 @@ export default async function HowWeResearchPage() {
         <Chapter number="04" title="Two numbers, kept apart" id="two-numbers">
           <div className="grid gap-x-14 gap-y-10 sm:grid-cols-2">
             <div className="border-t-2 border-brand pt-5">
-              <p className="t-eyebrow mb-3 text-brand">The PickD Score</p>
+              <p className="t-eyebrow mb-3 text-brand">The SortedChoice Score</p>
               <p className="text-body-sm text-ink-muted">
                 Ours. One number out of ten, built from the category rubric above, carrying the
                 date it was last reviewed. It answers <span className="text-ink">how good is
@@ -429,7 +429,7 @@ function MethodSchema() {
           headline: "How we research",
           name: "How we research",
           description:
-            "What goes into a PickD Score, what cannot buy its way in, and a worked example using a real verdict.",
+            "What goes into a SortedChoice Score, what cannot buy its way in, and a worked example using a real verdict.",
           // See the UPDATED constant. Both dates are the same on purpose: the
           // method is revised in place, so the version in effect is the version
           // published, and inventing an original date we do not record would be

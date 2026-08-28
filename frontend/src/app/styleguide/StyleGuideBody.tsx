@@ -41,7 +41,7 @@ export function StyleGuideBody() {
             <Grammar
               name="Deciding"
               hex="--c-brand-fill"
-              desc="Our intelligence. Scores, verdicts, PickD moments, internal actions."
+              desc="Our intelligence. Scores, verdicts, brand moments, internal actions."
             />
             <Grammar
               name="Getting"
@@ -109,7 +109,7 @@ export function StyleGuideBody() {
           </div>
         </Block>
 
-        <Block title="PickD Score" note="Our evaluation, 0–10. Never merged with a community star rating (spec §32).">
+        <Block title="SortedChoice Score" note="Our evaluation, 0–10. Never merged with a community star rating (spec §32).">
           <div className="flex flex-wrap items-end gap-10">
             <ScoreRing score={9.4} size="sm" />
             <ScoreRing score={8.8} size="md" />

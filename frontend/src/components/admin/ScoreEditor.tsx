@@ -6,11 +6,11 @@ import { cn } from "@/lib/cn";
 import { ScoreRing } from "@/components/product/ScoreRing";
 
 /**
- * The PickD Score editor (spec §24).
+ * The SortedChoice Score editor (spec §24).
  *
  * This screen was the missing half of publishing. A score is one of the six
  * things `publish_blockers` requires, and nothing in the panel could set one —
- * so "Not ready to publish · missing PickD Score" was a permanent state with no
+ * so "Not ready to publish · missing SortedChoice Score" was a permanent state with no
  * control to resolve it.
  *
  * Criteria come from the **category**, not from here: a headphone is scored on
@@ -57,7 +57,7 @@ export function ScoreEditor({
   );
   // Follow the criteria unless an editor has deliberately overridden the
   // number. An average is a good default and a bad mandate — the whole point
-  // of a PickD Score is that a human can disagree with the arithmetic.
+  // of a SortedChoice Score is that a human can disagree with the arithmetic.
   const [manual, setManual] = useState(() => Boolean(initial));
 
   const [busy, setBusy] = useState(false);

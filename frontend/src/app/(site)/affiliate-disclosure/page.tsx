@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/affiliate-disclosure" },
 };
 
-const UPDATED = "2026-08-20";
+const UPDATED = "2026-08-28";
 
 export default function AffiliateDisclosurePage() {
   return (

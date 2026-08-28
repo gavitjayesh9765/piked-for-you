@@ -18,7 +18,7 @@ import { CollectionPageJsonLd } from "@/components/seo/CollectionPageJsonLd";
 export const metadata: Metadata = {
   title: "Top Picks — the board",
   description:
-    "Every product currently carrying a SortedChoice recommendation, ordered by our editors.",
+    "Every product currently carrying a SortedChoice recommendation, ordered by editorial judgement.",
   alternates: { canonical: "/top-picks" },
 };
 
@@ -222,9 +222,9 @@ function MethodNote() {
       <div className="grid gap-6 sm:grid-cols-[auto_minmax(0,1fr)] sm:gap-10">
         <p className="t-eyebrow">How this is ranked</p>
         <p className="max-w-prose text-body-sm text-ink-muted">
-          Position on this board is an editorial judgement, not an automatic sort — our editors
+          Position on this board is an editorial judgement, not an automatic sort — we
           decide what leads, which is why the number one is not always the highest number. The
-          PickD Score beside each pick is the measured half: performance, value at the current
+          SortedChoice Score beside each pick is the measured half: performance, value at the current
           price, and how the product has held up over time. No brand can buy a place here, and the
           verdict is written before any retailer link is attached.{" "}
           <Link
@@ -246,7 +246,7 @@ async function Lede() {
   return (
     <p className="mt-6 max-w-xl text-body-lg text-ink-muted">
       {section?.subtitle ?? "The highest-scoring products across every category we cover."}{" "}
-      Ordered by our editors, and every verdict written before any retailer link was attached.
+      Ordered by editorial judgement, and every verdict written before any retailer link was attached.
     </p>
   );
 }
@@ -354,7 +354,7 @@ async function Board() {
           <CollectionPageJsonLd
             path="/top-picks"
             name="Top Picks — the board"
-            description="Every product currently carrying a SortedChoice recommendation, ordered by our editors."
+            description="Every product currently carrying a SortedChoice recommendation, ordered by editorial judgement."
             itemListId={itemListId("/top-picks")}
           />
         </div>

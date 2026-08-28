@@ -227,7 +227,7 @@ export default async function EditProductPage({
         <div className="mb-6 flex items-baseline gap-4 border-b border-line pb-4">
           <span className="font-mono text-label-xs tabular-nums text-brand">12</span>
           <div>
-            <h2 className="font-display text-headline-sm text-ink">PickD Score</h2>
+            <h2 className="font-display text-headline-sm text-ink">SortedChoice Score</h2>
             <p className="mt-1 text-body-sm text-ink-muted">
               Ours, and never merged with the community rating (spec §32). Required
               before this product can be published.

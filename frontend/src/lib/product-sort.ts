@@ -25,7 +25,7 @@ export const PRODUCT_SORTS = [
   { value: "price_checked_desc", label: "Price checked most recently" },
   { value: "price_desc", label: "Price: high to low" },
   { value: "price_asc", label: "Price: low to high" },
-  { value: "score_desc", label: "PickD Score" },
+  { value: "score_desc", label: "SortedChoice Score" },
   { value: "title_asc", label: "Title A–Z" },
   { value: "title_desc", label: "Title Z–A" },
 ] as const;

@@ -107,7 +107,7 @@ Curated shortlist
   ↓
 Research + comparison
   ↓
-PickD Verdict
+SortedChoice Verdict
   ↓
 Community reviews
   ↓
@@ -343,7 +343,7 @@ Can:
 - Browse categories.
 - Search.
 - View product details.
-- View PickD verdicts.
+- View SortedChoice verdicts.
 - View public reviews.
 - View product media.
 - Follow external retailer links.
@@ -567,7 +567,7 @@ Possible filters:
 - Price.
 - Brand.
 - Rating.
-- PickD Score.
+- SortedChoice Score.
 - Features.
 - Use case.
 - Badge.
@@ -594,7 +594,7 @@ Brand
  ↓
 Badges
  ↓
-PickD Score
+SortedChoice Score
  ↓
 Current price
  ↓
@@ -800,7 +800,7 @@ Electronics
 
 ---
 
-# 24. PickD Score
+# 24. SortedChoice Score
 
 SortedChoice should not simply copy marketplace star ratings.
 
@@ -809,7 +809,7 @@ It should provide its own evaluation.
 Example:
 
 ```text
-PickD Score: 8.8 / 10
+SortedChoice Score: 8.8 / 10
 
 Sound       9.2
 Build       8.7
@@ -845,7 +845,7 @@ The scoring system must therefore be configurable rather than permanently hard-c
 
 ---
 
-# 25. PickD Verdict
+# 25. SortedChoice Verdict
 
 Each major product should have a human/admin-authored verdict.
 
@@ -1043,11 +1043,11 @@ Future versions may support verified-purchase mechanisms if a reliable integrati
 
 ---
 
-# 32. Community Rating vs PickD Score
+# 32. Community Rating vs SortedChoice Score
 
 These are separate concepts.
 
-## PickD Score
+## SortedChoice Score
 
 Our evaluation.
 
@@ -1163,7 +1163,7 @@ Admin product table:
 - Brand.
 - Category.
 - Current price.
-- PickD Score.
+- SortedChoice Score.
 - Status.
 - Badges.
 - Updated date.
@@ -1208,7 +1208,7 @@ Sections:
 
 ### Recommendation
 
-- PickD Score.
+- SortedChoice Score.
 - Scoring criteria.
 - Verdict.
 - Best For.
@@ -1571,7 +1571,7 @@ Badge
 Product Image
 Brand
 Product Name
-PickD Score
+SortedChoice Score
 Short verdict/tagline
 Current Price
 Price Range
@@ -1586,7 +1586,7 @@ Example:
 
 Sony WH-CH520
 
-PickD Score
+SortedChoice Score
 8.8/10
 
 Excellent everyday headphones
@@ -1627,7 +1627,7 @@ Example:
 ```text
                  Product A  Product B  Product C
 
-PickD Score        8.9        8.5        8.2
+SortedChoice Score        8.9        8.5        8.2
 Sound              9.2        8.7        8.3
 Comfort            8.8        9.1        8.2
 Battery            9.5        8.5        9.0
@@ -1675,8 +1675,8 @@ The MVP should include:
 - Top Picks.
 - Product badges.
 - Product media.
-- PickD Score.
-- PickD Verdict.
+- SortedChoice Score.
+- SortedChoice Verdict.
 - Pros/Cons.
 - Amazon links.
 - Flipkart links.
@@ -1790,7 +1790,7 @@ This feature represents the long-term vision of SortedChoice.
 
 SortedChoice should clearly distinguish:
 
-### PickD Research
+### SortedChoice Research
 
 Information and recommendations created by SortedChoice.
 
@@ -1870,7 +1870,7 @@ Every published product should ideally contain:
 - Brand.
 - Category.
 - Price.
-- PickD Score.
+- SortedChoice Score.
 - Verdict.
 - Pros.
 - Cons.
@@ -2070,7 +2070,7 @@ The MVP is successful when:
 12. Users can browse categories.
 13. Users can search products.
 14. Users can view product details.
-15. Users can see PickD Score and verdict.
+15. Users can see SortedChoice Score and verdict.
 16. Users can open Amazon/Flipkart links.
 17. Users can register/login.
 18. Authenticated users can review.
@@ -2119,7 +2119,7 @@ Understand
    ↓
 Compare
    ↓
-Read PickD Verdict
+Read SortedChoice Verdict
    ↓
 Read Community Reviews
    ↓
@@ -2151,7 +2151,7 @@ Set Price
     ↓
 Write Description
     ↓
-Set PickD Score
+Set SortedChoice Score
     ↓
 Write Verdict
     ↓

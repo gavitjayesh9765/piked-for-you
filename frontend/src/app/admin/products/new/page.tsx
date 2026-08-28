@@ -108,7 +108,7 @@ export default async function NewProductPage() {
               <li>Images &amp; videos</li>
               <li>Where to buy — Amazon / Flipkart / official, with a price each</li>
               <li>Price history, and a button to re-check it</li>
-              <li>PickD Score, against this category&apos;s criteria</li>
+              <li>SortedChoice Score, against this category&apos;s criteria</li>
             </ul>
           </div>
 

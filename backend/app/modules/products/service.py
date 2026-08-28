@@ -43,7 +43,7 @@ def _pricing(product: Product) -> PricingOut:
 
 
 def _community(product: Product) -> CommunityRatingOut | None:
-    """Never merged with the PickD Score — separate field, separate type (spec §32)."""
+    """Never merged with the SortedChoice Score — separate field, separate type (spec §32)."""
     if not product.rating_count or product.rating_average is None:
         return None
     return CommunityRatingOut(average=product.rating_average, count=product.rating_count)
@@ -288,7 +288,7 @@ async def build_facets(db: AsyncSession, category_slug: str | None) -> list[Face
             label="Brand",
             options=[FacetOption(value=s, label=n, count=c) for s, n, c in brand_rows],
         ),
-        Facet(key="score", label="PickD Score", options=score_rows),
+        Facet(key="score", label="SortedChoice Score", options=score_rows),
     ]
     if badge_rows:
         facets.append(
