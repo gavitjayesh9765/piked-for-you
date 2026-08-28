@@ -270,6 +270,22 @@ function SectionRenderer({ section }: { section: HomepageSection }) {
 
     case "category_rail": {
       const products = section.products ?? [];
+      // An empty rail renders NOTHING, not an empty rail.
+      //
+      // Until now a category_rail whose category had no published products
+      // still drew its title, its subtitle and its "View all" link over an
+      // empty grid — today that is the Gaming rail, two hundred pixels of
+      // heading promising products that are not there, sitting between two
+      // rails that do have them. The section is admin-composed and the admin
+      // may well have added it ahead of the research, which is the right way
+      // round; the page just should not advertise the gap. It reappears by
+      // itself the moment something is published under that category.
+      //
+      // Deliberately not a "nothing here yet" empty state: the reader did not
+      // ask for this category, the homepage offered it. Feedback about an
+      // empty rail belongs in the composer, where someone can act on it.
+      if (products.length === 0) return null;
+
       return (
         <Section>
           <SectionHeader
@@ -323,7 +339,9 @@ function SectionRenderer({ section }: { section: HomepageSection }) {
                     {b.name}
                   </span>
                   {b.productCount != null && (
-                    <span className="tabular text-label-xs text-ink-faint">{b.productCount} products</span>
+                    <span className="tabular whitespace-nowrap text-label-xs tracking-[0.02em] text-ink-faint sm:tracking-[0.14em]">
+                      {b.productCount > 0 ? `${b.productCount} researched` : "—"}
+                    </span>
                   )}
                 </Link>
               ))}

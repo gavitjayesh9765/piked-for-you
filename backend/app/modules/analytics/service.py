@@ -21,6 +21,16 @@ loudly at the moment it happens.
 Both therefore end in a fallback rather than a pass-through: an unrecognised
 path is `/other`, an unrecognised referrer host is dropped. Losing the detail
 is the point.
+
+The ONE exception, and why it does not break the property: category pages are
+counted individually (`/c/electronics/audio`, not `/c/:path`). That is still a
+closed set — it is bounded by the number of rows in `categories`, which is a
+number an admin controls, not a number traffic controls — and it is enforced by
+an ALLOWLIST read from the taxonomy, never by trusting the path. A `/c/...` URL
+that does not name a real active category still folds to `/c/:path`. If you are
+tempted to relax that check, re-read the paragraph above: the difference
+between "bounded by the catalogue" and "bounded by whatever anyone typed" is
+the difference between this table and the event log it exists to avoid.
 """
 
 from __future__ import annotations
@@ -65,6 +75,9 @@ logger = logging.getLogger(__name__)
 ROUTE_SHAPES: tuple[tuple[re.Pattern[str], str], ...] = (
     (re.compile(r"^/$"), "/"),
     (re.compile(r"^/p/[^/]+/[^/]+$"), "/p/:category/:slug"),
+    # Kept as the FALLBACK for category URLs. A path that names a real active
+    # category is counted under its own key before this pattern is reached —
+    # see `normalise_path` — and everything else lands here.
     (re.compile(r"^/c/.+$"), "/c/:path"),
     (re.compile(r"^/c$"), "/c"),
     (re.compile(r"^/b/[^/]+$"), "/b/:slug"),
@@ -139,12 +152,32 @@ def is_bot(user_agent: str | None) -> bool:
     return any(marker in ua for marker in BOT_MARKERS)
 
 
-def normalise_path(raw: str | None) -> str:
+def normalise_path(raw: str | None, categories: frozenset[str] | None = None) -> str:
     """Fold a URL path into one of the shapes in `ROUTE_SHAPES`/`STATIC_ROUTES`.
 
     Query strings and fragments are discarded before matching, and never
     stored: `?q=sony` on `/search` is a search term, which is user-entered text
     and exactly the kind of thing this table has no business holding.
+
+    `categories` is the allowlist of real category paths ("electronics/audio").
+    Pass it and a category page counts under its own key; omit it and every
+    category page counts as `/c/:path`, which is what this function did for
+    every caller before.
+
+    ---------------------------------------------------------------------------
+    WHY CATEGORIES ARE WORTH UN-FOLDING WHEN NOTHING ELSE IS
+
+    `/p/:category/:slug` collapses because per-product numbers live in
+    `analytics_product_daily`, keyed by product id — the shape is not hiding
+    anything, it is avoiding a duplicate. Categories had no such table, so
+    folding them threw the answer away: every category page on the site landed
+    on one row, and "which categories do people actually browse" — the question
+    that decides which homepage rails are worth having — was unanswerable from
+    our own data while looking like it was being collected.
+
+    The set stays closed because the allowlist comes from the taxonomy. 98
+    categories is 98 possible keys; a crawler walking `/c/<random>` for a week
+    still produces exactly one row, `/c/:path`.
     """
     if not raw:
         return OTHER_PATH
@@ -154,6 +187,12 @@ def normalise_path(raw: str | None) -> str:
 
     if path in STATIC_ROUTES:
         return path
+
+    # Before ROUTE_SHAPES, because `^/c/.+$` would otherwise swallow it.
+    if categories and path.startswith("/c/") and len(path) <= MAX_KEY_LENGTH:
+        if path[len("/c/") :] in categories:
+            return path
+
     for pattern, shape in ROUTE_SHAPES:
         if pattern.match(path):
             return shape
@@ -197,6 +236,56 @@ def device_class(user_agent: str | None) -> str:
     if "mobi" in ua or "iphone" in ua or "android" in ua:
         return "mobile"
     return "desktop"
+
+
+# --------------------------------------------------------------------------- #
+# The category allowlist                                                       #
+# --------------------------------------------------------------------------- #
+
+#: How long the allowlist is trusted before it is read again.
+#:
+#: This is consulted from the beacon endpoint, which is the most frequently
+#: called write in the system, so it may not be a query per page view. Ten
+#: minutes means a category added in the admin panel is counted under
+#: `/c/:path` for at most ten minutes and under its own key after that — a
+#: delay nobody will notice on a number that is explicitly approximate.
+_CATEGORY_TTL = dt.timedelta(minutes=10)
+
+#: Process-local, so each worker keeps its own copy and they expire
+#: independently. That is fine and deliberate: this is a hint used to pick a
+#: counter key, not a source of truth, and a worker that is briefly behind
+#: writes a slightly coarser row rather than a wrong one.
+_category_paths: frozenset[str] = frozenset()
+_category_paths_read_at: dt.datetime | None = None
+
+
+async def known_category_paths(db: AsyncSession) -> frozenset[str]:
+    """Active category paths as slash-joined strings ("electronics/audio").
+
+    Returns the last good value on any failure. The alternative — letting the
+    exception out — would turn a stale cache into a lost beacon, and this is
+    the one query on the write path that is not strictly necessary to count
+    the event.
+    """
+    global _category_paths, _category_paths_read_at
+
+    now = dt.datetime.now(dt.UTC)
+    if _category_paths_read_at is not None and now - _category_paths_read_at < _CATEGORY_TTL:
+        return _category_paths
+
+    try:
+        rows = (
+            await db.execute(
+                select(Category.path, Category.slug).where(Category.is_active.is_(True))
+            )
+        ).all()
+    except Exception:  # noqa: BLE001 - see the docstring
+        logger.debug("category allowlist refresh failed; serving the previous set")
+        return _category_paths
+
+    _category_paths = frozenset("/".join(path or [slug]) for path, slug in rows)
+    _category_paths_read_at = now
+    return _category_paths
 
 
 # --------------------------------------------------------------------------- #
@@ -337,7 +426,13 @@ async def record(
             if product_id is not None:
                 await _bump_product(db, product_id, views=1)
             if path is not None:
-                await _bump_dimension(db, "path", normalise_path(path))
+                # The allowlist is only consulted for the paths it can affect,
+                # so a homepage or product beacon never touches it — including
+                # the very first one after a cold start.
+                categories = (
+                    await known_category_paths(db) if path.lower().startswith("/c/") else None
+                )
+                await _bump_dimension(db, "path", normalise_path(path, categories))
                 await _bump_dimension(db, "device", device_class(user_agent))
                 host = normalise_referrer(referrer, own_host)
                 if host:

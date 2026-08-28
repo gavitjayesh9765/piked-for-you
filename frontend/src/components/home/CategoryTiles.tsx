@@ -65,8 +65,21 @@ export function CategoryTiles({ categories }: { categories: Category[] }) {
             >
               {c.name}
             </span>
+            {/* An em dash for nothing, the number for something — the same
+                convention /c uses, and the reason is the same: a grid of
+                "0 researched" reads as a failed render, while a dash reads as
+                a gap we are not hiding. The line is always present so the
+                tiles in a row stay the same height. */}
             {c.productCount != null && (
-              <span className="tabular text-label-xs text-ink-faint">{c.productCount} researched</span>
+              /* `nowrap` and most of the tracking removed below `sm`: at 11px
+                 with 0.14em of letter-spacing, "1 researched" is wider than a
+                 111px tile's text box, so it wrapped to two lines and made
+                 every tile that HAS research taller than the ones that do not
+                 — a row of uneven boxes that read as a layout bug rather than
+                 as a count. */
+              <span className="tabular whitespace-nowrap text-label-xs tracking-[0.02em] text-ink-faint sm:tracking-[0.14em]">
+                {c.productCount > 0 ? `${c.productCount} researched` : "—"}
+              </span>
             )}
           </Link>
         ))}

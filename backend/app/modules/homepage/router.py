@@ -11,12 +11,20 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Response
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.core.deps import DbSession
-from app.models import Brand, Category, HomepageSection, Product, ProductBadge, TopPick
+from app.models import (
+    Brand,
+    Category,
+    HomepageSection,
+    Product,
+    ProductBadge,
+    ProductScore,
+    TopPick,
+)
 from app.modules.products.service import sign_for, to_summary
 from app.schemas.homepage import HomepageSectionOut
 from app.schemas.taxonomy import BrandOut, CategoryOut
@@ -130,18 +138,39 @@ async def _products_for(db: DbSession, section: HomepageSection, now: datetime) 
         slug = config.get("categorySlug")
         if not slug:
             return []
+        # ⚠ THE ORDER BY IS NOT DECORATION — IT DECIDES *WHICH* PRODUCTS THESE ARE.
+        #
+        # This used to be `.limit(limit)` with no ORDER BY, followed by a
+        # `items.sort(key=score)` in Python. Those two lines look like they say
+        # "the top `limit` products by score" and they say something else
+        # entirely: LIMIT with no ORDER BY lets Postgres return ANY `limit`
+        # rows it likes — whatever the scan reaches first, which in practice is
+        # physical table order and changes under you after a VACUUM. Only then
+        # were those arbitrary rows sorted.
+        #
+        # The bug was invisible while no category held more than `limit`
+        # products: sorting all of them is the same as sorting the best of
+        # them. The moment Audio has forty, the rail shows eight arbitrary
+        # products in immaculate descending order — it LOOKS ranked, which is
+        # worse than looking broken, on a site whose entire proposition is that
+        # the ranking means something.
+        #
+        # Sorted in SQL, before the limit, it is the top `limit` by score.
+        # Unscored products sort last rather than vanishing: an outer join and
+        # NULLS LAST, so a rail whose category has nothing scored yet still
+        # shows its products instead of going empty.
         rows = (
             await db.execute(
                 select(Product)
                 .join(Category, Product.category_id == Category.id)
+                .outerjoin(ProductScore, ProductScore.product_id == Product.id)
                 .where(Product.status == "published", Category.path.contains([slug]))
                 .options(*_PRODUCT_LOADS)
+                .order_by(ProductScore.overall.desc().nulls_last(), Product.published_at.desc().nulls_last())
                 .limit(limit)
             )
         ).unique().scalars().all()
-        items = list(rows)
-        items.sort(key=lambda p: float(p.score.overall) if p.score else 0.0, reverse=True)
-        return items
+        return list(rows)
 
     if section.kind == "featured_products":
         rows = (
@@ -159,13 +188,61 @@ async def _products_for(db: DbSession, section: HomepageSection, now: datetime) 
 
 
 async def _homepage_categories(db: DbSession) -> list[CategoryOut]:
-    rows = (
-        await db.execute(
-            select(Category)
-            .where(Category.is_active.is_(True), Category.show_on_homepage.is_(True))
-            .order_by(Category.display_order)
+    """The homepage tiles, each carrying its BRANCH count.
+
+    ⚠ THE ROLL-UP IS THE WHOLE POINT, and a direct count would be a lie here.
+
+    Products are filed against whichever node an editor chose, and for the tile
+    categories that is almost never the tile itself: "Mobiles" holds nothing
+    directly, "Smartphones" underneath it holds two. A per-`category_id` count
+    — which is what every other counter in this codebase does, correctly, for
+    its own purpose — would put "0 researched" on a tile leading to two
+    published reviews. The tile is an entrance to a branch, so it counts the
+    branch.
+
+    This is the same rollup /c does over the flat list in the browser, done
+    here instead because the homepage already gets one resolved payload and
+    should not ship the whole taxonomy to work out three numbers.
+    """
+    tiles = list(
+        (
+            await db.execute(
+                select(Category)
+                .where(Category.is_active.is_(True), Category.show_on_homepage.is_(True))
+                .order_by(Category.display_order)
+            )
+        ).scalars().all()
+    )
+    if not tiles:
+        return []
+
+    # Every active category with its own published count, in one query. The
+    # subtree sum is then a prefix match over the denormalised `path` arrays,
+    # which is cheap at this size and needs no recursive CTE.
+    counts = {
+        cid: count
+        for cid, count in (
+            await db.execute(
+                select(Product.category_id, func.count(Product.id))
+                .where(Product.status == "published")
+                .group_by(Product.category_id)
+            )
+        ).all()
+    }
+    everything = list(
+        (
+            await db.execute(select(Category).where(Category.is_active.is_(True)))
+        ).scalars().all()
+    )
+
+    def subtree_count(tile: Category) -> int:
+        prefix = list(tile.path or [tile.slug])
+        return sum(
+            counts.get(c.id, 0)
+            for c in everything
+            if (list(c.path or [c.slug]))[: len(prefix)] == prefix
         )
-    ).scalars().all()
+
     return [
         CategoryOut(
             id=c.id,
@@ -177,12 +254,20 @@ async def _homepage_categories(db: DbSession) -> list[CategoryOut]:
             display_order=c.display_order,
             is_active=c.is_active,
             show_on_homepage=c.show_on_homepage,
+            product_count=subtree_count(c),
         )
-        for c in rows
+        for c in tiles
     ]
 
 
 async def _pinned_brands(db: DbSession) -> list[BrandOut]:
+    """The featured strip, each brand carrying its published count.
+
+    `/brands` has counted since it was written; this did not, so the homepage
+    tile rendered a count line that was never reachable. A brand's count is a
+    plain per-`brand_id` count — brands have no hierarchy to roll up, which is
+    why this is four lines and the category version above is thirty.
+    """
     rows = (
         await db.execute(
             select(Brand)
@@ -190,6 +275,18 @@ async def _pinned_brands(db: DbSession) -> list[BrandOut]:
             .order_by(Brand.display_order)
         )
     ).scalars().all()
+
+    counts = {
+        bid: count
+        for bid, count in (
+            await db.execute(
+                select(Product.brand_id, func.count(Product.id))
+                .where(Product.status == "published")
+                .group_by(Product.brand_id)
+            )
+        ).all()
+    }
+
     return [
         BrandOut(
             id=b.id,
@@ -198,6 +295,7 @@ async def _pinned_brands(db: DbSession) -> list[BrandOut]:
             logo_url=b.logo_url,
             is_pinned=b.is_pinned,
             display_order=b.display_order,
+            product_count=counts.get(b.id, 0),
         )
         for b in rows
     ]
