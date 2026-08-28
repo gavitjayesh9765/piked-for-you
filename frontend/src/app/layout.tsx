@@ -75,40 +75,45 @@ export const metadata: Metadata = {
    * one per request.
    *
    * ---------------------------------------------------------------------------
-   * WHY THE ICON IS NOT THE FULL LOGO
+   * WHERE THE ARTWORK COMES FROM
    *
-   * `mark-dark.png` — the hand lifting a box, over two more on the floor — is
-   * the site header logo and stays that way. It is NOT what these files are cut
-   * from, and the difference is deliberate.
+   * The full mark — the hand lifting a box over two more on the floor — black
+   * on a white field, generated as a favicon pack and kept as supplied at 96px
+   * and above. The header logo (`mark-dark.png` / `mark-light.png`) is the same
+   * drawing on transparency, so icon and header agree.
    *
-   * Google renders a favicon at roughly 16px in a result row. Five separate
-   * shapes at 16px is not a small logo, it is a grey smudge; downscaling the
-   * full mark produced exactly that. So the icon is the CENTRE BOX ALONE,
-   * which is the one element that still reads as an object at that size.
+   * ⚠ KNOWN AND ACCEPTED: this is five separate shapes, and Google renders a
+   * favicon at roughly 16px in a result row. At that size the detail does not
+   * survive — it reads as a dark blob rather than a hand and three boxes. This
+   * was measured, not assumed, and shipping it anyway is a deliberate call to
+   * keep one mark across every surface rather than maintain a second, simpler
+   * one for small sizes.
    *
-   * Two marks, one brand. Do not "fix" this by pointing the icons back at
-   * mark-dark.png — that regresses to the smudge.
+   * Consequently 16/32/48 are NOT plain downscales. A straight LANCZOS resize
+   * of art this fine lands as pale grey mush, so those three are rendered at 4x
+   * and reduced with a 1.6 contrast correction, which keeps the ink black and
+   * the silhouette defined. Regenerating them without that step will visibly
+   * wash them out. 96 and up are the supplied files, untouched.
    *
    * ---------------------------------------------------------------------------
-   * WHY A SOLID TILE, AND WHY THAT KILLED THE LIGHT/DARK PAIR
+   * WHY THERE IS NO LIGHT/DARK PAIR
    *
    * These used to be a monochrome mark on transparency, offered as a pair with
    * `media: (prefers-color-scheme: ...)` so black ink did not vanish into a dark
-   * tab strip. Every one of those files is gone, because an OPAQUE tile — cream
-   * box on brand purple — solves the same problem without the machinery:
+   * tab strip. All four of those files are gone. The artwork is now OPAQUE —
+   * black on a white field — which solves the same problem without the
+   * machinery: a white tile is visible against any chrome, so one file serves
+   * light and dark.
    *
-   *   - It is visible on any background, so one file serves light and dark.
-   *   - It removes the trap that every `rel="icon"` carried a `media` filter,
-   *     leaving a crawler that evaluates media with nothing to match.
-   *   - Purple is load-bearing, not decoration. In a Google result list where
-   *     nearly every favicon is dark-on-white, a coloured tile is the thing
-   *     that gets the row noticed.
+   * That also removed a real trap. Every `rel="icon"` used to carry a `media`
+   * filter, which left a crawler that evaluates media but holds no colour
+   * preference with nothing to match at all.
    *
-   * ⚠ The touch icon and the manifest icons are FULL-BLEED squares with no
-   * corner rounding of their own. iOS and Android apply their own mask; if we
-   * rounded first, the corners would be cut twice and show gaps. The manifest
-   * pair additionally carries ~20% padding to stay inside Android's maskable
-   * safe zone. Do not crop that padding out to make the art look bigger.
+   * ⚠ The manifest declares `purpose: "any"` and deliberately NOT "maskable".
+   * The supplied art sits at ~11% padding, and Android's maskable safe zone is
+   * the centre 80% — declaring it maskable would let the launcher crop into the
+   * hand. If maskable is ever wanted, re-render the 192 and 512 with ~20%
+   * padding first; do not just add the keyword.
    *
    * Sizes are 16/32/48/96 because Google asks for multiples of 48 and rescales
    * to ~16; 48 and 96 exist so it never has to upscale a 32.
