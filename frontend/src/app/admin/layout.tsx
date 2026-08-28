@@ -164,7 +164,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <AdminProgress />
         </header>
 
-        <main className="flex-1 p-4 sm:p-6 xl:p-8">{children}</main>
+        {/* `id="main"` is not decoration: the root layout ships a "Skip to
+            content" link pointing at #main on EVERY page, and the back-to-top
+            dial hands focus to #main after it glides. Without the id both go
+            quiet here — the skip link lands nowhere and the keyboard stays
+            parked on a button in the bottom corner while the reader is looking
+            at the top of a long table. */}
+        <main id="main" className="flex-1 p-4 sm:p-6 xl:p-8">{children}</main>
       </div>
     </div>
   );

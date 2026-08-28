@@ -33,7 +33,7 @@ export default function Error({
   }, [error]);
 
   return (
-    <main className="shell-content flex min-h-[70vh] flex-col items-center justify-center py-20 text-center">
+    <main id="main" className="shell-content flex min-h-[70vh] flex-col items-center justify-center py-20 text-center">
       <p className="t-eyebrow mb-4">Something went wrong</p>
 
       <h1 className="t-headline max-w-xl text-ink">We couldn&rsquo;t load this page.</h1>

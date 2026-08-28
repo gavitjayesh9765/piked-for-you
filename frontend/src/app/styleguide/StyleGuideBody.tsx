@@ -32,7 +32,7 @@ export function StyleGuideBody() {
         </div>
       </header>
 
-      <main className="shell-wide space-y-20 py-16">
+      <main id="main" className="shell-wide space-y-20 py-16">
         <Block
           title="Colour grammar"
           note="Purple decides, orange gets, green signals value, obsidian carries authority. A control's colour tells you what kind of thing it is before you read it."
