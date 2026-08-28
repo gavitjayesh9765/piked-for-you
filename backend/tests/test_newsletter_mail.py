@@ -104,7 +104,20 @@ def test_confirm_url_percent_encodes_the_token(monkeypatch: pytest.MonkeyPatch) 
 # --- _send_confirmation ----------------------------------------------------
 
 
+# `delivers = True` on all three, and it is not boilerplate.
+#
+# `_send_confirmation` short-circuits on a transport that does not deliver
+# (NullTransport, i.e. MAIL_PROVIDER=disabled) and returns False without
+# rendering or sending anything. A double that omits the attribute raises
+# AttributeError; one that sets it False would make the two failure tests below
+# pass for entirely the wrong reason — returning False having never called
+# `send`, so the exception handling they exist to cover is never reached.
+# These doubles all stand in for transports that genuinely attempt delivery.
+
+
 class _Recorder:
+    delivers = True
+
     def __init__(self) -> None:
         self.sent: list[MailMessage] = []
 
@@ -113,11 +126,15 @@ class _Recorder:
 
 
 class _Broken:
+    delivers = True
+
     async def send(self, message: MailMessage) -> None:
         raise MailDeliveryError("nope")
 
 
 class _Exploding:
+    delivers = True
+
     async def send(self, message: MailMessage) -> None:
         raise RuntimeError("something nobody predicted")
 
