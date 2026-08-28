@@ -158,21 +158,39 @@
   /* The same shape as `.grid-products`, for the non-product tile grids —
      brands, categories, chapter blocks. Callers set `--tile-min` (and
      `--tile-gap` when the section wants its own rhythm) instead of hand-rolling
-     an inline `grid-template-columns`, so the two-up floor is stated once
-     rather than re-derived per page and quietly lost on the next one.
+     an inline `grid-template-columns`, so the column rule is stated once rather
+     than re-derived per page and quietly lost on the next one.
 
-     Opt a grid OUT of the floor — for blocks that genuinely need the full
-     width on a phone — by setting `--tile-min` to a value and leaving the cap
-     to do nothing, or by not using this class. */
+     TWO RULES, ONE PER SIDE OF `sm`.
+
+     Below `sm` the count is FIXED, not fitted. `auto-fill` on a phone's 358px
+     content box resolves to two tracks for every `--tile-min` any caller here
+     passes — 150px, 160px and 240px all land on two — so the fluid formula was
+     doing no fitting at all down there, just producing two large tiles and a
+     lot of scrolling. `--tile-cols` says what a phone gets instead, and it
+     defaults to 2 so every existing caller keeps exactly the layout the old
+     formula gave it. Sections whose tiles are a word and a glyph — the homepage
+     category and brand strips — raise it to 3.
+
+     From `sm` the width is real and a fixed count would waste it, so the fluid
+     fit takes over. The `min()` cap keeps a two-up floor under it: without it,
+     a tall `--tile-min` on a narrow tablet collapses to a single column. */
   .grid-tiles {
     --tile-min: 240px;
     --tile-gap: var(--grid-gap);
+    --tile-cols: 2;
     display: grid;
     gap: var(--tile-gap);
-    grid-template-columns: repeat(
-      auto-fill,
-      minmax(min(var(--tile-min), calc((100% - var(--tile-gap)) / 2)), 1fr)
-    );
+    grid-template-columns: repeat(var(--tile-cols), minmax(0, 1fr));
+  }
+
+  @media (min-width: 640px) {
+    .grid-tiles {
+      grid-template-columns: repeat(
+        auto-fill,
+        minmax(min(var(--tile-min), calc((100% - var(--tile-gap)) / 2)), 1fr)
+      );
+    }
   }
 
   /* A rail is a grid that scrolls horizontally on small screens instead of

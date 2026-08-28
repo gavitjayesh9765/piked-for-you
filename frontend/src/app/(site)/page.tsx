@@ -296,20 +296,30 @@ function SectionRenderer({ section }: { section: HomepageSection }) {
             href="/b"
             className="reveal rule-accent"
           />
-          {/* 160px + a 12px gap is 332px, four more than a 360px phone's
-              content box — which is how a brand grid that looks fine on a
-              laptop ends up one tile per row on the device most people use. */}
-          <div className="grid-tiles stagger reveal-group mt-8" style={{ "--tile-min": "160px" } as React.CSSProperties}>
+          {/* Three per row on a phone, like the category strip above it — ten
+              pinned brands at two-up is five rows of very large tiles holding
+              one word each, and the two sections reading as one system matters
+              more here than either does alone. A brand tile is a wordmark, so
+              the display face steps down rather than the tile growing: "Cosmic
+              Byte" and "Sennheiser" both have to sit inside a 111px track. */}
+          <div
+            className="grid-tiles stagger reveal-group mt-8"
+            style={{ "--tile-min": "160px", "--tile-cols": "3" } as React.CSSProperties}
+          >
             {(section.brands ?? [])
               .filter((b) => b.isPinned)
               .map((b) => (
                 <Link
                   key={b.id}
                   href={`/b/${b.slug}`}
-                  className="panel panel-raise tile-sweep flex flex-col items-center justify-center gap-1.5
-                             px-4 py-8 hover:border-brand-line"
+                  className="panel panel-raise tile-sweep group flex flex-col items-center justify-center
+                             gap-1.5 px-2 py-6 hover:border-brand-line sm:px-4 sm:py-8"
                 >
-                  <span className="font-display text-headline-sm font-bold tracking-[-0.02em] text-ink">
+                  <span
+                    className="text-balance text-center font-display text-body-md font-bold leading-tight
+                               tracking-[-0.02em] text-ink transition-colors duration-fast
+                               group-hover:text-brand sm:text-headline-sm"
+                  >
                     {b.name}
                   </span>
                   {b.productCount != null && (
