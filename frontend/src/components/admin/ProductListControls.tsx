@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { PRICE_STATES, PRODUCT_SORTS } from "@/lib/product-sort";
 import { cn } from "@/lib/cn";
+import { SearchSelect } from "@/components/ui/SearchSelect";
 
 /**
  * Sort and filter the admin catalogue.
@@ -63,6 +64,7 @@ export function ProductListControls({
         label="Category"
         value={current.categoryId ?? ""}
         onChange={(v) => set("categoryId", v)}
+        search
         options={[
           { value: "", label: "All categories" },
           ...categories.map((c) => ({ value: c.id, label: c.name })),
@@ -73,6 +75,7 @@ export function ProductListControls({
         label="Brand"
         value={current.brandId ?? ""}
         onChange={(v) => set("brandId", v)}
+        search
         options={[
           { value: "", label: "All brands" },
           ...brands.map((b) => ({ value: b.id, label: b.name })),
@@ -119,17 +122,48 @@ export function ProductListControls({
   );
 }
 
+/**
+ * One filter control.
+ *
+ * `search` opts a filter into the type-to-filter combobox instead of a native
+ * `<select>`. It is set on the two whose length is a fact about the catalogue
+ * — 98 categories, 118 brands, both growing — and left off sort, status and
+ * price state, which are four-item enums where a search box would only stand
+ * between the editor and a list they can already read in one glance.
+ */
 function Select({
   label,
   value,
   onChange,
   options,
+  search,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   options: readonly { value: string; label: string }[];
+  search?: boolean;
 }) {
+  const chrome = cn(
+    "h-9 cursor-pointer rounded-sm border border-line bg-surface-1 px-2.5 pr-7",
+    "text-body-sm text-ink outline-none transition-colors duration-fast",
+    "focus:border-brand-vivid",
+    value ? "border-line-strong text-ink" : "text-ink-muted",
+  );
+
+  if (search) {
+    return (
+      <SearchSelect
+        value={value}
+        onChange={onChange}
+        options={options}
+        ariaLabel={label}
+        placeholder={options[0]?.label ?? label}
+        className={cn(chrome, "w-44")}
+      />
+    );
+  }
+
   return (
     <label className="inline-flex items-center gap-1.5">
       <span className="sr-only">{label}</span>
@@ -137,12 +171,7 @@ function Select({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         aria-label={label}
-        className={cn(
-          "h-9 cursor-pointer rounded-sm border border-line bg-surface-1 px-2.5 pr-7",
-          "text-body-sm text-ink outline-none transition-colors duration-fast",
-          "focus:border-brand-vivid",
-          value ? "border-line-strong text-ink" : "text-ink-muted",
-        )}
+        className={chrome}
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

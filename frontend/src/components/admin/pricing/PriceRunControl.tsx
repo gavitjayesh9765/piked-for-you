@@ -15,6 +15,7 @@ import {
   type ScopeFilters,
 } from "@/lib/pricing";
 import { RunStatusChip, ScrapeStatusChip } from "@/components/admin/pricing/StatusChip";
+import { SearchSelect } from "@/components/ui/SearchSelect";
 
 /**
  * The price refresh button, and everything that makes pressing it a decision
@@ -323,6 +324,8 @@ export function PriceRunControl({ filters, activeRun, lastRun, defaultStaleHours
               <Select
                 value={scope.categoryId ?? ""}
                 onChange={(v) => patch({ categoryId: v || null })}
+                search
+                ariaLabel="Category"
                 options={[
                   { value: "", label: "Every category" },
                   ...filters.categories.map((c) => ({ value: c.id, label: c.name })),
@@ -334,6 +337,8 @@ export function PriceRunControl({ filters, activeRun, lastRun, defaultStaleHours
               <Select
                 value={scope.brandId ?? ""}
                 onChange={(v) => patch({ brandId: v || null })}
+                search
+                ariaLabel="Brand"
                 options={[
                   { value: "", label: "Every brand" },
                   ...filters.brands.map((b) => ({ value: b.id, label: b.name })),
@@ -646,19 +651,45 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
+/**
+ * `search` swaps the native control for the type-to-filter combobox.
+ *
+ * Set on the two scope pickers backed by catalogue tables and not on the
+ * three-item status enum below them: the same rule the rest of the admin
+ * follows — a list whose length is a data fact gets a search box, a list whose
+ * length is a code fact does not.
+ */
 function Select({
   value,
   onChange,
   options,
+  search,
+  ariaLabel,
 }: {
   value: string;
   onChange: (value: string) => void;
   options: { value: string; label: string }[];
+  search?: boolean;
+  ariaLabel?: string;
 }) {
+  if (search) {
+    return (
+      <SearchSelect
+        value={value}
+        onChange={onChange}
+        options={options}
+        ariaLabel={ariaLabel}
+        placeholder={options[0]?.label}
+        className={inputClass}
+      />
+    );
+  }
+
   return (
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      aria-label={ariaLabel}
       className={cn(inputClass, "cursor-pointer")}
     >
       {options.map((o) => (

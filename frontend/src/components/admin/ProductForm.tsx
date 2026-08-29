@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
 import { saveError } from "@/lib/admin-errors";
 import type { Badge, Brand, Category, Product, SpecTemplateGroup } from "@/lib/types";
+import { SearchSelect } from "@/components/ui/SearchSelect";
 import {
   SpecEditor,
   specPayload,
@@ -130,9 +131,9 @@ export function ProductForm({
    * product filed one level too high is invisible afterwards.
    */
   const brandOptions = useMemo(() => {
-    const list = brands.map((b) => ({ id: b.id, label: b.name }));
-    if (product && !list.some((o) => o.id === product.brand.id)) {
-      list.push({ id: product.brand.id, label: product.brand.name + " — deactivated" });
+    const list = brands.map((b) => ({ value: b.id, label: b.name }));
+    if (product && !list.some((o) => o.value === product.brand.id)) {
+      list.push({ value: product.brand.id, label: product.brand.name + " — deactivated" });
     }
     return list;
   }, [brands, product]);
@@ -152,11 +153,11 @@ export function ProductForm({
     };
 
     const list = categories
-      .map((c) => ({ id: c.id, label: pathLabel(c) }))
+      .map((c) => ({ value: c.id, label: pathLabel(c) }))
       .sort((a, b) => a.label.localeCompare(b.label));
 
-    if (product && !list.some((o) => o.id === product.category.id)) {
-      list.push({ id: product.category.id, label: product.category.name + " — deactivated" });
+    if (product && !list.some((o) => o.value === product.category.id)) {
+      list.push({ value: product.category.id, label: product.category.name + " — deactivated" });
     }
     return list;
   }, [categories, product]);
@@ -318,38 +319,34 @@ export function ProductForm({
             />
           </Field>
 
-          <Field label="Brand" required>
-            <select
+          <Field label="Brand" required hint="Type to filter — matches anywhere in the name.">
+            <SearchSelect
               required
               value={f.brandId}
-              onChange={(e) => set("brandId", e.target.value)}
+              onChange={(v) => set("brandId", v)}
+              options={brandOptions}
+              ariaLabel="Brand"
+              placeholder="Search brands…"
+              emptyLabel="No brand matches that. Add it under Brands first."
               className={input}
-            >
-              {brandOptions.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.label}
-                </option>
-              ))}
-            </select>
+            />
           </Field>
 
           <Field
             label="Category"
             required
-            hint="Shown as a full path. File against the most specific one - the specification fields in 05 and the scoring criteria on the next screen both come from it."
+            hint="Shown as a full path — type any part of it, in any order. File against the most specific one: the specification fields in 05 and the scoring criteria on the next screen both come from it."
           >
-            <select
+            <SearchSelect
               required
               value={f.categoryId}
-              onChange={(e) => set("categoryId", e.target.value)}
+              onChange={(v) => set("categoryId", v)}
+              options={categoryOptions}
+              ariaLabel="Category"
+              placeholder="Search categories…"
+              emptyLabel="No category matches that."
               className={input}
-            >
-              {categoryOptions.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
+            />
           </Field>
 
           <Field

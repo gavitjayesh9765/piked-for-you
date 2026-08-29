@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
+import { SearchSelect } from "@/components/ui/SearchSelect";
 import { saveError } from "@/lib/admin-errors";
 import { CategoryIcon } from "@/components/ui/CategoryIcon";
 import type { ScoreCriterionDef, SpecTemplateGroup } from "@/lib/types";
@@ -342,6 +343,38 @@ function CategoryEditor({
     return out;
   }, [category, parents]);
 
+  /**
+   * Every category this one may be filed under, as a full name path.
+   *
+   * The select used to indent each row by its depth and show the bare name,
+   * which reads correctly only while the list is in tree order. This one can
+   * be filtered, and a filtered list is not a tree: two rows called
+   * "Accessories" three indents deep say nothing about which branch they are
+   * on. The full path says it, and it is also what the editor is typing
+   * against — the search matches any segment of it.
+   */
+  const parentOptions = useMemo(() => {
+    const byId = new Map(parents.map((p) => [p.id, p]));
+    const pathLabel = (c: AdminCategory): string => {
+      const names: string[] = [];
+      const seen = new Set<string>();
+      let node: AdminCategory | undefined = c;
+      while (node && !seen.has(node.id)) {
+        seen.add(node.id);
+        names.unshift(node.name);
+        node = node.parentId ? byId.get(node.parentId) : undefined;
+      }
+      return names.join(" › ");
+    };
+    return [
+      { value: "", label: "— Top level —" },
+      ...parents
+        .filter((p) => !descendantIds.has(p.id))
+        .map((p) => ({ value: p.id, label: pathLabel(p) }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
+    ];
+  }, [parents, descendantIds]);
+
   return (
     <form
       onSubmit={async (e) => {
@@ -387,23 +420,16 @@ function CategoryEditor({
             className={cn(input, "font-mono")}
           />
         </Field>
-        <Field label="Parent">
-          <select
+        <Field label="Parent" hint="Type to filter — matches anywhere in the path.">
+          <SearchSelect
             value={f.parentId}
-            onChange={(e) => setF({ ...f, parentId: e.target.value })}
+            onChange={(v) => setF({ ...f, parentId: v })}
+            options={parentOptions}
+            ariaLabel="Parent"
+            placeholder="Search categories…"
+            emptyLabel="No category matches that."
             className={input}
-          >
-            <option value="">— Top level —</option>
-            {parents
-              .filter((p) => !descendantIds.has(p.id))
-              .sort((a, b) => a.path.join("/").localeCompare(b.path.join("/")))
-              .map((p) => (
-                <option key={p.id} value={p.id}>
-                  {"— ".repeat(p.depth)}
-                  {p.name}
-                </option>
-              ))}
-          </select>
+          />
         </Field>
         <Field label="Icon">
           <select

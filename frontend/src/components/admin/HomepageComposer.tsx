@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
+import { SearchSelect } from "@/components/ui/SearchSelect";
 
 export interface Section {
   id: string;
@@ -68,6 +69,14 @@ export function HomepageComposer({
     }
     router.refresh();
   }
+
+  const categoryOptions = useMemo(
+    () => [
+      { value: "", label: "— Choose —" },
+      ...categorySlugs.map((c) => ({ value: c.slug, label: c.name })),
+    ],
+    [categorySlugs],
+  );
 
   async function patch(id: string, body: Record<string, unknown>) {
     setError(null);
@@ -255,22 +264,13 @@ export function HomepageComposer({
               {s.kind === "category_rail" && (
                 <label className="block">
                   <span className="t-eyebrow">Category</span>
-                  <select
-                    defaultValue={String(s.config?.categorySlug ?? "")}
-                    onChange={(e) =>
-                      void patch(s.id, {
-                        config: { ...s.config, categorySlug: e.target.value },
-                      })
+                  <RailCategory
+                    value={String(s.config?.categorySlug ?? "")}
+                    options={categoryOptions}
+                    onChange={(v) =>
+                      void patch(s.id, { config: { ...s.config, categorySlug: v } })
                     }
-                    className={inputCls}
-                  >
-                    <option value="">— Choose —</option>
-                    {categorySlugs.map((c) => (
-                      <option key={c.slug} value={c.slug}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </label>
               )}
 
@@ -296,6 +296,44 @@ export function HomepageComposer({
         ))}
       </ul>
     </div>
+  );
+}
+
+/**
+ * The rail's category, held locally while the save is in flight.
+ *
+ * `patch` writes to the API and then re-reads the whole section list, so the
+ * prop only catches up a round trip later. The native select this replaced
+ * dodged that by being uncontrolled; a combobox has to be controlled, so the
+ * chosen value is held here and handed back to the server's answer once it
+ * arrives. Without this the field visibly snaps back to the old category for
+ * as long as the request takes.
+ */
+function RailCategory({
+  value,
+  options,
+  onChange,
+}: {
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+}) {
+  const [local, setLocal] = useState(value);
+  useEffect(() => setLocal(value), [value]);
+
+  return (
+    <SearchSelect
+      value={local}
+      onChange={(v) => {
+        setLocal(v);
+        onChange(v);
+      }}
+      options={options}
+      ariaLabel="Category"
+      placeholder="Search categories…"
+      emptyLabel="No category matches that."
+      className={inputCls}
+    />
   );
 }
 
