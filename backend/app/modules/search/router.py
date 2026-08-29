@@ -21,6 +21,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.core.deps import DbSession
+from app.core.text import like_contains
 from app.models import Brand, Category, Product, ProductBadge
 from app.modules.products.service import sign_for, to_summary
 from app.schemas.product import ProductSummaryOut
@@ -36,21 +37,10 @@ class SearchResults(BaseModel):
     total: int
 
 
-def _like_pattern(raw: str) -> str:
-    """Wrap a search term as a contains-pattern, escaping LIKE wildcards.
-
-    The parameter is bound, so this was never an injection risk; escaping `%`
-    and `_` stops a user's literal underscore from acting as a wildcard and
-    returning nonsense.
-
-    Written as statements rather than inline in an f-string because a backslash
-    inside an f-string expression is a **SyntaxError before Python 3.12**, and
-    `pyproject.toml` declares `requires-python = ">=3.11"`. It only ran because
-    `render.yaml` happens to pin 3.13 — so the declared floor was not actually
-    importable, and the failure mode is the whole module failing to load.
-    """
-    escaped = raw.strip().replace("%", r"\%").replace("_", r"\_")
-    return f"%{escaped}%"
+# `_like_pattern` used to live here. It now lives in app/core/text.py, because
+# the same pattern was being built four other places — two of which did not
+# escape anything at all. See that module for what escaping buys and why the
+# backslash goes first.
 
 
 @router.get("", response_model=SearchResults)
@@ -68,7 +58,7 @@ async def search(
     if not needle:
         return SearchResults(products=[], categories=[], brands=[], total=0)
 
-    pattern = _like_pattern(needle)
+    pattern = like_contains(needle)
 
     product_stmt = (
         select(Product)
@@ -76,9 +66,9 @@ async def search(
         .where(
             Product.status == "published",
             or_(
-                Product.title.ilike(pattern),
-                Product.tagline.ilike(pattern),
-                Brand.name.ilike(pattern),
+                Product.title.ilike(pattern, escape="\\"),
+                Product.tagline.ilike(pattern, escape="\\"),
+                Brand.name.ilike(pattern, escape="\\"),
             ),
         )
         .options(
@@ -99,9 +89,9 @@ async def search(
             .where(
                 Product.status == "published",
                 or_(
-                    Product.title.ilike(pattern),
-                    Product.tagline.ilike(pattern),
-                    Brand.name.ilike(pattern),
+                    Product.title.ilike(pattern, escape="\\"),
+                    Product.tagline.ilike(pattern, escape="\\"),
+                    Brand.name.ilike(pattern, escape="\\"),
                 ),
             )
         )
@@ -115,7 +105,7 @@ async def search(
         (
             await db.execute(
                 select(Category)
-                .where(Category.is_active.is_(True), Category.name.ilike(pattern))
+                .where(Category.is_active.is_(True), Category.name.ilike(pattern, escape="\\"))
                 .order_by(Category.display_order)
                 .limit(8)
             )
@@ -126,7 +116,7 @@ async def search(
         (
             await db.execute(
                 select(Brand)
-                .where(Brand.is_active.is_(True), Brand.name.ilike(pattern))
+                .where(Brand.is_active.is_(True), Brand.name.ilike(pattern, escape="\\"))
                 .order_by(Brand.display_order)
                 .limit(8)
             )
@@ -171,12 +161,12 @@ async def suggest(
     db: DbSession, q: Annotated[str, Query(min_length=1, max_length=100)]
 ) -> list[str]:
     """Type-ahead over product titles and brand names."""
-    pattern = _like_pattern(q)
+    pattern = like_contains(q)
 
     titles = (
         await db.execute(
             select(Product.title)
-            .where(Product.status == "published", Product.title.ilike(pattern))
+            .where(Product.status == "published", Product.title.ilike(pattern, escape="\\"))
             .limit(6)
         )
     ).scalars().all()
@@ -184,7 +174,7 @@ async def suggest(
     brands = (
         await db.execute(
             select(Brand.name)
-            .where(Brand.is_active.is_(True), Brand.name.ilike(pattern))
+            .where(Brand.is_active.is_(True), Brand.name.ilike(pattern, escape="\\"))
             .limit(4)
         )
     ).scalars().all()

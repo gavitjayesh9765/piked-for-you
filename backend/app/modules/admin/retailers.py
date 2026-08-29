@@ -55,10 +55,18 @@ def _validate_url(raw: str) -> str:
 
     Blocks `javascript:`, `data:`, and scheme-relative values — any of which
     would be rendered into an anchor and clicked by real visitors.
+
+    The rule itself now lives in `app/core/links.py`, shared with the brand
+    columns, which had no check at all. This wrapper stays for its message: a
+    Pydantic validation error would name the field, and the retailer form
+    submits a whole list of links at once, so "Retailer URL must be…" is the
+    more useful sentence for the editor who typed one wrong.
     """
-    url = raw.strip()
-    parsed = urlparse(url)
-    if parsed.scheme not in ("http", "https") or not parsed.netloc:
+    try:
+        url = validate_link_url(raw, max_length=1500)
+    except ValueError:
+        url = None
+    if url is None:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_ENTITY,
             "Retailer URL must be an absolute http(s) address.",

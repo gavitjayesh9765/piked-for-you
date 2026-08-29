@@ -27,6 +27,7 @@ from sqlalchemy.orm import selectinload
 from app.core import audit
 from app.core.deps import CurrentAdmin, DbSession, client_ip
 from app.core.storage import remove, sign_many
+from app.core.text import like_contains
 from app.models import (
     HomepageSection,
     Product,
@@ -180,7 +181,7 @@ async def pick_candidates(
         .limit(50)
     )
     if q and q.strip():
-        stmt = stmt.where(Product.title.ilike(f"%{q.strip()}%"))
+        stmt = stmt.where(Product.title.ilike(like_contains(q), escape="\\"))
 
     rows = list((await db.execute(stmt)).unique().scalars().all())
 
@@ -682,7 +683,7 @@ async def media_library(
         keys_stmt = keys_stmt.where(ProductMedia.kind == kind)
     if q and q.strip():
         keys_stmt = keys_stmt.join(Product, Product.id == ProductMedia.product_id).where(
-            Product.title.ilike(f"%{q.strip()}%")
+            Product.title.ilike(like_contains(q), escape="\\")
         )
     keys_stmt = keys_stmt.group_by(key)
 

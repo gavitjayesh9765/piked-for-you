@@ -24,6 +24,7 @@ from sqlalchemy.orm import selectinload
 
 from app.core import audit
 from app.core.deps import CurrentAdmin, DbSession, client_ip
+from app.core.text import like_contains
 from app.models import (
     ActivityLog,
     ContactMessage,
@@ -505,8 +506,7 @@ async def list_messages(
 
     term = (q or "").strip()
     if term:
-        escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        like = f"%{escaped}%"
+        like = like_contains(term)
         base = base.where(
             or_(
                 ContactMessage.reference.ilike(like, escape="\\"),
@@ -720,8 +720,9 @@ async def list_subscribers(
 
     term = (q or "").strip()
     if term:
-        escaped = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-        base = base.where(NewsletterSubscriber.email.ilike(f"%{escaped}%", escape="\\"))
+        base = base.where(
+            NewsletterSubscriber.email.ilike(like_contains(term), escape="\\")
+        )
 
     total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar_one()
     rows = (
@@ -860,10 +861,16 @@ async def list_users(
     page_size = 25
 
     base = select(Profile)
-    if q:
-        pattern = f"%{q.strip()}%"
+    if q and q.strip():
+        # Escaped like every other search in this file. Unescaped, a `%` typed
+        # into the box matched every profile — and a term made of nothing but
+        # wildcards is a table scan an admin can trigger by accident.
+        pattern = like_contains(q)
         base = base.where(
-            or_(Profile.display_name.ilike(pattern), Profile.email.ilike(pattern))
+            or_(
+                Profile.display_name.ilike(pattern, escape="\\"),
+                Profile.email.ilike(pattern, escape="\\"),
+            )
         )
 
     total = (await db.execute(select(func.count()).select_from(base.subquery()))).scalar_one()

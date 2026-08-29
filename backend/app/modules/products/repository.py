@@ -18,6 +18,7 @@ from sqlalchemy import Select, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.text import like_contains
 from app.models import (
     Badge,
     Brand,
@@ -298,7 +299,7 @@ class ProductRepository:
         if status:
             stmt = stmt.where(Product.status == status)
         if query:
-            stmt = stmt.where(Product.title.ilike(f"%{query}%"))
+            stmt = stmt.where(Product.title.ilike(like_contains(query), escape="\\"))
         if category_id:
             stmt = stmt.where(Product.category_id == category_id)
         if brand_id:

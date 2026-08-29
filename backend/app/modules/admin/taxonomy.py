@@ -17,12 +17,13 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Body, HTTPException, Request, status
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from pydantic.alias_generators import to_camel
 from sqlalchemy import delete, func, select, text
 
 from app.core import audit
 from app.core.deps import CurrentAdmin, DbSession, client_ip
+from app.core.links import validate_link_url
 from app.core.video_links import InvalidVideoLink
 from app.core.video_links import parse as parse_video
 from app.models import Badge, Brand, Category, Product, ProductMedia
@@ -360,6 +361,23 @@ async def delete_category(
 # ====================================================================== #
 
 
+def _brand_link(v: str | None) -> str | None:
+    """http(s) or nothing, for both brand URL columns.
+
+    `website` is rendered as an anchor on every brand page and `logo_url` as an
+    image source, so both end up in someone else's browser. They were the two
+    URL columns in this codebase with no scheme check — the retailer buy link
+    (`admin/retailers.py`) and the review avatar (`auth/router.py`, and the
+    signup trigger in migration 20260823000015) have had one for a while, and
+    for exactly this reason.
+
+    An admin account is a compromise target, so "only an admin can set this"
+    is a mitigation and not an answer — the same reasoning the media upload
+    chain already applies when it re-encodes an admin's images.
+    """
+    return validate_link_url(v)
+
+
 class BrandIn(Strict):
     name: str = Field(min_length=1, max_length=120)
     slug: str | None = None
@@ -369,6 +387,8 @@ class BrandIn(Strict):
     is_pinned: bool = False
     is_active: bool = True
     display_order: int = 0
+
+    _check_urls = field_validator("website", "logo_url")(_brand_link)
 
 
 class BrandPatch(Strict):
@@ -380,6 +400,8 @@ class BrandPatch(Strict):
     is_pinned: bool | None = None
     is_active: bool | None = None
     display_order: int | None = None
+
+    _check_urls = field_validator("website", "logo_url")(_brand_link)
 
 
 def _brand_row(b: Brand, n: int = 0) -> dict:
