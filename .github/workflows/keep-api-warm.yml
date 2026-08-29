@@ -1,0 +1,105 @@
+# Keep the research API awake during the hours anyone actually edits.
+#
+# ---------------------------------------------------------------------------
+# WHAT THIS IS FOR
+#
+# The API runs on Render's free tier, which spins an instance down after ~15
+# minutes with no traffic and takes about a minute to answer the first request
+# after that. That cold start is the thing behind "We couldn't load this page"
+# on the admin screens: an editor saves a product, the write succeeds, the
+# refresh that follows has to re-read /categories and /brands from the network
+# (the write invalidated their cache), and the wake-up outlives the serverless
+# function budget.
+#
+# The app no longer breaks when that happens — the pickers lock and say why,
+# and the save still lands. This workflow is the other half: keep the instance
+# awake so it does not happen in the first place.
+#
+# ---------------------------------------------------------------------------
+# WHY A WINDOW RATHER THAN AROUND THE CLOCK
+#
+# Render's free tier bills instance-hours per month across the account (750 at
+# the time of writing). Pinging 24/7 keeps one service up for ~730 of them,
+# which fits — and leaves almost nothing spare. Add a second free service, or
+# a month with redeploys, and the allowance runs out; the API then goes down
+# completely, which is far worse than a cold start.
+#
+# So: 01:00–18:59 UTC, which is 06:30–00:29 in India — the whole waking day
+# for whoever is editing. That is ~18h/day, ~550 instance-hours/month, with
+# real headroom. Outside the window the first visitor pays the cold start, the
+# same as before.
+#
+# Widen it by editing the hour range below; `*/5 * * * *` is around the clock.
+#
+# ---------------------------------------------------------------------------
+# THINGS TO KNOW
+#
+#   * Every 5 minutes, not 10. GitHub's scheduled runners are best-effort and
+#     routinely fire several minutes late; at a 10-minute cadence a normal
+#     slip crosses Render's 15-minute idle timeout and the instance sleeps
+#     anyway. 5 leaves room for the slip. Actions minutes are free on a public
+#     repository, so the extra runs cost nothing.
+#   * GitHub disables scheduled workflows in a repository with no activity for
+#     60 days. If this ever stops running on its own, that is why — push
+#     anything, or re-enable it from the Actions tab.
+#   * This keeps the service warm; it is not uptime monitoring. It fails only
+#     when the API cannot be reached at all, which is worth an email.
+
+name: Keep API warm
+
+on:
+  schedule:
+    # Every 5 minutes, 01:00–18:59 UTC. Cron here is always UTC.
+    - cron: "*/5 1-18 * * *"
+  # So it can be run by hand after a deploy, or to test a URL change.
+  workflow_dispatch:
+
+# A late run must never queue up behind the previous one.
+concurrency:
+  group: keep-api-warm
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    # A cold start is ~60s; three of them plus backoff must still fit.
+    timeout-minutes: 8
+    steps:
+      - name: Ping /health
+        env:
+          # Overridable without touching this file: set a repository variable
+          # named API_HEALTH_URL under Settings → Secrets and variables →
+          # Actions → Variables. Not a secret — this origin is already in the
+          # public client bundle.
+          HEALTH_URL: ${{ vars.API_HEALTH_URL || 'https://pickdforyou-api-rdq9.onrender.com/health' }}
+        run: |
+          set -uo pipefail
+
+          for attempt in 1 2 3; do
+            # One request per attempt, reporting both facts. Asking curl twice
+            # would double the traffic and let the status and the timing come
+            # from different requests.
+            #
+            # --max-time 120 clears a full cold start rather than cutting one
+            # off; a timeout here would be reported as an outage and emailed.
+            result=$(curl -sS -o /dev/null -w '%{http_code} %{time_total}' \
+                       --max-time 120 "$HEALTH_URL" || echo "000 0")
+            code=${result% *}
+            secs=${result#* }
+
+            if [ "$code" = "200" ]; then
+              echo "✔ awake — HTTP $code in ${secs}s (attempt $attempt)"
+              exit 0
+            fi
+
+            echo "✘ attempt $attempt: HTTP $code after ${secs}s"
+            if [ "$attempt" -lt 3 ]; then
+              sleep 15
+            fi
+          done
+
+          echo "::error::$HEALTH_URL did not return 200 after 3 attempts."
+          exit 1
