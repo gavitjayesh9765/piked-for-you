@@ -91,6 +91,28 @@ export function SiteHeader({ categories }: { categories: Category[] }) {
             >
               Top Picks
             </Link>
+            {/*
+              Guides, sharing Top Picks' `lg:block` and therefore its reasoning.
+
+              Below `lg` this bar is already at its limit — wordmark, search
+              field, theme, account, sheet trigger — and a second text link is
+              the thing that breaks it rather than the thing that survives. Both
+              links drop together at the same breakpoint and both reappear in
+              <MobileNav>, so there is never a width at which one is reachable
+              from the bar and the other silently is not.
+
+              Placed AFTER Top Picks deliberately. Top Picks is the commercial
+              destination and should stay the first thing the eye lands on
+              moving right; a guide is what you read when you are not ready to
+              be sold to yet.
+            */}
+            <Link
+              href="/guides"
+              className="hidden rounded-full px-4 py-2 font-label text-label uppercase tracking-[0.08em]
+                         text-ink-muted transition-colors duration-fast hover:text-brand lg:block"
+            >
+              Guides
+            </Link>
             <Link
               href="/search"
               aria-label="Search"

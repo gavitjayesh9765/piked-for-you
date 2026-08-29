@@ -223,6 +223,12 @@ export function MobileNav({
           <nav aria-label="Primary" className="mt-7">
             <ul className="space-y-0.5">
               <SheetLink href="/top-picks">Top Picks</SheetLink>
+              {/* Directly under Top Picks, matching the order of the two links
+                  in the desktop bar. The sheet is where both of them live below
+                  `lg`, so keeping the sequence identical means a reader who
+                  learned the nav on a laptop finds it in the same order on a
+                  phone. */}
+              <SheetLink href="/guides">Guides</SheetLink>
               <SheetLink href="/compare">Compare</SheetLink>
               <SheetLink href="/how-we-research">How we research</SheetLink>
             </ul>
