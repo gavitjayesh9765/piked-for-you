@@ -38,6 +38,7 @@ const columns = [
     links: [
       { label: "All categories", href: "/c" },
       { label: "Top Picks", href: "/top-picks" },
+      { label: "Buying guides", href: "/guides" },
       { label: "Brands", href: "/b" },
       { label: "Compare products", href: "/compare" },
     ],

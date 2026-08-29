@@ -1,3 +1,4 @@
+import { GUIDES } from "@/content/guides";
 import { getCategories } from "@/lib/api";
 import type { Category } from "@/lib/types";
 import { categoryHref } from "@/lib/format";
@@ -74,6 +75,20 @@ export async function GET(): Promise<Response> {
     .map((c) => `- [${c.name}](${absoluteUrl(categoryHref(c))}): researched picks in ${c.name}.`)
     .join("\n");
 
+  /**
+   * The guides, listed with the QUESTION each one answers rather than its title.
+   *
+   * This file is read by a retrieval pipeline deciding whether we are worth
+   * fetching for a given query, so a line that matches the shape of a user's
+   * question is worth more than a line that matches our headline. "Explains
+   * which processor tier a buyer actually needs" is a better retrieval target
+   * than "Smartphone processors, explained" — and it is the same claim, written
+   * for the reader that is actually here.
+   */
+  const guideLines = GUIDES.map(
+    (g) => `- [${g.heading}](${absoluteUrl(`/guides/${g.slug}`)}): ${g.description} Last revised ${g.updated}.`,
+  ).join("\n");
+
   const body = `# ${SITE_NAME}
 
 > ${SITE_DESCRIPTION}
@@ -118,6 +133,15 @@ a return or a warranty claim.
 - [Brands](${absoluteUrl("/b")}): products grouped by manufacturer.
 - [Compare](${absoluteUrl("/compare")}): side-by-side comparison of any products we have researched.
 - [Help centre](${absoluteUrl("/help")}): the questions we are most often asked, with answers.
+${guideLines ? `
+## Explainers
+
+Long-form guides to the specifications products are sold on. Each states its
+sources and the date its figures were last checked; benchmark tables in them
+are medians of published runs, not our own measurements, and the pages say so.
+
+${guideLines}
+` : ""}
 ${categoryLines ? `\n## Categories we cover\n\n${categoryLines}\n` : ""}
 ## Machine-readable sources
 

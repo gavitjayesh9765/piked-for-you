@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 
+import { GUIDES } from "@/content/guides";
 import { getBrands, getCategories, listProducts } from "@/lib/api";
 import type { Brand, Category, ProductSummary } from "@/lib/types";
 import { brandHref, categoryHref, productHref } from "@/lib/format";
@@ -80,6 +81,9 @@ const STATIC_ROUTES: Array<{
   { path: "/c", changeFrequency: "weekly", priority: 0.8 },
   { path: "/b", changeFrequency: "weekly", priority: 0.7 },
   { path: "/compare", changeFrequency: "weekly", priority: 0.6 },
+  // The guides index. The articles themselves are appended below with their
+  // own revision dates rather than being listed here with a shared one.
+  { path: "/guides", changeFrequency: "monthly", priority: 0.7 },
   // /search is deliberately absent — see the header note and app/robots.ts.
   // The trust documents. Low priority as destinations, but they are what an
   // evaluator reads to decide whether the verdicts above are worth believing,
@@ -230,5 +234,37 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ...(p.primaryImage?.url ? { images: [p.primaryImage.url] } : {}),
     }));
 
-  return [...staticEntries, ...categoryEntries, ...brandEntries, ...productEntries];
+  /**
+   * The guides.
+   *
+   * Not wrapped in `safe()` and not read from the API, because they are not
+   * upstream content — they are TypeScript modules in this repository, so the
+   * only way this list can fail is a build that already failed.
+   *
+   * These are the one part of the sitemap carrying a REAL `lastModified`. The
+   * product entries deliberately carry none (see the note above: `ProductSummary`
+   * has no `updatedAt`, and a fabricated timestamp is worse than an absent one),
+   * and the static routes share `now` because a hand-maintained date on a policy
+   * would be wrong more often than right. A guide, by contrast, records the date
+   * of its last substantive revision as a required field that an author has to
+   * think about — which makes it the only date here worth submitting.
+   *
+   * Priority 0.75: above a brand page and just under a category. These target
+   * high-volume upstream queries that nothing else on the site competes for,
+   * but a category page still converts a reader better once they arrive.
+   */
+  const guideEntries: MetadataRoute.Sitemap = GUIDES.map((guide) => ({
+    url: absoluteUrl(`/guides/${guide.slug}`),
+    lastModified: new Date(guide.updated),
+    changeFrequency: "monthly",
+    priority: 0.75,
+  }));
+
+  return [
+    ...staticEntries,
+    ...guideEntries,
+    ...categoryEntries,
+    ...brandEntries,
+    ...productEntries,
+  ];
 }
