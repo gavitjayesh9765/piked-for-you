@@ -405,7 +405,10 @@ export function SearchSelect({
           // mousedown, so clicking an option never blurs the input.
           if (open) close();
         }}
-        className={cn("cursor-pointer pr-9", className)}
+        className={cn(
+          "cursor-pointer pr-9 disabled:cursor-not-allowed disabled:opacity-60",
+          className,
+        )}
       />
 
       <svg

@@ -45,17 +45,40 @@ export function MediaManager({
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [picking, setPicking] = useState(false);
 
+  /**
+   * Write the new order, and BELIEVE THE ANSWER.
+   *
+   * This used to `await fetch(...)` and go straight to `router.refresh()`
+   * without looking at the status. A rejected reorder — a lapsed session, a
+   * 502 from a sleeping API — therefore did two silent things at once: it left
+   * no message, and it refreshed the page, which pulled the OLD order back
+   * from the server. The tiles slid into place and then snapped back, with
+   * nothing on screen saying why. `fetch` only rejects on a network failure,
+   * so the catch below never saw any of it.
+   *
+   * The optimistic move is now reverted on failure, so what is on screen is
+   * always what the database holds.
+   */
   async function persistOrder(next: MediaAsset[]) {
+    const previous = items;
     setItems(next);
+    setError(null);
     try {
-      await fetch(`/admin/api/products/${productId}/media-order`, {
+      const res = await fetch(`/admin/api/products/${productId}/media-order`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mediaIds: next.map((m) => m.id) }),
       });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        setItems(previous);
+        setError(readable(body) ?? "Could not save the new order.");
+        return;
+      }
       router.refresh();
     } catch {
-      setError("Could not save the new order.");
+      setItems(previous);
+      setError("Could not save the new order. Check your connection.");
     }
   }
 
@@ -71,6 +94,7 @@ export function MediaManager({
     if (!files?.length) return;
     setBusy(true);
     setError(null);
+    let uploaded = 0;
 
     for (const file of Array.from(files)) {
       const form = new FormData();
@@ -89,6 +113,7 @@ export function MediaManager({
         }
         const media = (await res.json()) as MediaAsset;
         setItems((prev) => [...prev, media]);
+        uploaded += 1;
       } catch {
         setError("Upload failed. Check your connection.");
         break;
@@ -97,7 +122,9 @@ export function MediaManager({
 
     setBusy(false);
     if (inputRef.current) inputRef.current.value = "";
-    router.refresh();
+    // Only when something actually landed. Refreshing after a rejected upload
+    // re-renders the page and takes the explanation off the screen with it.
+    if (uploaded > 0) router.refresh();
   }
 
   async function remove(id: string) {
@@ -108,10 +135,18 @@ export function MediaManager({
       const res = await fetch(`/admin/api/products/${productId}/media?mediaId=${id}`, {
         method: "DELETE",
       });
-      if (!res.ok) setItems(previous);
-      else router.refresh();
+      if (!res.ok) {
+        // Reverting without a word is how a tile reappears and the editor
+        // concludes the button is broken.
+        const body = await res.json().catch(() => null);
+        setItems(previous);
+        setError(readable(body) ?? "Could not remove that image.");
+      } else {
+        router.refresh();
+      }
     } catch {
       setItems(previous);
+      setError("Could not remove that image. Check your connection.");
     }
   }
 

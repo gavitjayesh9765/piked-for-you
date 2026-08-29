@@ -1,5 +1,12 @@
 import type { Metadata } from "next";
-import type { AlternativePick, Badge, PriceHistory, SpecTemplateGroup } from "@/lib/types";
+import type {
+  AlternativePick,
+  Badge,
+  Brand,
+  Category,
+  PriceHistory,
+  SpecTemplateGroup,
+} from "@/lib/types";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -47,10 +54,42 @@ export default async function EditProductPage({
   const product = await safe(() => getProduct(id), null);
   if (!product) notFound();
 
+  /**
+   * ⚠ THESE TWO WERE THE ONLY UNGUARDED READS ON THE PAGE, AND THAT IS WHY
+   * SAVING, PUBLISHING OR REORDERING IMAGES THREW AWAY THE WHOLE SCREEN.
+   *
+   * Every action on this page ends in `router.refresh()`, which re-runs this
+   * server component. Every one of those actions is also an admin write, and
+   * `forward()` in lib/admin-guard.ts revalidates the public content tag after
+   * a successful write — deliberately, so an editor never waits out the 300s
+   * window. `/categories` and `/brands` carry that tag.
+   *
+   * So the refresh that follows a save is the ONE render guaranteed to miss
+   * the cache and go to the network for these two, at the exact moment the
+   * work has just been submitted. On Render's free tier the API sleeps after
+   * fifteen minutes idle, and the wake-up outlives the serverless function
+   * budget. Unguarded, that threw, and an uncaught throw in a server component
+   * replaces the entire route with app/error.tsx — the editor sees "We
+   * couldn't load this page" and has no way to know the save SUCCEEDED.
+   *
+   * They are also the two least important reads here: they populate the brand
+   * and category pickers and nothing else. Everything they cannot supply is
+   * already on `product`, so the fallback is the product's own row — which
+   * keeps the form telling the truth about where this product is filed, and
+   * leaves the verdict, pricing and specifications fully editable.
+   */
+  // Held as named references so the identity check below can tell "the lookup
+  // failed" from "the catalogue genuinely has one of these" — `safe()` hands
+  // back the very object it was given.
+  const categoryFallback = [
+    { ...product.category, parentId: null, displayOrder: 0, isActive: true, showOnHomepage: false },
+  ] as Category[];
+  const brandFallback = [{ ...product.brand, isPinned: false, displayOrder: 0 }] as Brand[];
+
   const [categories, brands, check, retailers, taxonomy, history, badgeList, alternatives] =
     await Promise.all([
-    getCategories(),
-    getBrands(),
+    safe(() => getCategories(), categoryFallback),
+    safe(() => getBrands(), brandFallback),
     safe(() => publishCheck(id), { canPublish: false, missing: [] }),
     safe(() => listRetailers(), [] as { id: string; name: string; slug: string }[]),
     // Scoring criteria and specification fields are configured per category
@@ -86,6 +125,12 @@ export default async function EditProductPage({
       (b) => !(badgeList.items ?? []).some((x) => x.id === b.id),
     ),
   ];
+
+  // True only when a picker list actually failed to load. Said out loud below
+  // rather than left as a select with one option in it, which would read as
+  // "the catalogue lost its categories" — a far more alarming claim than the
+  // truth, which is that one lookup timed out and a reload will fix it.
+  const pickersDegraded = categories === categoryFallback || brands === brandFallback;
 
   const criteria =
     (taxonomy.items ?? []).find((c) => c.id === product.category.id)?.scoreCriteria ?? [];
@@ -125,6 +170,19 @@ export default async function EditProductPage({
         </div>
       }
     >
+      {pickersDegraded && (
+        <div className="mb-6 rounded-lg border border-warn bg-warn-soft px-5 py-4">
+          <p className="font-label text-label-xs font-bold uppercase tracking-[0.12em] text-warn-on-soft">
+            Brand and category pickers unavailable
+          </p>
+          <p className="mt-2 text-body-sm text-warn-on-soft">
+            The catalogue lookup did not answer in time, so those two fields are
+            locked to what this product is already filed under. Everything else on
+            this page saves normally. Reload to change them.
+          </p>
+        </div>
+      )}
+
       {product.status !== "published" && check.missing.length > 0 && (
         <div className="mb-6 rounded-lg border border-warn bg-warn-soft px-5 py-4">
           <p className="font-label text-label-xs font-bold uppercase tracking-[0.12em] text-warn-on-soft">
@@ -151,6 +209,7 @@ export default async function EditProductPage({
         badges={badges}
         specTemplates={specTemplates}
         specTemplateSources={specTemplateSources}
+        taxonomyUnavailable={pickersDegraded}
       />
 
       {/* Media, retailer links, the score and the alternatives are edit-only:

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-import { adminGet } from "@/lib/admin-api";
+import { adminGet, safe } from "@/lib/admin-api";
 import { getCategories } from "@/lib/api";
 import { AdminPage } from "@/components/admin/Shell";
 import { TableArriving } from "@/components/ui/Arriving";
@@ -33,7 +33,12 @@ export default function AdminHomepagePage() {
 async function Composer() {
   const [data, categories] = await Promise.all([
     adminGet<{ items: Section[]; kinds: string[] }>("/homepage", { items: [], kinds: [] }),
-    getCategories(),
+    // Guarded like every other read on this screen. Unwrapped, a timed-out
+    // category lookup took down the whole homepage composer — including the
+    // section list beside it, which does not depend on categories at all.
+    // Without them the one control that needs them (a category rail's picker)
+    // is empty; everything else still works.
+    safe(() => getCategories(), []),
   ]);
 
   return (

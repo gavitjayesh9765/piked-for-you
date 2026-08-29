@@ -45,6 +45,7 @@ export function ProductForm({
   badges,
   specTemplates = {},
   specTemplateSources = {},
+  taxonomyUnavailable = false,
 }: {
   product?: Product;
   categories: Category[];
@@ -64,6 +65,17 @@ export function ProductForm({
    * define had no way to learn where to go and change them.
    */
   specTemplateSources?: Record<string, string | null>;
+  /**
+   * The brand or category lookup failed, and `categories`/`brands` therefore
+   * hold only this product's own row (see the edit page).
+   *
+   * The two pickers are then locked rather than left showing a single option.
+   * An enabled select with one entry invites the obvious conclusion — that the
+   * catalogue lost its categories — and, worse, offers no way back if the
+   * editor clears it. Locking states the real situation and protects the
+   * filing, while every other field on the page still saves.
+   */
+  taxonomyUnavailable?: boolean;
 }) {
   const router = useRouter();
   const isEdit = Boolean(product);
@@ -319,9 +331,18 @@ export function ProductForm({
             />
           </Field>
 
-          <Field label="Brand" required hint="Type to filter — matches anywhere in the name.">
+          <Field
+            label="Brand"
+            required
+            hint={
+              taxonomyUnavailable
+                ? "Locked — the brand list did not load. Reload the page to change it."
+                : "Type to filter — matches anywhere in the name."
+            }
+          >
             <SearchSelect
               required
+              disabled={taxonomyUnavailable}
               value={f.brandId}
               onChange={(v) => set("brandId", v)}
               options={brandOptions}
@@ -335,10 +356,15 @@ export function ProductForm({
           <Field
             label="Category"
             required
-            hint="Shown as a full path — type any part of it, in any order. File against the most specific one: the specification fields in 05 and the scoring criteria on the next screen both come from it."
+            hint={
+              taxonomyUnavailable
+                ? "Locked — the category list did not load. Reload the page to change it."
+                : "Shown as a full path — type any part of it, in any order. File against the most specific one: the specification fields in 05 and the scoring criteria on the next screen both come from it."
+            }
           >
             <SearchSelect
               required
+              disabled={taxonomyUnavailable}
               value={f.categoryId}
               onChange={(v) => set("categoryId", v)}
               options={categoryOptions}

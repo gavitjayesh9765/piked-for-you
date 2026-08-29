@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import type { Badge, SpecTemplateGroup } from "@/lib/types";
+import type { Badge, Brand, Category, SpecTemplateGroup } from "@/lib/types";
 import Link from "next/link";
 
 import { getBrands, getCategories } from "@/lib/api";
-import { adminGet } from "@/lib/admin-api";
+import { adminGet, safe } from "@/lib/admin-api";
 import { AdminPage } from "@/components/admin/Shell";
 import { ProductForm } from "@/components/admin/ProductForm";
 
@@ -25,9 +25,21 @@ export const dynamic = "force-dynamic";
  * form cannot accidentally push half-written content live (spec §38).
  */
 export default async function NewProductPage() {
+  /**
+   * Guarded for the same reason as the edit page: an uncaught throw in a
+   * server component replaces the whole route with app/error.tsx, and these
+   * two are the only reads here that could do it. `safe()` hands back the very
+   * array it was given, so identity separates "the lookup failed" from "the
+   * catalogue is genuinely empty" — two situations with completely different
+   * advice, and telling an editor to run `supabase db reset` because a request
+   * timed out would be actively harmful.
+   */
+  const noCategories: Category[] = [];
+  const noBrands: Brand[] = [];
+
   const [categories, brands, taxonomy, badgeList] = await Promise.all([
-    getCategories(),
-    getBrands(),
+    safe(() => getCategories(), noCategories),
+    safe(() => getBrands(), noBrands),
     // Specification fields are configured per category and resolved up the
     // tree (spec §41). Fetched for every category so the form's category
     // select can swap the fields without a round trip.
@@ -53,7 +65,8 @@ export default async function NewProductPage() {
   // attachable to something new.
   const badges = (badgeList.items ?? []).filter((b) => b.isActive);
 
-  const blocked = categories.length === 0 || brands.length === 0;
+  const lookupFailed = categories === noCategories || brands === noBrands;
+  const blocked = lookupFailed || categories.length === 0 || brands.length === 0;
 
   return (
     <AdminPage
@@ -72,14 +85,30 @@ export default async function NewProductPage() {
     >
       {blocked ? (
         <div className="panel dot-matrix p-10">
-          <h2 className="font-display text-headline-sm text-ink">
-            You need a category and a brand first
-          </h2>
-          <p className="mt-3 max-w-xl text-body-md text-ink-muted">
-            Every product belongs to one of each, so those have to exist before a product can.
-            The seed data creates eight of each — run{" "}
-            <code className="font-mono text-ink">supabase db reset</code> if you haven&apos;t yet.
-          </p>
+          {lookupFailed ? (
+            <>
+              <h2 className="font-display text-headline-sm text-ink">
+                Couldn&apos;t load the categories and brands
+              </h2>
+              <p className="mt-3 max-w-xl text-body-md text-ink-muted">
+                A product has to be filed against one of each, so the form cannot open
+                without them. Nothing is wrong with the catalogue — the lookup did not
+                answer in time. Reload the page.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="font-display text-headline-sm text-ink">
+                You need a category and a brand first
+              </h2>
+              <p className="mt-3 max-w-xl text-body-md text-ink-muted">
+                Every product belongs to one of each, so those have to exist before a product
+                can. The seed data creates eight of each — run{" "}
+                <code className="font-mono text-ink">supabase db reset</code> if you
+                haven&apos;t yet.
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <>
