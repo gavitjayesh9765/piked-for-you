@@ -231,7 +231,12 @@ export function PreferencesForm({
               setSaved(false);
             }}
             label="A product I saved drops in price"
-            hint="Only for genuinely meaningful drops, not every rupee."
+            /* Says how the promise is actually kept. The drop is measured from
+               the price on the day you saved it — not from a peak — and it
+               arrives when a person next checks, because nothing here checks a
+               price on a timer. A reader who expects a tracker and gets an
+               occasional email should have been told which one this is. */
+            hint="Measured from the price when you saved it, and only for a meaningful fall. We check by hand, so it arrives when we next look."
           />
           <Toggle
             checked={notifyNewPicks}

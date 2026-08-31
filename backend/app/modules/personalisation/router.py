@@ -147,18 +147,29 @@ async def save_product(
     """
     _private(response)
 
-    exists = (
+    found = (
         await db.execute(
-            select(Product.id).where(Product.id == payload.product_id, Product.status == "published")
+            select(Product.id, Product.price_current).where(
+                Product.id == payload.product_id, Product.status == "published"
+            )
         )
-    ).scalar_one_or_none()
-    if exists is None:
+    ).one_or_none()
+    if found is None:
         # 404 for an unpublished product too: its existence is not public.
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Product not found")
 
     await db.execute(
         pg_insert(SavedProduct)
-        .values(user_id=user.id, product_id=payload.product_id, note=payload.note)
+        .values(
+            user_id=user.id,
+            product_id=payload.product_id,
+            note=payload.note,
+            # The price the reader was looking at when they pressed Save. This
+            # is the baseline a drop alert is measured from, and it is captured
+            # here because this is the only moment it is knowable — a day later
+            # the figure has moved and nothing records what they saw.
+            price_at_save=found.price_current,
+        )
         .on_conflict_do_nothing(index_elements=["user_id", "product_id"])
     )
     return {"saved": True}

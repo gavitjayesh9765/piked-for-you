@@ -48,6 +48,16 @@ class SavedProduct(UUIDMixin, Base):
     )
     note: Mapped[Optional[str]] = mapped_column(Text)
 
+    # --- Price-drop alerts. See migration 20260831000020 for the reasoning. ---
+    #
+    # `price_at_save` is the figure the reader was looking at when they pressed
+    # Save, which is the only baseline "tell me if it drops" can honestly mean.
+    # `alerted_price` moves the baseline down to whatever the last alert quoted,
+    # so a second price run does not re-send the same news.
+    price_at_save: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2))
+    alerted_price: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 2))
+    alerted_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -57,6 +67,9 @@ class SavedProduct(UUIDMixin, Base):
     __table_args__ = (
         UniqueConstraint("user_id", "product_id", name="saved_products_once"),
         Index("saved_products_user_idx", "user_id", "created_at"),
+        # The alert query filters by product across many users, which the
+        # per-user index above does not serve.
+        Index("saved_products_product_idx", "product_id"),
     )
 
 

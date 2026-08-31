@@ -788,6 +788,37 @@ const templates = [
       },
     },
   },
+  {
+    // The second of our own transactional mails. Sent by
+    // backend/app/modules/alerts/service.py after an admin applies a price run
+    // — never on a schedule, because nothing on this site checks a price on a
+    // schedule.
+    key: "price_drop",
+    kind: "transactional",
+    out: "../../backend/app/emails/price_drop.html",
+    subject: "A product on your shortlist got cheaper",
+    vars: ["ProductName", "NewPrice", "OldPrice", "Saving", "ProductURL", "PreferencesURL"],
+    content: {
+      title: "A product on your shortlist got cheaper",
+      preheader: "{{ .ProductName }} is now {{ .NewPrice }} — {{ .Saving }} less than when you saved it.",
+      eyebrow: "Price drop",
+      heading: "{{ .ProductName }} is now {{ .NewPrice }}",
+      lede: `That is <span style="color:${c.ink};">{{ .Saving }}</span> below the
+                        <span style="color:${c.ink};">{{ .OldPrice }}</span> it was at when you saved it.
+                        Our verdict has not changed &mdash; only the price has.`,
+      cta: { label: "Read the verdict", url: "{{ .ProductURL }}" },
+      notice: {
+        // The paragraph that separates this from every other price-alert email
+        // a reader gets. We are not tracking continuously and should not imply
+        // it, and a price we observed can move again ten minutes later.
+        text: `We check prices by hand rather than on a timer, so this is a figure a person
+                              actually looked at &mdash; and one that can go back up. Always confirm at the
+                              retailer before you buy.
+                              <br /><br />
+                              <a href="{{ .PreferencesURL }}" style="color:${c.brand}; text-decoration:underline;">Turn these emails off</a>`,
+      },
+    },
+  },
 ];
 
 /* ── Verify ────────────────────────────────────────────────────────────── */

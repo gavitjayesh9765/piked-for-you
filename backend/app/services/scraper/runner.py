@@ -37,6 +37,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.db.session import async_session_factory
+from app.modules.alerts.service import dispatch_price_drops
 from app.models import (
     PriceHistory,
     PriceScrapeJob,
@@ -358,6 +359,7 @@ async def execute_job(job_id: uuid.UUID) -> None:
     async with async_session_factory() as db:
         try:
             await _run(db, job_id)
+            await _alert_on_drops(db, job_id)
         except Exception as err:  # noqa: BLE001
             log.exception("Price run %s failed", job_id)
             await db.rollback()
@@ -369,6 +371,49 @@ async def execute_job(job_id: uuid.UUID) -> None:
                 job.error = str(err)[:2000]
                 job.finished_at = datetime.now(timezone.utc)
                 await db.commit()
+
+
+async def _alert_on_drops(db: AsyncSession, job_id: uuid.UUID) -> None:
+    """Tell anyone whose shortlist got cheaper because of this run.
+
+    The set of products to consider is read back from `price_history` rather
+    than accumulated as the run goes: a history row is written exactly when a
+    price MOVED, and it carries the job that moved it. So the log the run
+    already keeps is a precise record of what changed, and threading a list
+    through every layer of `_run` to rebuild the same answer would be a second
+    source of truth that could disagree with the first.
+
+    After `_run` has committed, and never inside it. An alert is a consequence
+    of a price change that has already happened; sending mail while the run
+    still holds a transaction would put an SMTP round trip inside a database
+    lock, and a rollback would then un-change a price a reader had been told
+    about.
+    """
+    try:
+        product_ids = list(
+            (
+                await db.execute(
+                    select(PriceHistory.product_id)
+                    .where(PriceHistory.job_id == job_id)
+                    .distinct()
+                )
+            )
+            .scalars()
+            .all()
+        )
+        if not product_ids:
+            return
+
+        sent = await dispatch_price_drops(db, product_ids)
+        await db.commit()
+        if sent:
+            log.info("Price run %s: %d drop alerts sent", job_id, sent)
+    except Exception:
+        # A run that succeeded must not be reported as failed because an email
+        # did not go out. `execute_job`'s handler would mark the job failed and
+        # an admin's correct response would be to run the whole thing again.
+        log.exception("Price run %s: drop alerts failed", job_id)
+        await db.rollback()
 
 
 async def _run(db: AsyncSession, job_id: uuid.UUID) -> None:

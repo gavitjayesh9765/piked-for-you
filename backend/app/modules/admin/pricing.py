@@ -63,6 +63,7 @@ from app.models import (
     Retailer,
 )
 from app.schemas.common import MAX_PAGE
+from app.modules.alerts.service import dispatch_price_drops
 from app.services.scraper import apply_reading, execute_job, preview_url, resolve_targets
 
 router = APIRouter(prefix="/pricing", tags=["admin", "pricing"])
@@ -835,7 +836,19 @@ async def apply_result(
         ip_address=client_ip(request),
     )
 
-    return {"applied": True, "changed": changed, "price": float(result.new_price)}
+    # After the audit record, so a mail failure cannot leave the apply
+    # unlogged — and `dispatch_price_drops` never raises anyway. Only when the
+    # figure actually moved: re-applying an identical price is not news.
+    alerted = (
+        await dispatch_price_drops(db, [result.product_id]) if changed else 0
+    )
+
+    return {
+        "applied": True,
+        "changed": changed,
+        "price": float(result.new_price),
+        "alerted": alerted,
+    }
 
 
 # --------------------------------------------------------------------------- #

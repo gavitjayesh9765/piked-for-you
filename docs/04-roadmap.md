@@ -95,6 +95,13 @@ Screens are built; this phase replaces the mock transport with the real one.
 - [x] Public price trail — observed low/high in a bounded window, served as a
       derived summary through FastAPI. `price_history` RLS is UNCHANGED and
       still admin-only; the door migration 20260821000010 closed stays closed
+- [x] Price-drop alerts on saved products — baseline is the price at save, sent
+      after an admin applies a run. Still no timer, no cron, no poller
+- [ ] "New pick in my categories" email — the toggle exists and persists; there
+      is no sender behind it yet
+- [ ] Newsletter campaign composer + send — the list and double opt-in work, the
+      admin screen still says Sending is off
+- [ ] Guides in the CMS — src/content/guides/*.tsx still needs a deploy
 - [x] Contact / research-request page — topic-driven form, category multi-select, live docket
 - [ ] Contact handlers + acknowledgement email + admin queue view
 - [ ] Newsletter handlers + transactional email (double opt-in, one-click unsubscribe)
