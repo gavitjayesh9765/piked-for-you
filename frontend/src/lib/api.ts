@@ -2,15 +2,16 @@ import type {
   AlternativePick,
   Brand,
   Category,
-  FilterFacet,
-  HomepageSection,
-  Paginated,
-  Product,
-  ProductSummary,
   ContactRequest,
   ContactResponse,
+  FilterFacet,
+  HomepageSection,
   NewsletterSubscribeRequest,
   NewsletterSubscribeResponse,
+  Paginated,
+  PriceTrail,
+  Product,
+  ProductSummary,
   Review,
   SortOption,
 } from "./types";
@@ -370,6 +371,32 @@ export async function getAlternatives(productId: string, limit = 4): Promise<Alt
   return get<AlternativePick[]>(
     `/products/${encodeURIComponent(productId)}/alternatives?limit=${limit}`,
   );
+}
+
+/**
+ * The observed price range for one product.
+ *
+ * Fetched separately from the product rather than folded into `getProduct`,
+ * because it is the one figure on the page that a price run changes without
+ * anything else changing — and because the product page streams it behind its
+ * own boundary, so an extra aggregate query never delays the headline, the
+ * score or the verdict.
+ */
+export async function getPriceTrail(productId: string, days = 90): Promise<PriceTrail | null> {
+  if (USE_MOCKS) {
+    const mock = await import("./mock/data");
+    return mock.priceTrailFor(productId, days);
+  }
+  try {
+    return await get<PriceTrail>(
+      `/products/${encodeURIComponent(productId)}/price-trail?days=${days}`,
+    );
+  } catch (e) {
+    // A product with no trail is not an error worth failing a page for — the
+    // component renders nothing, which is the same outcome as an empty window.
+    if (e instanceof ApiError && e.status === 404) return null;
+    throw e;
+  }
 }
 
 export async function getFacets(categorySlug?: string): Promise<FilterFacet[]> {

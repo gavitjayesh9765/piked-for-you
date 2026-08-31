@@ -3,17 +3,26 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Response, status
+from sqlalchemy import func, select
 
 from app.core.config import settings
 from app.core.deps import DbSession
 from app.modules.products.repository import ProductRepository
 from app.modules.products.service import sign_for, to_detail, to_summary
 from app.schemas.common import MAX_PAGE, Facet, Page, PageParams, SortOption
-from app.schemas.product import AlternativeOut, ProductOut, ProductSummaryOut
+from app.models import PriceHistory
+from app.schemas.product import (
+    AlternativeOut,
+    PriceMark,
+    PriceTrailOut,
+    ProductOut,
+    ProductSummaryOut,
+)
 
 router = APIRouter()
 
@@ -135,6 +144,121 @@ async def alternatives(
         )
         for p in filler
     ]
+
+
+@router.get("/{product_id}/price-trail", response_model=PriceTrailOut)
+async def price_trail(
+    product_id: uuid.UUID,
+    db: DbSession,
+    response: Response,
+    days: Annotated[int, Query(ge=7, le=365)] = 90,
+) -> PriceTrailOut:
+    """Where this product's price sits against what we have actually seen.
+
+    ---------------------------------------------------------------------------
+    WHY THIS IS NOT A CHART ENDPOINT
+
+    The instinct is to return the series and draw a line. Two properties of this
+    data make that dishonest.
+
+    Prices here are never checked on a timer — a run exists because an admin
+    pressed the button, which is a documented non-negotiable and not an
+    oversight. And `apply_reading` writes a history row only when the number
+    moved. So the observations are irregular in time AND sparse by construction,
+    and a line drawn between them would interpolate a price we never saw, on
+    days we never looked, in a shape that implies continuous monitoring we do
+    not do.
+
+    What we can state without inventing anything is the range we have observed,
+    where the price sits inside it, and how many times it moved. That is also
+    the part that changes a decision: "this is the lowest we have seen it" and
+    "this is £2,000 off its floor" are different answers to "should I buy now",
+    and neither needs a single interpolated point.
+
+    ---------------------------------------------------------------------------
+    WHY THE WINDOW IS BOUNDED, AND WHY THE LAST CHANGE IS NOT
+
+    Extremes are computed inside `days` so that "lowest in 90 days" means what
+    it says. `products.price_min`/`price_max` were not usable for this: they are
+    all-time and only ever widen, so they drift further from anything a buyer
+    can act on with every run.
+
+    `last_changed_at` deliberately ignores the window. A price that has not
+    moved in six months produces no rows inside 90 days, and "nothing to say"
+    would be the wrong reading of that — the right one is that the price has
+    been flat since February, which is worth knowing before waiting for a sale.
+    """
+    _cache(response)
+
+    repo = ProductRepository(db)
+    product = await repo.get_any(product_id)
+    # Same shape as `alternatives` above: existence is not confirmed for a
+    # product the public cannot see (spec §38, §61).
+    if product is None or product.status != "published":
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Product not found")
+
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+
+    # One trip for the window's shape. Aggregated in the database rather than by
+    # pulling rows and reducing in Python — the point of not returning the
+    # series is that the series never has to leave the database.
+    windowed = (
+        await db.execute(
+            select(
+                func.count(PriceHistory.id),
+                func.min(PriceHistory.price),
+                func.max(PriceHistory.price),
+            ).where(
+                PriceHistory.product_id == product_id,
+                PriceHistory.captured_at >= since,
+            )
+        )
+    ).one()
+    changes, low_price, high_price = windowed
+
+    last_changed_at = (
+        await db.execute(
+            select(func.max(PriceHistory.captured_at)).where(
+                PriceHistory.product_id == product_id
+            )
+        )
+    ).scalar_one_or_none()
+
+    async def _when(price, newest: bool):
+        """The moment an extreme was observed.
+
+        Newest occurrence rather than oldest for the low, because "lowest, seen
+        in March" should name the most recent time it was that cheap — an older
+        date makes a current low look stale.
+        """
+        if price is None:
+            return None
+        order = PriceHistory.captured_at.desc() if newest else PriceHistory.captured_at.asc()
+        return (
+            await db.execute(
+                select(PriceHistory.captured_at)
+                .where(
+                    PriceHistory.product_id == product_id,
+                    PriceHistory.captured_at >= since,
+                    PriceHistory.price == price,
+                )
+                .order_by(order)
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+
+    low_at = await _when(low_price, newest=True)
+    high_at = await _when(high_price, newest=True)
+
+    return PriceTrailOut(
+        currency=product.currency,
+        window_days=days,
+        changes=changes or 0,
+        current=product.price_current,
+        low=PriceMark(amount=low_price, at=low_at) if low_price is not None and low_at else None,
+        high=PriceMark(amount=high_price, at=high_at) if high_price is not None and high_at else None,
+        last_changed_at=last_changed_at,
+    )
 
 
 @router.get("/{category_slug}/{slug}", response_model=ProductOut)

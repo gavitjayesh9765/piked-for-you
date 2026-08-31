@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
-import { getAlternatives, getProduct, getReviews } from "@/lib/api";
+import { getAlternatives, getPriceTrail, getProduct, getReviews } from "@/lib/api";
 import type { AlternativePick, Product } from "@/lib/types";
 import { getAuthedUser } from "@/lib/supabase/server";
 import { discountPercent, formatPrice, formatPriceRange, productFullName } from "@/lib/format";
@@ -30,6 +30,8 @@ import { BuyingOptions, PriceComparison } from "@/components/product/BuyingOptio
 import { ProductCard } from "@/components/product/ProductCard";
 import { ReviewList } from "@/components/product/ReviewList";
 import { CompareButton } from "@/components/compare/CompareButton";
+import { SaveButton } from "@/components/product/SaveButton";
+import { PriceTrail } from "@/components/product/PriceTrail";
 import { helpfulReviewIds, safe } from "@/lib/me-api";
 import { RowsArriving } from "@/components/ui/Arriving";
 
@@ -263,16 +265,35 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                   </p>
                 )}
               </div>
-              {product.score && (
-                <>
-                  <ScoreRing score={product.score.overall} size="md" className="shrink-0 sm:hidden" />
-                  <ScoreRing
-                    score={product.score.overall}
-                    size="lg"
-                    className="hidden shrink-0 sm:flex"
-                  />
-                </>
-              )}
+              {/* Save, then the score — the same order and the same adjacency the
+                  product card uses, so the control is where a reader who came
+                  from a grid already expects it.
+
+                  It is here rather than in the buying column on purpose. That
+                  column is price, verdict, one orange exit (spec §26), and a
+                  second pill under the retailer button would be exactly the
+                  stack that rule exists to prevent. Saving is also the OPPOSITE
+                  action to buying — it is what a reader does when the verdict
+                  has not convinced them yet — so putting it beside the score,
+                  where the judgement is, reads better than putting it beside
+                  the way out.
+
+                  No `isAuthed` prop: the viewer comes from <SavedProvider> in
+                  the site layout, which is what stops this page paying for an
+                  auth round trip before it can render a headline. */}
+              <div className="flex shrink-0 items-start gap-3 sm:gap-4">
+                <SaveButton productId={product.id} />
+                {product.score && (
+                  <>
+                    <ScoreRing score={product.score.overall} size="md" className="shrink-0 sm:hidden" />
+                    <ScoreRing
+                      score={product.score.overall}
+                      size="lg"
+                      className="hidden shrink-0 sm:flex"
+                    />
+                  </>
+                )}
+              </div>
             </div>
 
             {product.badges.length > 0 && (
@@ -299,6 +320,20 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
                 </span>
               )}
             </div>
+
+            {/* Immediately under the price, because it is ABOUT the price —
+                the headline figure says what it costs and this says whether
+                that figure is a good one. It sits before the verdict rather
+                than after it for the same reason the verdict sits under the
+                price: a reader forms the question in the order the page
+                answers it.
+
+                Its own boundary, and a null fallback. It is an extra aggregate
+                query, and nothing about the price, the score or the verdict
+                should wait on it — the block simply appears when it lands. */}
+            <Suspense fallback={null}>
+              <PriceTrailSlot productId={product.id} />
+            </Suspense>
 
             {product.communityRating && product.communityRating.count > 0 && (
               <CommunityRating
@@ -604,6 +639,24 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
       />
     </>
   );
+}
+
+/**
+ * The observed price range.
+ *
+ * Degrades to nothing rather than failing the page: this block is a useful
+ * extra on a page whose job is the verdict, and a price service that is down
+ * must not take the verdict down with it. Showing less is always safe here —
+ * the component's own empty states already cover "we have nothing to say".
+ */
+async function PriceTrailSlot({ productId }: { productId: string }) {
+  let trail;
+  try {
+    trail = await getPriceTrail(productId);
+  } catch {
+    return null;
+  }
+  return trail ? <PriceTrail trail={trail} /> : null;
 }
 
 /**

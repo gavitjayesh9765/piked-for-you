@@ -8,6 +8,8 @@ import { SiteFooter } from "@/components/layout/SiteFooter";
 import { PageView } from "@/components/analytics/PageView";
 import { CompareProvider } from "@/components/compare/CompareProvider";
 import { CompareShelf } from "@/components/compare/CompareShelf";
+import { SavedProvider, SavedHydrator } from "@/components/product/SavedProvider";
+import { safe, savedIds } from "@/lib/me-api";
 
 /**
  * The public site shell.
@@ -61,12 +63,19 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
        navigations. Session storage would carry the data, but the bar would
        still flicker out and back on each one. */
     <CompareProvider>
+     <SavedProvider>
       {/* Renders nothing. Behind its own boundary because resolving the
           caller is a round trip to the auth server, and the shell must not
           wait on it — the same reason the header account slot is suspended
           rather than awaited inline. */}
       <Suspense fallback={null}>
         <SessionGuard />
+      </Suspense>
+      {/* Also renders nothing, and also must not be awaited: every Save
+          control on the page reads its answer, and every one of them is
+          correct — if pessimistic — until it lands. */}
+      <Suspense fallback={null}>
+        <SavedState />
       </Suspense>
       <SiteHeader categories={categories} />
       {children}
@@ -79,8 +88,30 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
           components/analytics/PageView.tsx for why that means it watches
           the pathname instead of firing on mount. */}
       <PageView />
+     </SavedProvider>
     </CompareProvider>
   );
+}
+
+/**
+ * Resolves the viewer's shortlist for every Save control on the page.
+ *
+ * One request for the whole page rather than one per card — which is what
+ * `/saved/ids` was written for and never used for. `safe` degrades it to an
+ * empty list: a shortlist that fails to load renders controls that offer to
+ * save something already saved, which is a wasted click; failing the layout
+ * would render nothing at all.
+ *
+ * Nothing here is cached. A shortlist held by a shared proxy and served to the
+ * next visitor is a data leak, which is why `me-api` pins every call to
+ * `no-store`.
+ */
+async function SavedState() {
+  const user = await getAuthedUser();
+  if (!user) return null;
+
+  const ids = await safe(() => savedIds(), [] as string[]);
+  return <SavedHydrator isAuthed savedIds={ids} />;
 }
 
 /** Mirrors `timebox = "720h"` in supabase/config.toml. */

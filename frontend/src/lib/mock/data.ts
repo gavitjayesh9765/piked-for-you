@@ -12,6 +12,7 @@ import type {
   Brand,
   Category,
   HomepageSection,
+  PriceTrail,
   Product,
   ProductSummary,
   Review,
@@ -837,6 +838,68 @@ export function alternativesFor(productId: string, limit = 4): AlternativePick[]
           : null,
     isCurated: i < CURATED_REASONS.length,
   }));
+}
+
+/**
+ * A plausible price trail for the fixtures.
+ *
+ * Deliberately varied across the catalogue, because the component has three
+ * genuinely different states and a fixture set that only ever produces one of
+ * them tests nothing. The seed id decides which: some products sit at their
+ * observed low, some well above it, and one has not moved inside the window at
+ * all — which is the case that has to say "unchanged since" rather than draw a
+ * range it has no readings for.
+ *
+ * The numbers are derived from the seed's own min/max so they never contradict
+ * the range the card already prints.
+ */
+export function priceTrailFor(productId: string, days = 90): PriceTrail | null {
+  const p = products.find((x) => x.id === productId);
+  if (!p) return null;
+
+  const day = 24 * 60 * 60 * 1000;
+  const at = (ago: number) => new Date(Date.now() - ago * day).toISOString();
+
+  // Stable per product, so a screenshot taken twice looks the same.
+  const n = Number(productId.replace(/\D/g, "")) || 1;
+
+  // One product in the fixtures has a price that has been flat for longer than
+  // the window. It is the state that is easiest to forget and hardest to fake
+  // later, so it is in the data from the start.
+  if (n % 5 === 3) {
+    return {
+      currency: p.pricing.currency,
+      windowDays: days,
+      changes: 0,
+      current: p.pricing.current,
+      low: null,
+      high: null,
+      lastChangedAt: at(days + 47),
+    };
+  }
+
+  const current = p.pricing.current;
+  const high = p.pricing.max ?? Math.round(current * 1.2);
+
+  // Every other product is sitting exactly on its floor, which is the state
+  // worth designing for first: it is the one that changes a decision.
+  //
+  // The FLOOR moves to meet the price, never the price to meet the floor. The
+  // trail has to agree with the headline figure printed six lines above it, and
+  // a fixture that quietly reports a different current price would have the
+  // rail saying ₹27,900 under a page saying ₹29,900 — which is exactly the
+  // contradiction this whole block exists to rule out.
+  const low = n % 2 === 0 ? current : (p.pricing.min ?? Math.round(current * 0.9));
+
+  return {
+    currency: p.pricing.currency,
+    windowDays: days,
+    changes: 3 + (n % 5),
+    current,
+    low: { amount: low, at: at(6 + (n % 20)) },
+    high: { amount: high, at: at(40 + (n % 30)) },
+    lastChangedAt: at(6 + (n % 20)),
+  };
 }
 
 /**

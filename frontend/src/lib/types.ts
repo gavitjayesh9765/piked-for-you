@@ -267,6 +267,35 @@ export interface Pricing {
   updatedAt?: string | null;
 }
 
+/** One extreme of the observed range, and when we last saw it there. */
+export interface PriceMark {
+  amount: number;
+  at: string;
+}
+
+/**
+ * What we can honestly say about a product's recent price.
+ *
+ * Mirrors `PriceTrailOut` in backend/app/schemas/product.py, including its
+ * restraint: there is no series here, because there is no series we could draw
+ * without inventing the days between our own manual checks. See that schema for
+ * the full argument, and `PriceTrail.tsx` for what the numbers become.
+ *
+ * `changes` counts price MOVEMENTS in the window, not checks — history is
+ * written only when the figure differs from the last one.
+ */
+export interface PriceTrail {
+  currency: string;
+  windowDays: number;
+  changes: number;
+  current?: number | null;
+  low?: PriceMark | null;
+  high?: PriceMark | null;
+  /** Ignores the window: a price that has not moved in six months still has
+   *  something worth saying about it. */
+  lastChangedAt?: string | null;
+}
+
 /* ------------------------------------------------------------------ */
 /* Product                                                             */
 /* ------------------------------------------------------------------ */

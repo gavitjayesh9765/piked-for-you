@@ -356,3 +356,62 @@ class MediaReorder(StrictWire):
     """Drag-and-drop ordering (spec §19). Position 0 becomes the primary image."""
 
     media_ids: list[uuid.UUID]
+
+
+# --------------------------------------------------------------------------- #
+# Price trail                                                                  #
+# --------------------------------------------------------------------------- #
+
+
+class PriceMark(Wire):
+    """One extreme of the observed range, and when we saw it."""
+
+    amount: Money
+    at: datetime
+
+
+class PriceTrailOut(Wire):
+    """What a reader is told about a product's recent price, and nothing more.
+
+    ---------------------------------------------------------------------------
+    WHY THIS IS A SUMMARY AND NOT THE SERIES
+
+    `price_history` is admin-only at the database, and deliberately so —
+    migration 20260821000010 closed a SELECT policy that had been opened "in
+    anticipation of a public price chart", on the grounds that a permission
+    granted for a feature that does not exist is an unattended door. That
+    migration also says the door reopens when the chart is built.
+
+    It does not need to. Row Level Security governs PostgREST, which is the
+    anon key's path into the database; this endpoint is FastAPI, which holds its
+    own connection and was never subject to the policy. So the public read path
+    is this shape — a handful of derived numbers — and the append-only log
+    itself stays exactly as private as it is today. The policy is unchanged, and
+    nothing here can be widened into a full series by editing a query string.
+
+    ---------------------------------------------------------------------------
+    WHAT THE FIELDS HONESTLY MEAN
+
+    `changes` is the number of times the price MOVED in the window, not the
+    number of times it was checked. `apply_reading` writes history only when the
+    figure differs from the last one, so a price checked forty times and stable
+    throughout contributes zero rows. Calling this "checks" would overstate what
+    we know; calling it "changes" is exactly what the table records.
+
+    `low` and `high` are the extremes of the observed movements inside the
+    window — not `products.price_min` / `price_max`, which are all-time and, by
+    construction in `_roll_up_product_price`, only ever widen. An all-time low
+    from two years ago is not a fact about whether to buy today.
+
+    `last_changed_at` ignores the window on purpose. A price with no movement
+    inside 90 days still has something worth saying about it, and "this has not
+    moved since February" is only sayable because the log is append-only.
+    """
+
+    currency: str
+    window_days: int
+    changes: int
+    current: Optional[Money] = None
+    low: Optional[PriceMark] = None
+    high: Optional[PriceMark] = None
+    last_changed_at: Optional[datetime] = None

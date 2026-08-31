@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/cn";
+import { useSaved } from "./SavedProvider";
 
 /**
  * Save to shortlist.
@@ -16,17 +17,34 @@ import { cn } from "@/lib/cn";
  */
 export function SaveButton({
   productId,
-  initialSaved = false,
-  isAuthed,
+  initialSaved,
+  isAuthed: isAuthedProp,
   variant = "icon",
 }: {
   productId: string;
+  /** Overrides the shared state. Only the styleguide needs this — every real
+   *  surface reads the viewer from context, because no caller ever passed it. */
   initialSaved?: boolean;
-  isAuthed: boolean;
+  isAuthed?: boolean;
   variant?: "icon" | "full";
 }) {
   const router = useRouter();
-  const [saved, setSaved] = useState(initialSaved);
+  const shared = useSaved();
+
+  // Props win where given; otherwise the provider answers. Outside the site
+  // shell (styleguide, admin preview) neither exists and the control renders
+  // its signed-out state, which is the correct thing to show there.
+  const isAuthed = isAuthedProp ?? shared?.isAuthed ?? false;
+  const fromShared = shared?.has(productId) ?? false;
+
+  /**
+   * Local state exists only for the in-flight optimistic flip. The shared set
+   * is the source of truth once it has answered, which is what keeps two cards
+   * showing the same product in agreement — the alternatives row and the
+   * category grid can both be on screen at once.
+   */
+  const [pendingSaved, setPendingSaved] = useState<boolean | null>(null);
+  const saved = pendingSaved ?? initialSaved ?? fromShared;
   const [busy, setBusy] = useState(false);
 
   async function toggle(e: React.MouseEvent) {
@@ -40,7 +58,7 @@ export function SaveButton({
     }
 
     const next = !saved;
-    setSaved(next);
+    setPendingSaved(next);
     setBusy(true);
 
     try {
@@ -52,9 +70,16 @@ export function SaveButton({
           })
         : await fetch(`/api/me/saved?productId=${productId}`, { method: "DELETE" });
 
-      if (!res.ok) setSaved(!next);
+      if (res.ok) {
+        // Hand the result to the shared set and stand down, so this control and
+        // every other one showing the same product agree from here on.
+        shared?.setSaved(productId, next);
+        if (shared) setPendingSaved(null);
+      } else {
+        setPendingSaved(null);
+      }
     } catch {
-      setSaved(!next);
+      setPendingSaved(null);
     } finally {
       setBusy(false);
     }

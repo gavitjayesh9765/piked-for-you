@@ -90,6 +90,11 @@ Screens are built; this phase replaces the mock transport with the real one.
 - [x] Newsletter signup with cadence choice — daily / weekly / deals-only
 - [x] Compare reachable from the catalogue — purple control on every card, a
       type-led shelf, and a cross-category refusal at pick time
+- [x] Save works from the catalogue — the viewer resolves once in the site
+      layout, so a signed-in reader is no longer sent to /login by every card
+- [x] Public price trail — observed low/high in a bounded window, served as a
+      derived summary through FastAPI. `price_history` RLS is UNCHANGED and
+      still admin-only; the door migration 20260821000010 closed stays closed
 - [x] Contact / research-request page — topic-driven form, category multi-select, live docket
 - [ ] Contact handlers + acknowledgement email + admin queue view
 - [ ] Newsletter handlers + transactional email (double opt-in, one-click unsubscribe)
