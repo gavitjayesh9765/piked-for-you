@@ -6,6 +6,7 @@ import { relativeTime } from "@/lib/format";
 import { CommunityRating } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { ReviewForm } from "./ReviewForm";
+import { ReviewActions } from "./ReviewActions";
 
 /**
  * Community reviews (spec §28–§32).
@@ -23,6 +24,7 @@ export function ReviewList({
   productId,
   productTitle,
   isAuthed = false,
+  helpfulIds,
 }: {
   reviews: Review[];
   average?: number;
@@ -30,8 +32,15 @@ export function ReviewList({
   productId: string;
   productTitle: string;
   isAuthed?: boolean;
+  /** Which of these the caller has already found helpful. Fetched separately
+   *  from the reviews themselves — see `helpfulReviewIds` in lib/me-api.ts for
+   *  why a per-caller field cannot ride along on an edge-cached list. */
+  helpfulIds?: string[];
 }) {
   const [writing, setWriting] = useState(false);
+  // A Set because this is read once per card and the list is unbounded in
+  // principle — a returning reader can have marked every review on the page.
+  const voted = new Set(helpfulIds ?? []);
 
   return (
     <div>
@@ -98,14 +107,12 @@ export function ReviewList({
               {r.title && <h3 className="mt-3 text-headline-sm text-ink">{r.title}</h3>}
               <p className="mt-2 text-body-sm text-ink-muted">{r.body}</p>
 
-              <div className="hairline mt-auto flex items-center justify-between pt-4">
-                <button className="font-label text-label-xs uppercase tracking-[0.1em] text-ink-subtle transition-colors duration-fast hover:text-brand">
-                  Helpful ({r.helpfulCount})
-                </button>
-                <button className="font-label text-label-xs uppercase tracking-[0.1em] text-ink-faint transition-colors duration-fast hover:text-danger">
-                  Report
-                </button>
-              </div>
+              <ReviewActions
+                reviewId={r.id}
+                helpfulCount={r.helpfulCount}
+                initialVoted={voted.has(r.id)}
+                isAuthed={isAuthed}
+              />
             </li>
           ))}
         </ul>

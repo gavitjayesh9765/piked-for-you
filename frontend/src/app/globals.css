@@ -252,6 +252,17 @@
     border-bottom: 1px solid var(--c-glass-line);
   }
 
+  /* Same bar, anchored to the bottom of the viewport — the compare shelf.
+     Restated rather than composed with `.glass` because the only difference is
+     which edge carries the hairline, and a rule that sets `border-bottom` then
+     unsets it reads as a mistake rather than a variant. */
+  .glass-top {
+    background-color: var(--c-glass);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-top: 1px solid var(--c-glass-line);
+  }
+
   /* The "Nothing" tell — dot matrix at a 16px pitch */
   .dot-matrix {
     background-image: radial-gradient(var(--c-dot) 1px, transparent 1px);

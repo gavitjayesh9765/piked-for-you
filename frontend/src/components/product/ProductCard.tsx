@@ -3,7 +3,9 @@ import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { formatPrice, formatPriceRange, productFullName, productHref } from "@/lib/format";
 import type { ProductSummary } from "@/lib/types";
+import { toCompareItem } from "@/lib/compare";
 import { Badge, CommunityRating, ValueChip } from "@/components/ui/Badge";
+import { CompareButton } from "@/components/compare/CompareButton";
 import { ScoreRing } from "./ScoreRing";
 import { SaveButton } from "./SaveButton";
 
@@ -32,6 +34,7 @@ export function ProductCard({
   isSaved?: boolean;
 }) {
   const { title, brand, tagline, primaryImage, score, badges, pricing, communityRating } = product;
+  const compareItem = toCompareItem(product);
 
   // One editorial badge maximum on a card — the rest are shown on the product
   // page. Stacking badges turns curation into noise.
@@ -80,6 +83,11 @@ export function ProductCard({
               360px-wide phone into a horizontal scroll. */}
           {leadBadge ? <Badge badge={leadBadge} size="sm" className="min-w-0" /> : <span />}
           <div className="pointer-events-auto flex shrink-0 items-start gap-2">
+            {/* Desktop only. Below `lg` the cluster is an overlay on a ~155px
+                card and already holds the badge and Save; a third control here
+                truncates the badge to four letters. Its mobile twin is on the
+                plate below, opposite the score. */}
+            <CompareButton item={compareItem} className="hidden lg:grid" />
             {/* Sits above the card's link overlay so it stays clickable */}
             <SaveButton productId={product.id} initialSaved={isSaved} isAuthed={isAuthed} />
             {/* The desktop position. Its mobile twin is on the plate below —
@@ -129,6 +137,19 @@ export function ProductCard({
             )}
           </div>
         </Link>
+
+        {/* The mobile twin of the cluster control above. It takes the plate's
+            other bottom corner because that corner is dead space either way —
+            the image is `object-contain`, so the plate's corners are bare — and
+            because a control diagonally opposite the score reads as a pair of
+            corner affordances rather than a stack of chrome down one edge.
+
+            Wrapped rather than positioned through `className`: the button sets
+            `relative` itself, and `absolute` arriving from a prop would be a
+            cascade race between two utilities rather than an override. */}
+        <span className="absolute bottom-2 left-2 z-10 lg:hidden">
+          <CompareButton item={compareItem} />
+        </span>
 
         {score ? (
           <ScoreRing

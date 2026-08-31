@@ -88,6 +88,8 @@ Screens are built; this phase replaces the mock transport with the real one.
 - [x] Header with dynamic sub-nav (§13), footer with affiliate disclosure (§59)
 - [x] Product gallery: cursor-tracked zoom + prev/next (fine-pointer gated)
 - [x] Newsletter signup with cadence choice — daily / weekly / deals-only
+- [x] Compare reachable from the catalogue — purple control on every card, a
+      type-led shelf, and a cross-category refusal at pick time
 - [x] Contact / research-request page — topic-driven form, category multi-select, live docket
 - [ ] Contact handlers + acknowledgement email + admin queue view
 - [ ] Newsletter handlers + transactional email (double opt-in, one-click unsubscribe)
@@ -97,7 +99,8 @@ Screens are built; this phase replaces the mock transport with the real one.
 - [ ] Top Picks page (`/top-picks`)
 - [ ] Category index (`/c`)
 - [ ] `not-found` and `error` boundaries
-- [ ] Pagination / infinite scroll on category pages
+- [x] Pagination on category pages — `?page=`, `noindex, follow` past page one
+      (discovery is app/sitemap.ts's job, not a crawl through every facet)
 
 **Note:** every page already imports from `lib/api.ts` only. No component
 touches mock data directly, so the swap is a transport change, not a rewrite.
@@ -114,9 +117,9 @@ touches mock data directly, so the swap is a transport change, not a rewrite.
       error message (see brainstorm §8)
 - [ ] Full validation chain: MIME → magic bytes → size → decoded duration (§46)
 - [ ] Moderation queue in admin (§30)
-- [ ] Report flow + report resolution
+- [x] Report flow — inline reason picker on the review card (resolution: admin side done)
 - [ ] Recompute `rating_average` / `rating_count` on moderation
-- [ ] "Helpful" voting
+- [x] "Helpful" voting — optimistic, one vote per person by composite key
 
 **Guardrail:** authentication is enforced in the API. Hiding the review button
 is a convenience, never the control (§27).

@@ -7,6 +7,7 @@ import { getAlternatives, getProduct, getReviews } from "@/lib/api";
 import type { AlternativePick, Product } from "@/lib/types";
 import { getAuthedUser } from "@/lib/supabase/server";
 import { discountPercent, formatPrice, formatPriceRange, productFullName } from "@/lib/format";
+import { toCompareItem } from "@/lib/compare";
 
 import { Section, SectionHeader } from "@/components/layout/Section";
 import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
@@ -28,6 +29,8 @@ import {
 import { BuyingOptions, PriceComparison } from "@/components/product/BuyingOptions";
 import { ProductCard } from "@/components/product/ProductCard";
 import { ReviewList } from "@/components/product/ReviewList";
+import { CompareButton } from "@/components/compare/CompareButton";
+import { helpfulReviewIds, safe } from "@/lib/me-api";
 import { RowsArriving } from "@/components/ui/Arriving";
 
 type Params = { category: string; slug: string };
@@ -431,7 +434,7 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 
         {/* ============ 10. Better alternatives (spec §52) ============ */}
         <Suspense fallback={null}>
-          <Alternatives productId={product.id} stance={product.verdictStance} />
+          <Alternatives product={product} />
         </Suspense>
       </main>
 
@@ -615,6 +618,16 @@ export default async function ProductPage({ params }: { params: Promise<Params> 
 async function Community({ product }: { product: Product }) {
   const [reviews, viewer] = await Promise.all([getReviews(product.id), getAuthedUser()]);
 
+  /* Only asked for once the viewer is known to exist, and never allowed to
+     fail the section: `safe` degrades to "no votes cast", which renders every
+     control in its un-voted state — showing LESS than the truth, never more.
+     Sequential rather than folded into the `Promise.all` above because it needs
+     the answer to "is anyone signed in" before it is worth a round trip at
+     all, and for a signed-out reader that is zero requests instead of one. */
+  const helpfulIds = viewer
+    ? await safe(() => helpfulReviewIds(product.id), [] as string[])
+    : [];
+
   return (
     <Section width="wide">
       <ReviewList
@@ -624,6 +637,7 @@ async function Community({ product }: { product: Product }) {
         productId={product.id}
         productTitle={productFullName(product.brand, product.title)}
         isAuthed={Boolean(viewer)}
+        helpfulIds={helpfulIds}
       />
     </Section>
   );
@@ -641,17 +655,12 @@ async function Community({ product }: { product: Product }) {
  * distinct on purpose: presenting arithmetic as a recommendation is the exact
  * failure this site exists to avoid.
  */
-async function Alternatives({
-  productId,
-  stance,
-}: {
-  productId: string;
-  stance?: Product["verdictStance"];
-}) {
-  const alternatives = await getAlternatives(productId, 5);
+async function Alternatives({ product }: { product: Product }) {
+  const alternatives = await getAlternatives(product.id, 5);
   if (alternatives.length === 0) return null;
 
-  const redirecting = stance === "skip" || stance === "consider_alternative";
+  const redirecting =
+    product.verdictStance === "skip" || product.verdictStance === "consider_alternative";
 
   return (
     <Section width="wide">
@@ -662,6 +671,18 @@ async function Alternatives({
             ? "Where the money is better spent, and who each of these is for."
             : "Products that beat this one on a specific priority — value, performance, or budget."
         }
+        /* The page's compare entry point, and it is here rather than in the
+           hero for one reason: this is the only place on the page where the
+           rivals are already on screen. A control in the masthead asks the
+           reader to add this product and then go and find something to put it
+           against; a control HERE sits directly above five cards that each
+           carry the same control, so the whole interaction — pick this, pick
+           one of those, go — happens without a scroll.
+
+           It also keeps the hero's sequence intact. Price, verdict, one orange
+           exit: a second button in that column would be the stack §26 exists
+           to prevent. */
+        actions={<CompareButton item={toCompareItem(product)} variant="full" />}
       />
       <div className="grid-products stagger mt-8">
         {alternatives.map((alt: AlternativePick) => (

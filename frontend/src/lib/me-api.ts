@@ -63,6 +63,19 @@ export const getPreferences = () => request<Preferences>("/preferences");
 export const forYou = (limit = 8) =>
   request<ProductSummary[]>(`/for-you?limit=${limit}`);
 
+/**
+ * The reviews of one product the caller has already marked helpful.
+ *
+ * Scoped to a product rather than fetched wholesale for the same reason
+ * `savedIds` is fetched at all: the control has two states and the page has to
+ * know which one to paint before the reader touches it. It is a separate
+ * request from the review list because that list is cached at the edge for
+ * every visitor — folding a per-caller field into it would either poison the
+ * shared cache or make the whole list private.
+ */
+export const helpfulReviewIds = (productId: string) =>
+  request<string[]>(`/reviews/helpful-ids?productId=${encodeURIComponent(productId)}`);
+
 /** Degrade to a fallback rather than crashing a page. Safe here: it shows
  *  *less*, never more. */
 export async function safe<T>(fn: () => Promise<T>, fallback: T): Promise<T> {

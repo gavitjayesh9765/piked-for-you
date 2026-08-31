@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
@@ -9,13 +10,36 @@ import { Breadcrumbs } from "@/components/layout/Breadcrumbs";
 import { ProductCard } from "@/components/product/ProductCard";
 import { FilterRail } from "@/components/category/FilterRail";
 import { SortSelect } from "@/components/category/SortSelect";
+import { Pagination } from "@/components/category/Pagination";
 import { PanelArriving, ProductGridArriving, ValueArriving } from "@/components/ui/Arriving";
 import { ItemListJsonLd, itemListId } from "@/components/seo/ItemListJsonLd";
 import { CollectionPageJsonLd } from "@/components/seo/CollectionPageJsonLd";
 import { categoryDescription, categoryTitle } from "@/lib/seo";
 
 type Params = { path: string[] };
-type Search = { sort?: string; brand?: string | string[]; minScore?: string };
+type Search = {
+  sort?: string;
+  brand?: string | string[];
+  minScore?: string;
+  page?: string;
+};
+
+/** How many products a page holds. Unchanged from the value the grid has
+ *  always fetched — this is what got a "next" control, not a smaller page. */
+const PAGE_SIZE = 48;
+
+/**
+ * `?page=` is user input arriving in a URL, so it is read defensively rather
+ * than trusted: `Number("2; drop")` is NaN, `?page=0` would ask the API for
+ * offset -48, and `?page=1e9` is a request nobody made. Anything that is not a
+ * whole number in range collapses to page one, which is the view the reader
+ * almost certainly meant. The ceiling matches the API's own `MAX_PAGE`.
+ */
+function readPage(raw: string | undefined): number {
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1 || n > 1000) return 1;
+  return n;
+}
 
 export async function generateMetadata({
   params,
@@ -61,6 +85,14 @@ export async function generateMetadata({
    */
   const isFiltered = Boolean(sp.brand || sp.minScore || sp.sort);
 
+  /* Page two onward is the same argument one step along. Every one of these
+     renders real products, and the canonical below already consolidates them
+     onto the bare category path — but a paginated space is still a multiplied
+     space, and product discovery here is app/sitemap.ts's job, not a crawler's
+     walk through every category. See components/category/Pagination.tsx. */
+  const pageNumber = readPage(sp.page);
+  const deepPage = pageNumber > 1;
+
   /**
    * Both strings come from lib/seo.ts rather than being built here.
    *
@@ -75,10 +107,14 @@ export async function generateMetadata({
   const canonical = `/c/${path.join("/")}`;
 
   return {
-    title,
+    /* The page number belongs in the <title> even though the page is not
+       indexed: it is what a reader sees in a tab and in their own history, and
+       four identical "Best Wireless Earbuds" entries there are four entries
+       they cannot tell apart. */
+    title: deepPage ? `${title} — page ${pageNumber}` : title,
     description,
     alternates: { canonical },
-    ...(isFiltered ? { robots: { index: false, follow: true } } : {}),
+    ...(isFiltered || deepPage ? { robots: { index: false, follow: true } } : {}),
     openGraph: {
       title,
       description,
@@ -142,7 +178,8 @@ export default async function CategoryPage({
   const sort = (sp.sort as SortOption) ?? "score_desc";
 
   const basePath = `/c/${path.join("/")}`;
-  const query = { category: category.slug, brand: brandFilter, minScore, sort };
+  const page = readPage(sp.page);
+  const query = { category: category.slug, brand: brandFilter, minScore, sort, page };
 
   return (
     <main id="main">
@@ -213,9 +250,21 @@ export default async function CategoryPage({
                 stay visible until the new ones replace them. Blanking a grid
                 the reader is actively working with, to show them an outline of
                 the grid they were already looking at, would be the single most
-                obviously "loading" thing this page could do. */}
-            <Suspense key={category.slug} fallback={<ProductGridArriving />}>
-              <Results query={query} listName={categoryTitle(category, all)} basePath={basePath} />
+                obviously "loading" thing this page could do.
+
+                The page number is on the key for the same reason the category
+                is: page two IS arriving somewhere. Holding page one's products
+                under a control that now reads "Page 2 of 5" would be showing
+                the reader the wrong forty-eight and labelling them correctly.
+                Filters and sort still reset to page one before they get here
+                (see SortSelect and FilterRail), so this never fights them. */}
+            <Suspense key={`${category.slug}:${page}`} fallback={<ProductGridArriving />}>
+              <Results
+                query={query}
+                listName={categoryTitle(category, all)}
+                basePath={basePath}
+                search={sp}
+              />
             </Suspense>
           </div>
         </div>
@@ -242,6 +291,7 @@ type Query = {
   brand: string[] | undefined;
   minScore: number | undefined;
   sort: SortOption;
+  page: number;
 };
 
 /**
@@ -250,10 +300,17 @@ type Query = {
  * `lib/api` builds the same URL for the same query.
  */
 async function ResultCount({ query }: { query: Query }) {
-  const results = await listProducts({ ...query, pageSize: 48 });
+  const results = await listProducts({ ...query, pageSize: PAGE_SIZE });
+  if (results.items.length === 0) return <>No results</>;
+
+  /* A range rather than a count, now that there is more than one page. "Showing
+     48 of 214" was true on page one and a lie on page two, where it would have
+     claimed the same first forty-eight. */
+  const from = (results.page - 1) * results.pageSize + 1;
+  const to = from + results.items.length - 1;
   return (
     <>
-      Showing {results.items.length} of {results.total}
+      Showing {from}–{to} of {results.total}
     </>
   );
 }
@@ -262,6 +319,7 @@ async function Results({
   query,
   listName,
   basePath,
+  search,
 }: {
   query: Query;
   /** The page's own title, so the ranking is named the same way the <title>
@@ -269,10 +327,37 @@ async function Results({
    *  researched and ranked" on a page titled "Electronics buying guides". */
   listName: string;
   basePath: string;
+  /** The live query, so a page link keeps the filters and the sort. */
+  search: Search;
 }) {
-  const results = await listProducts({ ...query, pageSize: 48 });
+  const results = await listProducts({ ...query, pageSize: PAGE_SIZE });
 
   if (results.items.length === 0) {
+    /* Two different empty states, because they have two different fixes. A
+       filter that matches nothing is answered by widening it. A page number
+       past the end of the list — a stale link, a bookmark from before three
+       products were unpublished — is answered by going back to the start, and
+       telling that reader to widen their price range would send them looking
+       for a problem that is not there. */
+    if (query.page > 1) {
+      return (
+        <div className="enter dot-matrix rounded-lg border border-line py-24 text-center">
+          <p className="text-body-lg text-ink">There is nothing on page {query.page}.</p>
+          <p className="mt-2 text-body-sm text-ink-muted">
+            The list is shorter than it was when this link was made.
+          </p>
+          <Link
+            href={basePath}
+            className="mt-6 inline-flex items-center gap-2 font-label text-label-xs font-semibold
+                       uppercase tracking-[0.1em] text-brand transition-colors duration-fast hover:text-ink"
+          >
+            Back to the first page
+            <span aria-hidden="true">→</span>
+          </Link>
+        </div>
+      );
+    }
+
     return (
       <div className="enter dot-matrix rounded-lg border border-line py-24 text-center">
         <p className="text-body-lg text-ink">Nothing matches those filters.</p>
@@ -283,11 +368,23 @@ async function Results({
 
   return (
     <>
-      <div className="grid-products stagger">
+      {/* The landing point for a page link. `scroll-padding-top` in globals.css
+          offsets the sticky header stack, so "Next" puts the first row of the
+          new page under the sub-nav rather than starting the reader back at
+          the masthead they have already read. */}
+      <div id="results" className="grid-products stagger">
         {results.items.map((p, i) => (
           <ProductCard key={p.id} product={p} priority={i < 6} />
         ))}
       </div>
+
+      <Pagination
+        page={results.page}
+        pageSize={results.pageSize}
+        total={results.total}
+        basePath={basePath}
+        search={search}
+      />
 
       {/* Emitted here rather than in the page body because the ranking is what
           it describes, and the ranking does not exist until this fetch lands.
@@ -298,6 +395,9 @@ async function Results({
         products={results.items}
         path={basePath}
         name={`${listName} — researched and ranked`}
+        /* Continues the numbering instead of restarting it. Without this, page
+           two would declare a second product to be rank 1 of the same list. */
+        startPosition={(results.page - 1) * results.pageSize + 1}
       />
     </>
   );

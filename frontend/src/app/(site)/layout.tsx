@@ -6,6 +6,8 @@ import { SessionExpiry } from "@/components/auth/SessionExpiry";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { PageView } from "@/components/analytics/PageView";
+import { CompareProvider } from "@/components/compare/CompareProvider";
+import { CompareShelf } from "@/components/compare/CompareShelf";
 
 /**
  * The public site shell.
@@ -52,7 +54,13 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const categories = await getCategoriesForChrome();
 
   return (
-    <>
+    /* The comparison shortlist lives at the layout for the same reason the
+       header does: this is the boundary that SURVIVES a navigation. Held in a
+       page, the shelf would unmount and remount on every click, and a shortlist
+       built across three category pages is by definition built across three
+       navigations. Session storage would carry the data, but the bar would
+       still flicker out and back on each one. */
+    <CompareProvider>
       {/* Renders nothing. Behind its own boundary because resolving the
           caller is a round trip to the auth server, and the shell must not
           wait on it — the same reason the header account slot is suspended
@@ -63,12 +71,15 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
       <SiteHeader categories={categories} />
       {children}
       <SiteFooter />
+      {/* After the footer, so the spacer it renders extends the page rather
+          than sitting between content and the footer. */}
+      <CompareShelf />
       {/* Renders nothing. Mounted here rather than per-page precisely
           BECAUSE this layout survives navigation — see the note in
           components/analytics/PageView.tsx for why that means it watches
           the pathname instead of firing on mount. */}
       <PageView />
-    </>
+    </CompareProvider>
   );
 }
 

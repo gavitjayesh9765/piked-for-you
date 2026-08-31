@@ -27,6 +27,10 @@ export function SortSelect({ value }: { value: SortOption }) {
   function change(next: string) {
     const q = new URLSearchParams(params.toString());
     q.set("sort", next);
+    // Re-sorting rebuilds the whole ordering, so page four of the old order
+    // has no counterpart in the new one. Staying there would drop the reader
+    // somewhere arbitrary, or past the end of a filtered list entirely.
+    q.delete("page");
     startTransition(() => router.push(`${pathname}?${q.toString()}`, { scroll: false }));
   }
 

@@ -48,10 +48,17 @@ export function FilterRail({ facets, basePath }: { facets: FilterFacet[]; basePa
       if (next.get(key) === value) next.delete(key);
       else next.set(key, value);
     }
+    // Refining shortens the list, so the page the reader is on may no longer
+    // exist. Narrowing 214 products to 12 while sitting on page 3 would answer
+    // a filter with an empty grid.
+    next.delete("page");
     push(`${basePath}?${next.toString()}`);
   }
 
-  const activeCount = [...params.keys()].filter((k) => k !== "sort").length;
+  // `page` joins `sort` in the not-a-filter list. Neither narrows the results,
+  // and counting them would put a "2" badge on an unfiltered rail and offer to
+  // "Clear all" filters the reader never applied.
+  const activeCount = [...params.keys()].filter((k) => k !== "sort" && k !== "page").length;
   const [open, setOpen] = useState(false);
 
   // `lg:block` already reveals the panel on desktop; this keeps the toggle's

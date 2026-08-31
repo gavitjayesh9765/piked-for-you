@@ -24,6 +24,7 @@ from app.core.deps import CurrentUser, DbSession
 from app.models import (
     Product,
     ProductBadge,
+    Review,
     ReviewHelpfulVote,
     SavedProduct,
     UserPreferences,
@@ -333,6 +334,47 @@ async def for_you(
 # ====================================================================== #
 # Helpful votes                                                           #
 # ====================================================================== #
+
+
+@router.get("/reviews/helpful-ids", response_model=list[uuid.UUID])
+async def helpful_ids(
+    product_id: Annotated[uuid.UUID, Query(alias="productId")],
+    user: CurrentUser,
+    db: DbSession,
+    response: Response,
+) -> list[uuid.UUID]:
+    """Which of this product's reviews the caller has already found helpful.
+
+    The counterpart to `/saved/ids`, and it exists for the same reason: the
+    control has two states and the page has to know which one to render before
+    the reader touches it. Without this a returning reader sees every review
+    offering an un-cast vote they already cast, and casting it again does
+    nothing — the composite primary key is idempotent, so the button would
+    simply not respond.
+
+    Scoped to one product rather than returning every vote the caller has ever
+    made. The product page is the only surface that asks, it only ever needs the
+    reviews it is about to render, and an unbounded list would grow without
+    limit for an active reader.
+
+    The public review list is cached at the edge for everyone
+    (`s-maxage=PUBLIC_CACHE_SECONDS`), which is exactly why this is a separate
+    request: folding a per-caller field into that response would either poison
+    the shared cache or force the whole list to go private.
+    """
+    _private(response)
+
+    rows = (
+        await db.execute(
+            select(ReviewHelpfulVote.review_id)
+            .join(Review, Review.id == ReviewHelpfulVote.review_id)
+            .where(
+                ReviewHelpfulVote.user_id == user.id,
+                Review.product_id == product_id,
+            )
+        )
+    ).scalars().all()
+    return list(rows)
 
 
 @router.post("/reviews/{review_id}/helpful", status_code=status.HTTP_201_CREATED)
