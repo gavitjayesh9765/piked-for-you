@@ -819,6 +819,44 @@ const templates = [
       },
     },
   },
+  {
+    // The digest. Composed in /admin/newsletter and sent by
+    // backend/app/modules/admin/newsletter.py — again, by a person pressing a
+    // button, not by a schedule.
+    //
+    // `Picks` is the one placeholder in the whole system that is substituted
+    // WITHOUT escaping: it is a repeated block, one row per product, which no
+    // fixed set of placeholders can express. The Python side builds it and
+    // escapes every field it interpolates. See the `raw` argument on
+    // backend/app/emails/render for why that is a separate, awkward door.
+    key: "newsletter_digest",
+    kind: "transactional",
+    out: "../../backend/app/emails/newsletter_digest.html",
+    subject: "The latest from SortedChoice",
+    vars: ["Subject", "Intro", "Picks", "UnsubscribeURL"],
+    content: {
+      title: "{{ .Subject }}",
+      preheader: "{{ .Intro }}",
+      eyebrow: "SortedChoice",
+      heading: "{{ .Subject }}",
+      // Intro, then the picks, in one block.
+      //
+      // The picks are INLINE markup — anchors and spans and breaks, no table,
+      // no image. Partly because the lede sits inside a <p> and block elements
+      // there are invalid; mostly because it is the right form anyway. Mail
+      // clients block remote images by default, so a card layout arrives as a
+      // column of grey boxes, and the site's own grammar for "here are things
+      // worth comparing" is already type rather than thumbnails.
+      lede: `{{ .Intro }}<br /><br />{{ .Picks }}`,
+      notice: {
+        text: `You are getting this because you asked for it at this address, and confirmed it.
+                              Every product above links to our full verdict &mdash; we research, you decide
+                              where to buy.
+                              <br /><br />
+                              <a href="{{ .UnsubscribeURL }}" style="color:${c.brand}; text-decoration:underline;">Unsubscribe</a>`,
+      },
+    },
+  },
 ];
 
 /* ── Verify ────────────────────────────────────────────────────────────── */

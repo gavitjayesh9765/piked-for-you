@@ -11,8 +11,20 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, CheckConstraint, DateTime, Index, String
-from sqlalchemy.dialects.postgresql import INET
+import uuid
+
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    func,
+)
+from sqlalchemy.dialects.postgresql import ARRAY, INET, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin, UUIDMixin
@@ -52,4 +64,85 @@ class NewsletterSubscriber(UUIDMixin, TimestampMixin, Base):
         ),
         # The send job's hot path: active, confirmed subscribers on one cadence.
         Index("ix_newsletter_send", "frequency", "is_active", "confirmed_at"),
+    )
+
+
+class NewsletterCampaign(UUIDMixin, Base):
+    """One editor-composed digest.
+
+    Mirrors supabase/migrations/20260831000021_newsletter_campaigns.sql, where
+    the reasoning lives. The short version: a campaign is written and sent by a
+    person, never generated on a schedule, for the same reason a price run is —
+    an unattended process that speaks in our name can be wrong in our name.
+    """
+
+    __tablename__ = "newsletter_campaigns"
+
+    subject: Mapped[str] = mapped_column(Text, nullable=False)
+    intro: Mapped[Optional[str]] = mapped_column(Text)
+
+    #: 'all' | 'daily' | 'weekly' | 'deals_only' — the last three match
+    #: `NewsletterSubscriber.frequency` exactly. A segment that does not
+    #: correspond to something a subscriber chose is one we have no consent for.
+    audience: Mapped[str] = mapped_column(String(20), default="weekly", nullable=False)
+
+    #: Ordered and hand-picked. The order is the editor's argument.
+    product_ids: Mapped[list[uuid.UUID]] = mapped_column(
+        ARRAY(UUID(as_uuid=True)), default=list, nullable=False
+    )
+
+    status: Mapped[str] = mapped_column(String(20), default="draft", nullable=False)
+
+    #: Fixed when sending starts, so a subscriber who joins mid-send is not
+    #: silently folded into a campaign they saw no beginning of.
+    recipient_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    sent_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    failed_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+
+    created_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+    error: Mapped[Optional[str]] = mapped_column(Text)
+
+    __table_args__ = (
+        CheckConstraint(
+            "audience IN ('all', 'daily', 'weekly', 'deals_only')",
+            name="newsletter_campaigns_audience_valid",
+        ),
+        CheckConstraint(
+            "status IN ('draft', 'sending', 'paused', 'sent', 'failed')",
+            name="newsletter_campaigns_status_valid",
+        ),
+        Index("newsletter_campaigns_status_idx", "status", "created_at"),
+    )
+
+
+class NewsletterCampaignSend(Base):
+    """Proof that one subscriber was mailed one campaign.
+
+    The composite primary key is the whole point: sending is resumable because
+    Brevo's daily ceiling is shared with every transactional mail, and resumable
+    sending is only safe if a second attempt cannot mail anyone twice.
+    """
+
+    __tablename__ = "newsletter_campaign_sends"
+
+    campaign_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("newsletter_campaigns.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    subscriber_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("newsletter_subscribers.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    sent_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
     )

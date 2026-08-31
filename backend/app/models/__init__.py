@@ -34,7 +34,11 @@ from app.models.pricing import (
 )
 from app.models.review import Review, ReviewMedia, ReviewReport
 from app.models.content import ActivityLog, HomepageSection, TopPick
-from app.models.newsletter import NewsletterSubscriber
+from app.models.newsletter import (
+    NewsletterCampaign,
+    NewsletterCampaignSend,
+    NewsletterSubscriber,
+)
 from app.models.contact import ContactMessage
 from app.models.personalisation import ReviewHelpfulVote, SavedProduct, UserPreferences
 from app.models.analytics import DimensionDaily, ProductDaily, RetailerDaily
@@ -64,6 +68,8 @@ __all__ = [
     "TopPick",
     "HomepageSection",
     "ActivityLog",
+    "NewsletterCampaign",
+    "NewsletterCampaignSend",
     "NewsletterSubscriber",
     "ContactMessage",
     "SavedProduct",

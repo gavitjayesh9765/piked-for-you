@@ -23,17 +23,19 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
 from app.core import audit
+from app.emails import render
 from app.core.deps import CurrentAdmin, DbSession, client_ip
 from app.core.text import like_contains
 from app.models import (
     ActivityLog,
     ContactMessage,
+    NewsletterCampaign,
     NewsletterSubscriber,
     Product,
     Profile,
     Review,
 )
-from app.modules.admin import service
+from app.modules.admin import newsletter_send, service
 from app.modules.products.repository import ProductRepository
 from app.modules.products.service import sign_for, to_admin_detail, to_summary
 from app.schemas.common import MAX_PAGE, AdminSortOption, Page, PageParams
@@ -962,3 +964,229 @@ async def activity_logs(
         "pageSize": page_size,
         "hasMore": (page - 1) * page_size + len(rows) < total,
     }
+
+
+# --------------------------------------------------------------------------- #
+# Newsletter campaigns                                                        #
+#                                                                             #
+# The list has been collecting confirmed addresses, with a cadence choice,     #
+# since the signup form shipped, and nothing has ever been sent to it. These   #
+# endpoints are the missing half.                                             #
+#                                                                             #
+# Note what is absent: any route that schedules a send. A campaign goes out    #
+# because a person pressed Send, for the same reason a price run happens       #
+# because a person pressed Check - an unattended process that speaks in our    #
+# name can be wrong in our name, and a digest cannot be recalled.              #
+# --------------------------------------------------------------------------- #
+
+
+class CampaignWrite(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid")
+
+    subject: str
+    intro: str | None = None
+    audience: Literal["all", "daily", "weekly", "deals_only"] = "weekly"
+    product_ids: list[uuid.UUID] = []
+
+
+def _campaign_out(c: NewsletterCampaign, audience_size: int | None = None) -> dict:
+    return {
+        "id": str(c.id),
+        "subject": c.subject,
+        "intro": c.intro,
+        "audience": c.audience,
+        "productIds": [str(p) for p in c.product_ids],
+        "status": c.status,
+        "recipientCount": c.recipient_count,
+        "sentCount": c.sent_count,
+        "failedCount": c.failed_count,
+        "createdAt": c.created_at.isoformat() if c.created_at else None,
+        "startedAt": c.started_at.isoformat() if c.started_at else None,
+        "finishedAt": c.finished_at.isoformat() if c.finished_at else None,
+        "error": c.error,
+        **({"audienceSize": audience_size} if audience_size is not None else {}),
+    }
+
+
+@router.get("/newsletter/campaigns")
+async def list_campaigns(admin: CurrentAdmin, db: DbSession, response: Response) -> dict:
+    """Every campaign, newest first, plus today's remaining send budget.
+
+    The headroom is returned with the list rather than only on the send screen,
+    because "why did that stop at 180?" is a question the list is where someone
+    asks it.
+    """
+    response.headers["Cache-Control"] = "no-store"
+    rows = (
+        (
+            await db.execute(
+                select(NewsletterCampaign)
+                .order_by(NewsletterCampaign.created_at.desc())
+                .limit(50)
+            )
+        )
+        .scalars()
+        .all()
+    )
+    return {
+        "items": [_campaign_out(c) for c in rows],
+        "headroom": await newsletter_send.headroom(db),
+        "dailyCeiling": newsletter_send.DAILY_CEILING,
+    }
+
+
+@router.post("/newsletter/campaigns", status_code=status.HTTP_201_CREATED)
+async def create_campaign(
+    payload: Annotated[CampaignWrite, Body()],
+    admin: CurrentAdmin,
+    db: DbSession,
+    request: Request,
+) -> dict:
+    campaign = NewsletterCampaign(
+        subject=payload.subject.strip(),
+        intro=(payload.intro or "").strip() or None,
+        audience=payload.audience,
+        product_ids=payload.product_ids,
+        created_by=admin.id,
+    )
+    db.add(campaign)
+    await db.flush()
+    await audit.record(
+        db,
+        actor_id=admin.id,
+        action="newsletter.campaign.create",
+        entity_type="newsletter_campaign",
+        entity_id=campaign.id,
+        summary=f"Drafted a campaign: {campaign.subject}",
+        ip_address=client_ip(request),
+    )
+    return _campaign_out(campaign, await newsletter_send.count_audience(db, campaign))
+
+
+@router.patch("/newsletter/campaigns/{campaign_id}")
+async def update_campaign(
+    campaign_id: uuid.UUID,
+    payload: Annotated[CampaignWrite, Body()],
+    admin: CurrentAdmin,
+    db: DbSession,
+) -> dict:
+    """Edit a draft.
+
+    Drafts only, and deliberately so: once a send has started, some subscribers
+    already hold the old copy in their inbox and no edit here can reach them.
+    Allowing it would produce one campaign that said two different things.
+    """
+    campaign = await db.get(NewsletterCampaign, campaign_id)
+    if campaign is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Campaign not found")
+    if campaign.status != "draft":
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This campaign has already started sending, so its content is fixed.",
+        )
+
+    campaign.subject = payload.subject.strip()
+    campaign.intro = (payload.intro or "").strip() or None
+    campaign.audience = payload.audience
+    campaign.product_ids = payload.product_ids
+    await db.flush()
+    return _campaign_out(campaign, await newsletter_send.count_audience(db, campaign))
+
+
+@router.delete("/newsletter/campaigns/{campaign_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_campaign(campaign_id: uuid.UUID, admin: CurrentAdmin, db: DbSession) -> None:
+    """Discard a draft. Anything that has sent is kept as a record."""
+    campaign = await db.get(NewsletterCampaign, campaign_id)
+    if campaign is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Campaign not found")
+    if campaign.status != "draft":
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "A campaign that has been sent is a record of what people received.",
+        )
+    await db.delete(campaign)
+
+
+@router.get("/newsletter/campaigns/{campaign_id}/preview")
+async def preview_campaign(campaign_id: uuid.UUID, admin: CurrentAdmin, db: DbSession) -> dict:
+    """The exact HTML a subscriber would receive.
+
+    Rendered through the same function the send uses, with a placeholder
+    unsubscribe link. A preview built by a second code path is a preview of
+    something nobody gets.
+    """
+    campaign = await db.get(NewsletterCampaign, campaign_id)
+    if campaign is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Campaign not found")
+
+    products = []
+    if campaign.product_ids:
+        found = (
+            (
+                await db.execute(
+                    select(Product)
+                    .options(selectinload(Product.category), selectinload(Product.brand))
+                    .where(
+                        Product.id.in_(campaign.product_ids),
+                        Product.status == "published",
+                    )
+                )
+            )
+            .unique()
+            .scalars()
+            .all()
+        )
+        by_id = {p.id: p for p in found}
+        products = [by_id[pid] for pid in campaign.product_ids if pid in by_id]
+
+    picks_html, _ = newsletter_send.build_picks(products)
+    html = render(
+        "newsletter_digest",
+        raw={"Picks": picks_html},
+        Subject=campaign.subject,
+        Intro=campaign.intro or "",
+        UnsubscribeURL="#preview",
+    )
+    return {
+        "html": html,
+        "audienceSize": await newsletter_send.count_audience(db, campaign),
+        # Named so the editor can see which picks were dropped for being
+        # unpublished, rather than wondering why the email is shorter.
+        "included": len(products),
+        "picked": len(campaign.product_ids),
+    }
+
+
+@router.post("/newsletter/campaigns/{campaign_id}/send")
+async def send_campaign(
+    campaign_id: uuid.UUID, admin: CurrentAdmin, db: DbSession, request: Request
+) -> dict:
+    """Send one batch. Press again to continue.
+
+    Batched rather than fire-and-forget because the daily ceiling is shared with
+    transactional mail and a list can exceed it - so a send is a sequence of
+    deliberate steps with a visible count, not a button that means "and now
+    hope". See newsletter_send for the ceiling arithmetic.
+    """
+    campaign = await db.get(NewsletterCampaign, campaign_id)
+    if campaign is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Campaign not found")
+    if campaign.status in ("sent", "failed"):
+        raise HTTPException(status.HTTP_409_CONFLICT, "This campaign is finished.")
+
+    first = campaign.status == "draft"
+    result = await newsletter_send.send_batch(db, campaign)
+    await db.flush()
+
+    if first:
+        await audit.record(
+            db,
+            actor_id=admin.id,
+            action="newsletter.campaign.send",
+            entity_type="newsletter_campaign",
+            entity_id=campaign.id,
+            summary=f"Started sending to {campaign.audience}: {campaign.subject}",
+            ip_address=client_ip(request),
+        )
+
+    return {**_campaign_out(campaign), **result, "headroom": await newsletter_send.headroom(db)}

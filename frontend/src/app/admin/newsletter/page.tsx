@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-import { listSubscribers, safe, type AdminSubscriberList } from "@/lib/admin-api";
+import { adminGet, listSubscribers, safe, type AdminSubscriberList } from "@/lib/admin-api";
 import { relativeTime } from "@/lib/format";
 import { StatusPill } from "@/components/ui/Badge";
 import { AdminPage, DataTable, FilterTabs, Td } from "@/components/admin/Shell";
 import { AdminSearch } from "@/components/admin/AdminSearch";
 import { SubscriberListControls } from "@/components/admin/SubscriberListControls";
+import { CampaignComposer } from "@/components/admin/CampaignComposer";
 import {
   NEWSLETTER_FREQUENCIES,
   NEWSLETTER_FREQUENCY_LABEL,
@@ -105,6 +106,10 @@ export default async function AdminNewsletterPage({
         <SubscriberListControls frequency={frequency} />
       </div>
 
+      <Suspense fallback={null}>
+        <Campaigns />
+      </Suspense>
+
       <SendingPaused />
 
       <Suspense key={key} fallback={<TableArriving rows={10} />}>
@@ -126,18 +131,46 @@ function SendingPaused() {
   return (
     <div className="mb-6 rounded-lg border border-warn bg-warn-soft px-5 py-4">
       <p className="font-label text-label-xs font-bold uppercase tracking-[0.12em] text-warn-on-soft">
-        Sending is off
+        Mail has to be switched on
       </p>
       <p className="mt-1.5 max-w-3xl text-body-sm text-warn-on-soft">
-        Addresses are being collected, and no mail is going out — so everyone stays{" "}
-        <strong className="font-semibold">unconfirmed</strong> until the first send. That is
-        expected, not a fault: confirmation happens by clicking a link in an email, and there is
-        no email yet. Brevo is already wired up; switching{" "}
-        <code className="font-mono">MAIL_PROVIDER</code> to <code className="font-mono">brevo</code>{" "}
-        on the API turns it on, and the confirmation goes out to each new signup from that moment.
-        See <span className="font-mono">docs/10-newsletter-email.md</span>.
+        The composer above is live, and so is the send — but nothing leaves the building until{" "}
+        <code className="font-mono">MAIL_PROVIDER</code> is <code className="font-mono">brevo</code>{" "}
+        on the API. Until then confirmations do not go out either, so everyone stays{" "}
+        <strong className="font-semibold">unconfirmed</strong> and the audience for any campaign is
+        zero. That is expected, not a fault. See{" "}
+        <span className="font-mono">docs/10-newsletter-email.md</span>.
       </p>
     </div>
+  );
+}
+
+/**
+ * The campaign list and composer.
+ *
+ * Behind its own boundary: it costs an extra call, and the subscriber table
+ * below is what most visits to this screen are actually for.
+ */
+async function Campaigns() {
+  const data = await adminGet<{
+    items: Parameters<typeof CampaignComposer>[0]["initial"];
+    headroom: number;
+    dailyCeiling: number;
+  }>(
+    "/newsletter/campaigns",
+    // Degrades to an empty composer rather than failing the screen: the
+    // subscriber table below is what most visits here are for, and it does not
+    // depend on this call. A zero headroom also reads correctly — it says
+    // "cannot send right now", which is true when the API is unreachable.
+    { items: [], headroom: 0, dailyCeiling: 0 },
+  );
+
+  return (
+    <CampaignComposer
+      initial={data.items}
+      headroom={data.headroom}
+      dailyCeiling={data.dailyCeiling}
+    />
   );
 }
 

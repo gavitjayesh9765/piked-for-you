@@ -99,8 +99,8 @@ Screens are built; this phase replaces the mock transport with the real one.
       after an admin applies a run. Still no timer, no cron, no poller
 - [ ] "New pick in my categories" email — the toggle exists and persists; there
       is no sender behind it yet
-- [ ] Newsletter campaign composer + send — the list and double opt-in work, the
-      admin screen still says Sending is off
+- [x] Newsletter campaign composer + batched send — editor-composed, never
+      scheduled; resumable and idempotent against Brevo's shared 300/day ceiling
 - [ ] Guides in the CMS — src/content/guides/*.tsx still needs a deploy
 - [x] Contact / research-request page — topic-driven form, category multi-select, live docket
 - [ ] Contact handlers + acknowledgement email + admin queue view

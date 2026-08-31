@@ -72,21 +72,55 @@ def _escape(value: str) -> str:
     )
 
 
-def render(name: str, **values: str) -> str:
+def render(name: str, *, raw: dict[str, str] | None = None, **values: str) -> str:
     """Substitute `{{ .Name }}` placeholders in a generated template.
 
     Raises rather than leaving a placeholder in place. An unsubstituted
     `{{ .ConfirmURL }}` is not a cosmetic defect: it ships a dead link to a
     real person and the only signal is a subscriber who never confirms.
+
+    ---------------------------------------------------------------------------
+    `raw` — AND WHY IT IS A SEPARATE ARGUMENT
+
+    Everything in `**values` is escaped, which is right: they are single fields
+    going into text or an attribute. The newsletter digest needs one thing that
+    cannot work that way — a repeated block, one row per product, which no fixed
+    set of placeholders can express.
+
+    So `raw` exists, and it is deliberately awkward to reach: a distinct
+    keyword-only argument rather than a flag on a value, so that passing markup
+    through unescaped is always a visible decision at the call site and never
+    something a refactor can do by accident. **The caller escapes every
+    interpolated field itself** — see `escape` below, which is exported for
+    exactly that.
+
+    A name may appear in `values` or in `raw`, never both.
     """
     html = _load(name)
+    raw = raw or {}
 
-    missing = {m.group(1) for m in _VAR.finditer(html)} - set(values)
+    both = set(values) & set(raw)
+    if both:
+        raise TemplateError(f"{name}: {', '.join(sorted(both))} given as both escaped and raw")
+
+    supplied = set(values) | set(raw)
+    used = {m.group(1) for m in _VAR.finditer(html)}
+
+    missing = used - supplied
     if missing:
         raise TemplateError(f"{name}: no value given for {', '.join(sorted(missing))}")
 
-    unused = set(values) - {m.group(1) for m in _VAR.finditer(html)}
+    unused = supplied - used
     if unused:
         raise TemplateError(f"{name}: does not use {', '.join(sorted(unused))}")
 
-    return _VAR.sub(lambda m: _escape(values[m.group(1)]), html)
+    def _sub(m: "re.Match[str]") -> str:
+        key = m.group(1)
+        return raw[key] if key in raw else _escape(values[key])
+
+    return _VAR.sub(_sub, html)
+
+
+#: Exported so a caller building a `raw` block can escape the fields it
+#: interpolates with the same escaper the rest of this module uses.
+escape = _escape
