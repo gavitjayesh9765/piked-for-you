@@ -146,3 +146,33 @@ class NewsletterCampaignSend(Base):
     sent_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class MailSettings(Base):
+    """Operational mail switches, editable in the admin panel.
+
+    A singleton, the same shape `pricing_settings` uses and for the same reason:
+    these are knobs someone turns during an incident, and an editor cannot
+    deploy. See app/core/mail_settings.py for why `provider` is nullable and why
+    the key is stored encrypted and never returned.
+    """
+
+    __tablename__ = "mail_settings"
+
+    id: Mapped[bool] = mapped_column(Boolean, primary_key=True, default=True)
+
+    #: NULL means "follow MAIL_PROVIDER". Not the same state as 'disabled'.
+    provider: Mapped[Optional[str]] = mapped_column(String(20))
+    from_email: Mapped[Optional[str]] = mapped_column(String(320))
+    from_name: Mapped[Optional[str]] = mapped_column(String(120))
+    reply_to: Mapped[Optional[str]] = mapped_column(String(320))
+
+    #: Fernet token. Never leaves the server; the admin API returns only
+    #: `api_key_last4` and whether one is set.
+    api_key_ciphertext: Mapped[Optional[str]] = mapped_column(Text)
+    api_key_last4: Mapped[Optional[str]] = mapped_column(String(8))
+
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    updated_by: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True))

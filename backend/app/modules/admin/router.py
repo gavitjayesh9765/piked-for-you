@@ -22,13 +22,15 @@ from pydantic.alias_generators import to_camel
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import selectinload
 
-from app.core import audit
+from app.core import audit, mail_settings
+from app.core.config import settings
 from app.emails import render
 from app.core.deps import CurrentAdmin, DbSession, client_ip
 from app.core.text import like_contains
 from app.models import (
     ActivityLog,
     ContactMessage,
+    MailSettings,
     NewsletterCampaign,
     NewsletterSubscriber,
     Product,
@@ -1190,3 +1192,123 @@ async def send_campaign(
         )
 
     return {**_campaign_out(campaign), **result, "headroom": await newsletter_send.headroom(db)}
+
+
+# --------------------------------------------------------------------------- #
+# Mail settings                                                               #
+#                                                                             #
+# Turning sending off used to need a deploy, which is the worst possible       #
+# requirement at the moment you actually want it: a bad campaign going out, a  #
+# provider incident, a domain that has just been flagged. Same argument        #
+# `pricing_settings` makes for the scraper.                                   #
+#                                                                             #
+# The API key can be set here and is NEVER returned. See                       #
+# app/core/mail_settings.py for how it is stored and why.                      #
+# --------------------------------------------------------------------------- #
+
+
+class MailSettingsWrite(BaseModel):
+    model_config = ConfigDict(alias_generator=to_camel, populate_by_name=True, extra="forbid")
+
+    #: None means "follow the environment" — a real third state, not "off".
+    provider: Literal["brevo", "console", "disabled"] | None = None
+    from_email: str | None = None
+    from_name: str | None = None
+    reply_to: str | None = None
+    #: Omit or send empty to leave the stored key untouched. Saving the form
+    #: must not be able to wipe a working key by accident.
+    api_key: str | None = None
+
+
+async def _mail_row(db: DbSession) -> MailSettings:
+    row = (await db.execute(select(MailSettings).limit(1))).scalar_one_or_none()
+    if row is None:
+        row = MailSettings(id=True)
+        db.add(row)
+        await db.flush()
+    return row
+
+
+@router.get("/mail-settings")
+async def get_mail_settings(admin: CurrentAdmin, db: DbSession, response: Response) -> dict:
+    """What is configured, and what is actually in force.
+
+    Returns both, because they can differ: a null `provider` here means the
+    environment is deciding, and an editor needs to see WHICH value is live
+    before changing a field that is not the one taking effect.
+
+    The key is never returned in any form beyond its last four characters —
+    enough to tell two keys apart, not enough to use one.
+    """
+    response.headers["Cache-Control"] = "no-store"
+    row = await _mail_row(db)
+    effective = await mail_settings.resolve(db)
+
+    return {
+        "provider": row.provider,
+        "fromEmail": row.from_email,
+        "fromName": row.from_name,
+        "replyTo": row.reply_to,
+        "apiKeySet": bool(row.api_key_ciphertext),
+        "apiKeyLast4": row.api_key_last4,
+        "effective": {
+            "provider": effective.provider,
+            "fromEmail": effective.from_email,
+            "fromName": effective.from_name,
+            "delivers": effective.provider in ("brevo", "console"),
+            "source": "database" if effective.from_database else "environment",
+            # The one combination that boots fine and fails on every send.
+            "keyMissing": effective.provider == "brevo" and not effective.api_key,
+        },
+        "envProvider": settings.MAIL_PROVIDER,
+        "updatedAt": row.updated_at.isoformat() if row.updated_at else None,
+    }
+
+
+@router.put("/mail-settings")
+async def update_mail_settings(
+    payload: Annotated[MailSettingsWrite, Body()],
+    admin: CurrentAdmin,
+    db: DbSession,
+    request: Request,
+) -> dict:
+    """Change what is in force, without a deploy."""
+    row = await _mail_row(db)
+
+    row.provider = payload.provider
+    row.from_email = (payload.from_email or "").strip() or None
+    row.from_name = (payload.from_name or "").strip() or None
+    row.reply_to = (payload.reply_to or "").strip() or None
+
+    key = (payload.api_key or "").strip()
+    if key:
+        encrypted = mail_settings.encrypt_key(key)
+        if encrypted is None:
+            # Refuse rather than store a secret in the clear. Without
+            # SUPABASE_JWT_SECRET there is nothing to encrypt with, and a
+            # plaintext fallback is exactly the shortcut this must not take.
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Cannot store a key: SUPABASE_JWT_SECRET is not set on the API.",
+            )
+        row.api_key_ciphertext, row.api_key_last4 = encrypted
+
+    row.updated_by = admin.id
+    await db.flush()
+
+    await audit.record(
+        db,
+        actor_id=admin.id,
+        action="mail.settings.update",
+        entity_type="mail_settings",
+        entity_id=None,
+        # Deliberately records the switch and not the secret. An audit log that
+        # quotes an API key is a second place the key lives.
+        summary=(
+            f"Mail provider set to {row.provider or 'follow environment'}"
+            + (", key replaced" if key else "")
+        ),
+        ip_address=client_ip(request),
+    )
+
+    return await get_mail_settings(admin, db, Response())

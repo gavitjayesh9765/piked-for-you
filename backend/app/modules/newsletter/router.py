@@ -41,7 +41,7 @@ from sqlalchemy import select
 from app.core.config import settings
 from app.core.deps import DbSession, client_ip
 from app.core.limiter import WRITE, limiter
-from app.core.mail import MailDeliveryError, MailMessage, get_transport
+from app.core.mail import MailDeliveryError, MailMessage, get_transport_for
 from app.emails import NEWSLETTER_CONFIRMATION_SUBJECT, render
 from app.models import NewsletterSubscriber
 
@@ -88,14 +88,14 @@ def _confirm_url(token: str) -> str:
     return f"{settings.SITE_URL}/newsletter/confirm?{urlencode({'token': token})}"
 
 
-async def _send_confirmation(email: str, token: str, frequency: str) -> bool:
+async def _send_confirmation(db, email: str, token: str, frequency: str) -> bool:
     """Send the double opt-in mail. True if the provider accepted it.
 
     Never raises. The caller is a public endpoint whose entire contract is
     that its response does not vary with the recipient, so there is nothing
     useful it could do with an exception except leak that it happened.
     """
-    transport = get_transport()
+    transport = await get_transport_for(db)
 
     # `MAIL_PROVIDER=disabled` while the list is being built. Returning False
     # here rather than letting NullTransport's silent success fall through is
@@ -257,11 +257,11 @@ async def subscribe(
     # which is exactly the state that makes re-submitting the address work
     # instead of appearing to succeed while nothing was ever sent.
     if row is not None and token is not None and await _send_confirmation(
-        email, token, payload.frequency
+        db, email, token, payload.frequency
     ):
         row.confirmation_sent_at = _now()
 
-    return SubscribeResponse(mail_enabled=get_transport().delivers)
+    return SubscribeResponse(mail_enabled=(await get_transport_for(db)).delivers)
 
 
 @router.get("/confirm", response_model=SubscribeResponse)

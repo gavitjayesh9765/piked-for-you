@@ -191,7 +191,52 @@ class NullTransport:
 
 
 @lru_cache
+async def get_transport_for(db) -> MailTransport:
+    """The transport the admin panel has configured, falling back to the env.
+
+    The async, database-aware entry point every sending path now uses. The
+    synchronous `get_transport()` below is unchanged and still reads only the
+    environment — it is the bootstrap path, for anything running before or
+    outside a request.
+
+    A failure to read the row is not a reason to refuse to send: it degrades to
+    the environment, which is what the service did before this table existed.
+    """
+    from app.core.mail_settings import resolve
+
+    try:
+        cfg = await resolve(db)
+    except Exception:  # noqa: BLE001
+        logger.warning("mail_settings unreadable — falling back to environment", exc_info=True)
+        return get_transport()
+
+    return _build(cfg.provider, cfg.api_key, cfg.from_email, cfg.from_name, cfg.reply_to)
+
+
+def _build(
+    provider: str, api_key: str, from_email: str, from_name: str, reply_to: str
+) -> MailTransport:
+    if provider == "brevo":
+        # Checked here as well as in config validation: config only enforces
+        # this for production, and a staging box with `brevo` and no key
+        # should fail at startup rather than on a subscriber's signup.
+        if not api_key:
+            raise MailDeliveryError("Mail provider is `brevo` but no API key is set.")
+        return BrevoTransport(
+            api_key=api_key,
+            sender_email=from_email,
+            sender_name=from_name,
+            reply_to=reply_to,
+        )
+
+    if provider == "console":
+        return ConsoleTransport()
+
+    return NullTransport()
+
+
 def get_transport() -> MailTransport:
+    """Environment only. See `get_transport_for` for the configured one."""
     provider = settings.MAIL_PROVIDER
 
     if provider == "brevo":

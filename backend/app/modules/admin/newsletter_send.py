@@ -41,7 +41,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
-from app.core.mail import MailMessage, get_transport
+from app.core.mail import MailMessage, get_transport_for
 from app.emails import escape, render
 from app.models import (
     NewsletterCampaign,
@@ -179,7 +179,7 @@ async def send_batch(db: AsyncSession, campaign: NewsletterCampaign) -> dict:
     Returns what happened, so the admin screen can say it plainly rather than
     reporting a bare success for a send that stopped after eleven emails.
     """
-    transport = get_transport()
+    transport = await get_transport_for(db)
     if not transport.delivers:
         return {"sent": 0, "remaining": 0, "status": campaign.status, "reason": "mail_disabled"}
 

@@ -50,7 +50,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.core.mail import MailMessage, get_transport
+from app.core.mail import MailMessage, get_transport_for
 from app.emails import render
 from app.models import Product, Profile, SavedProduct, UserPreferences
 
@@ -102,7 +102,7 @@ async def dispatch_price_drops(db: AsyncSession, product_ids: list[uuid.UUID]) -
     if not product_ids:
         return 0
 
-    transport = get_transport()
+    transport = await get_transport_for(db)
     # `MAIL_PROVIDER=disabled`. Returning before the query rather than after it
     # matters: without this the baselines would still be advanced by the loop
     # below and the drop would be marked as told to a reader who was never told.
@@ -157,7 +157,7 @@ async def dispatch_price_drops(db: AsyncSession, product_ids: list[uuid.UUID]) -
         if _percent_off(baseline, current) < MIN_DROP_PERCENT:
             continue
 
-        if await _send(profile, product, baseline, current):
+        if await _send(transport, profile, product, baseline, current):
             saved.alerted_price = current
             saved.alerted_at = now
             sent += 1
@@ -165,7 +165,9 @@ async def dispatch_price_drops(db: AsyncSession, product_ids: list[uuid.UUID]) -
     return sent
 
 
-async def _send(profile: Profile, product: Product, baseline: Decimal, current: Decimal) -> bool:
+async def _send(
+    transport, profile: Profile, product: Product, baseline: Decimal, current: Decimal
+) -> bool:
     """One alert. True if the provider accepted it."""
     currency = product.currency or "INR"
     saving = _money(baseline - current, currency)
@@ -201,7 +203,7 @@ async def _send(profile: Profile, product: Product, baseline: Decimal, current: 
     )
 
     try:
-        await get_transport().send(
+        await transport.send(
             MailMessage(
                 to=profile.email,
                 subject=f"{name} is now {now_str}",

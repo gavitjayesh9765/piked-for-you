@@ -35,6 +35,7 @@ from app.models.pricing import (
 from app.models.review import Review, ReviewMedia, ReviewReport
 from app.models.content import ActivityLog, HomepageSection, TopPick
 from app.models.newsletter import (
+    MailSettings,
     NewsletterCampaign,
     NewsletterCampaignSend,
     NewsletterSubscriber,
@@ -68,6 +69,7 @@ __all__ = [
     "TopPick",
     "HomepageSection",
     "ActivityLog",
+    "MailSettings",
     "NewsletterCampaign",
     "NewsletterCampaignSend",
     "NewsletterSubscriber",
