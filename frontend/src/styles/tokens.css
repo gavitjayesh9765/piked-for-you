@@ -282,6 +282,25 @@
   /* Image plate — the soft stage a product photo sits on */
   --c-plate: #ede9e3;
 
+  /* Hero seam — how the photograph column dissolves into the page.
+     A single `bg -> transparent 22%` stop was invisible in light (page and
+     photograph are both warm off-white) but ugly in dark: a linear alpha ramp
+     from #0A0A0A across 22% of a flat cream frame reads as a grey band with a
+     visible boundary, not as a fade. These stops approximate an ease-out
+     curve, and dark runs the fade nearly twice as far because that is the
+     distance the luminance gap actually needs. */
+  --hero-seam: linear-gradient(
+    to right,
+    rgb(244 241 237 / 1) 0%,
+    rgb(244 241 237 / 0.86) 5%,
+    rgb(244 241 237 / 0.6) 12%,
+    rgb(244 241 237 / 0.32) 20%,
+    rgb(244 241 237 / 0.12) 28%,
+    rgb(244 241 237 / 0) 36%
+  );
+  /* The photograph is already at home on a light page */
+  --hero-photo-filter: none;
+
   /* Elevation — very diffuse, and tinted warm. A pure-black shadow on a warm
      paper base desaturates to grey and reads as dirt rather than depth. */
   --e-1: 0 1px 2px rgba(48, 38, 26, 0.05);
@@ -374,6 +393,22 @@
   /* Product photography reads best on a slightly raised neutral plate */
   --c-plate: #17171a;
 
+  --hero-seam: linear-gradient(
+    to right,
+    rgb(10 10 10 / 1) 0%,
+    rgb(10 10 10 / 0.94) 6%,
+    rgb(10 10 10 / 0.78) 14%,
+    rgb(10 10 10 / 0.55) 24%,
+    rgb(10 10 10 / 0.32) 34%,
+    rgb(10 10 10 / 0.14) 45%,
+    rgb(10 10 10 / 0.04) 55%,
+    rgb(10 10 10 / 0) 64%
+  );
+  /* Unfiltered, a cream studio frame is the brightest thing on an obsidian
+     page and pulls the eye off the headline. Pulled down and slightly
+     desaturated it sits at the same weight as the copy beside it. */
+  --hero-photo-filter: brightness(0.84) saturate(0.9) contrast(1.03);
+
   --e-1: 0 1px 2px rgba(0, 0, 0, 0.5);
   --e-2: 0 4px 20px rgba(0, 0, 0, 0.55);
   --e-3: 0 8px 30px rgba(0, 0, 0, 0.62);
@@ -448,6 +483,22 @@
     --c-scrim: rgba(0, 0, 0, 0.68);
     --c-focus: #a394ff;
     --c-plate: #17171a;
+
+    --hero-seam: linear-gradient(
+      to right,
+      rgb(10 10 10 / 1) 0%,
+      rgb(10 10 10 / 0.94) 6%,
+      rgb(10 10 10 / 0.78) 14%,
+      rgb(10 10 10 / 0.55) 24%,
+      rgb(10 10 10 / 0.32) 34%,
+      rgb(10 10 10 / 0.14) 45%,
+      rgb(10 10 10 / 0.04) 55%,
+      rgb(10 10 10 / 0) 64%
+    );
+    /* Unfiltered, a cream studio frame is the brightest thing on an obsidian
+       page and pulls the eye off the headline. Pulled down and slightly
+       desaturated it sits at the same weight as the copy beside it. */
+    --hero-photo-filter: brightness(0.84) saturate(0.9) contrast(1.03);
 
     --e-1: 0 1px 2px rgba(0, 0, 0, 0.5);
     --e-2: 0 4px 20px rgba(0, 0, 0, 0.55);

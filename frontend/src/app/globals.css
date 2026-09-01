@@ -1078,6 +1078,11 @@
 
   .hero-plate {
     animation: hero-plate 1100ms var(--ease) backwards;
+    /* Per-theme grade. `none` in light, a small pull-down in dark — see
+       --hero-photo-filter in tokens.css. Kept on the same element as the
+       animation: both are compositor-only properties on a layer that is
+       already promoted, so neither costs a repaint. */
+    filter: var(--hero-photo-filter, none);
   }
 
   /* ------------------------------------------------------------------

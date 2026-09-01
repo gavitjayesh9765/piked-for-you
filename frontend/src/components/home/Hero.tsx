@@ -157,10 +157,13 @@ export function Hero() {
                shift anything around it. */
             className="hero-plate object-cover"
           />
-          {/* Softens the seam between copy and image without dimming the product */}
+          {/* Softens the seam between copy and image without dimming the product.
+              The ramp itself is per-theme (--hero-seam): light needs barely any
+              because the page and the photograph are the same warm off-white,
+              dark needs a long eased one to cross a much bigger luminance gap. */}
           <div
             className="pointer-events-none absolute inset-0"
-            style={{ background: "linear-gradient(to right, var(--c-bg), transparent 22%)" }}
+            style={{ background: "var(--hero-seam)" }}
           />
           <div className="dot-matrix pointer-events-none absolute inset-0 opacity-60" />
         </div>
