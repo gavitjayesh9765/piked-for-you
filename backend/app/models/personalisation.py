@@ -122,3 +122,24 @@ class ReviewHelpfulVote(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class NewPickSend(Base):
+    """Proof that one person was told about one product.
+
+    The composite primary key is the point: a product that is unpublished to fix
+    a typo and republished must not mail the same people again. A correction is
+    not news, and the second email is the one that loses a subscriber.
+    """
+
+    __tablename__ = "new_pick_sends"
+
+    product_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("products.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("profiles.id", ondelete="CASCADE"), primary_key=True
+    )
+    sent_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

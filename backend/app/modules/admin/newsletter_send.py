@@ -44,6 +44,7 @@ from app.core.config import settings
 from app.core.mail import MailMessage, get_transport_for
 from app.emails import escape, render
 from app.models import (
+    NewPickSend,
     NewsletterCampaign,
     NewsletterCampaignSend,
     NewsletterSubscriber,
@@ -93,21 +94,37 @@ async def count_audience(db: AsyncSession, campaign: NewsletterCampaign) -> int:
 
 
 async def _sent_today(db: AsyncSession) -> int:
-    """Campaign mail sent in the last 24 hours.
+    """Bulk mail sent in the last 24 hours, across every path that sends it.
 
     A rolling window rather than "since midnight", because the provider's reset
     is in its own timezone and guessing wrong means either wasting headroom or
     being refused mid-batch. A rolling window is never wrong in the direction
     that sends too many.
+
+    Campaigns AND new-pick alerts, because there is one provider budget and two
+    things spending it. Counting only campaigns would let a busy publishing day
+    quietly consume the allowance and leave the send refused mid-batch by Brevo
+    rather than paused politely here. Price-drop alerts are not counted: they
+    are bounded by how many people saved a product that moved, and they are what
+    the transactional reserve exists for.
     """
     since = datetime.now(timezone.utc) - timedelta(hours=24)
-    return (
+
+    campaigns = (
         await db.execute(
             select(func.count())
             .select_from(NewsletterCampaignSend)
             .where(NewsletterCampaignSend.sent_at >= since)
         )
     ).scalar_one()
+
+    new_picks = (
+        await db.execute(
+            select(func.count()).select_from(NewPickSend).where(NewPickSend.sent_at >= since)
+        )
+    ).scalar_one()
+
+    return campaigns + new_picks
 
 
 async def headroom(db: AsyncSession) -> int:

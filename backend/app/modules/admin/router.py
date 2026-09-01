@@ -38,6 +38,7 @@ from app.models import (
     Review,
 )
 from app.modules.admin import newsletter_send, service
+from app.modules.alerts.service import dispatch_new_pick
 from app.modules.products.repository import ProductRepository
 from app.modules.products.service import sign_for, to_admin_detail, to_summary
 from app.schemas.common import MAX_PAGE, AdminSortOption, Page, PageParams
@@ -205,6 +206,13 @@ async def publish_product(
     product = await _load(db, product_id)
     await service.publish(db, product, admin.id, client_ip(request))
     full = await _load(db, product_id)
+
+    # After the publish, never before it, and it cannot fail this request —
+    # `dispatch_new_pick` swallows its own errors. Publishing succeeded; a mail
+    # problem must not report it as failed, or an editor's correct response is
+    # to press Publish again.
+    await dispatch_new_pick(db, full)
+
     return to_admin_detail(full, await sign_for([full]))
 
 

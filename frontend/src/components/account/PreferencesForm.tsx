@@ -245,7 +245,11 @@ export function PreferencesForm({
               setSaved(false);
             }}
             label="We publish a new pick in my categories"
-            hint="One email, only when there's a new verdict worth reading."
+            /* Says what happens when no categories are chosen, because that is
+               the state most people who turn this on are actually in — and
+               reading it the other way would make the toggle silently do
+               nothing for them. */
+            hint="One email when a verdict is published. Pick categories above to narrow it; leave them empty and you hear about all of them."
           />
         </div>
       </Block>

@@ -46,13 +46,14 @@ from datetime import datetime, timezone
 from decimal import Decimal
 
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.mail import MailMessage, get_transport_for
 from app.emails import render
-from app.models import Product, Profile, SavedProduct, UserPreferences
+from app.models import NewPickSend, Product, Profile, SavedProduct, UserPreferences
 
 logger = logging.getLogger(__name__)
 
@@ -219,4 +220,118 @@ async def _send(
     except Exception:
         # One bad address must not stop the rest of the batch.
         logger.warning("price drop alert to %s failed", profile.id, exc_info=True)
+        return False
+
+
+# ====================================================================== #
+# New picks                                                              #
+# ====================================================================== #
+
+#: The most people one publish will mail before it stops.
+#:
+#: Publishing is a foreground admin action, and a request that sends four
+#: hundred emails is a request that times out somewhere unhelpful. It also
+#: shares the provider's daily ceiling with confirmations, price alerts and the
+#: newsletter — so this yields rather than draining it. Beyond the cap the
+#: remainder is simply not sent: those readers get the product in the next
+#: digest, which is what the newsletter is for.
+NEW_PICK_BATCH = 40
+
+
+async def dispatch_new_pick(db: AsyncSession, product: Product) -> int:
+    """Tell people who asked about this category. Returns emails sent.
+
+    Called by the publish endpoint after the status change has been made — a
+    person pressed Publish, which is the only thing that causes this. There is
+    no schedule here either.
+    """
+    transport = await get_transport_for(db)
+    if not transport.delivers:
+        return 0
+
+    try:
+        already = select(NewPickSend.user_id).where(NewPickSend.product_id == product.id)
+
+        rows = (
+            await db.execute(
+                select(Profile, UserPreferences)
+                .join(UserPreferences, UserPreferences.user_id == Profile.id)
+                .where(
+                    UserPreferences.notify_new_picks.is_(True),
+                    Profile.id.not_in(already),
+                )
+                .limit(NEW_PICK_BATCH)
+            )
+        ).all()
+    except Exception:
+        logger.exception("new-pick alert query failed")
+        return 0
+
+    category_id = str(product.category_id)
+    sent = 0
+    now = datetime.now(timezone.utc)
+
+    for profile, prefs in rows:
+        # An empty category list means they narrowed nothing, so everything
+        # qualifies. The alternative reading — "no categories, so no email" —
+        # makes the toggle silently do nothing for anyone who turned it on
+        # without also curating a list, which is most people who turn it on.
+        chosen = prefs.category_ids or []
+        if chosen and category_id not in chosen:
+            continue
+
+        if not await _send_new_pick(transport, profile, product):
+            continue
+
+        await db.execute(
+            pg_insert(NewPickSend)
+            .values(product_id=product.id, user_id=profile.id)
+            .on_conflict_do_nothing(index_elements=["product_id", "user_id"])
+        )
+        sent += 1
+
+    return sent
+
+
+async def _send_new_pick(transport, profile: Profile, product: Product) -> bool:
+    url = f"{settings.SITE_URL}/p/{product.category.slug}/{product.slug}"
+    prefs_url = f"{settings.SITE_URL}/account/preferences"
+    score = product.score.overall if product.score else None
+
+    try:
+        html = render(
+            "new_pick",
+            ProductName=product.title,
+            Tagline=product.tagline or "",
+            # A product can be published without a score. Saying so beats
+            # printing "None" into somebody's inbox.
+            Score=(f"{float(score):.1f}" if score is not None else "Not yet scored"),
+            Category=product.category.name,
+            ProductURL=url,
+            PreferencesURL=prefs_url,
+        )
+    except Exception:
+        logger.exception("new pick template failed to render")
+        return False
+
+    text = (
+        f"{product.title} — a new SortedChoice verdict\n\n"
+        f"{product.tagline or ''}\n\n"
+        + (f"Our score: {float(score):.1f} out of 10\n\n" if score is not None else "")
+        + f"{url}\n\nTurn these off: {prefs_url}\n"
+    )
+
+    try:
+        await transport.send(
+            MailMessage(
+                to=profile.email,
+                subject=f"New verdict: {product.title}",
+                html=html,
+                text=text,
+                headers={"List-Unsubscribe": f"<{prefs_url}>"},
+            )
+        )
+        return True
+    except Exception:
+        logger.warning("new pick alert to %s failed", profile.id, exc_info=True)
         return False

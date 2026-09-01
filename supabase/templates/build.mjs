@@ -857,6 +857,31 @@ const templates = [
       },
     },
   },
+  {
+    // Sent by backend/app/modules/alerts/service.py when an editor publishes a
+    // product — because they pressed Publish, not because a clock struck.
+    key: "new_pick",
+    kind: "transactional",
+    out: "../../backend/app/emails/new_pick.html",
+    subject: "A new SortedChoice verdict",
+    vars: ["ProductName", "Tagline", "Score", "Category", "ProductURL", "PreferencesURL"],
+    content: {
+      title: "A new verdict: {{ .ProductName }}",
+      preheader: "{{ .Tagline }}",
+      eyebrow: "New verdict · {{ .Category }}",
+      heading: "{{ .ProductName }}",
+      lede: `{{ .Tagline }}<br /><br />
+                        <span style="color:${c.brand}; font-weight:600;">{{ .Score }}</span>
+                        <span style="color:${c.inkSub};">&nbsp;&middot;&nbsp;our score, out of 10</span>`,
+      cta: { label: "Read the verdict", url: "{{ .ProductURL }}" },
+      notice: {
+        text: `You asked to hear when we publish in {{ .Category }}. We research first and
+                              attach a retailer link afterwards &mdash; never the other way round.
+                              <br /><br />
+                              <a href="{{ .PreferencesURL }}" style="color:${c.brand}; text-decoration:underline;">Turn these emails off</a>`,
+      },
+    },
+  },
 ];
 
 /* ── Verify ────────────────────────────────────────────────────────────── */

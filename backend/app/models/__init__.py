@@ -41,7 +41,12 @@ from app.models.newsletter import (
     NewsletterSubscriber,
 )
 from app.models.contact import ContactMessage
-from app.models.personalisation import ReviewHelpfulVote, SavedProduct, UserPreferences
+from app.models.personalisation import (
+    NewPickSend,
+    ReviewHelpfulVote,
+    SavedProduct,
+    UserPreferences,
+)
 from app.models.analytics import DimensionDaily, ProductDaily, RetailerDaily
 
 __all__ = [
@@ -70,6 +75,7 @@ __all__ = [
     "HomepageSection",
     "ActivityLog",
     "MailSettings",
+    "NewPickSend",
     "NewsletterCampaign",
     "NewsletterCampaignSend",
     "NewsletterSubscriber",

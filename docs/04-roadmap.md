@@ -97,8 +97,10 @@ Screens are built; this phase replaces the mock transport with the real one.
       still admin-only; the door migration 20260821000010 closed stays closed
 - [x] Price-drop alerts on saved products — baseline is the price at save, sent
       after an admin applies a run. Still no timer, no cron, no poller
-- [ ] "New pick in my categories" email — the toggle exists and persists; there
-      is no sender behind it yet
+- [x] "New pick in my categories" email — sent when an editor presses Publish,
+      once per person per product however often it is republished
+- [x] Mail delivery switchable from /admin/settings — provider and key, without
+      a deploy; the key is encrypted and never returned
 - [x] Newsletter campaign composer + batched send — editor-composed, never
       scheduled; resumable and idempotent against Brevo's shared 300/day ceiling
 - [ ] Guides in the CMS — src/content/guides/*.tsx still needs a deploy
