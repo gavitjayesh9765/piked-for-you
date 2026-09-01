@@ -140,12 +140,12 @@ export function Hero() {
         >
           {/* Deliberately NOT `priority`. A priority image emits a preload link
               in <head>, which a phone would honour for an image its layout has
-              already thrown away — a full-width hero JPEG downloaded to render
+              already thrown away — a full-width hero PNG downloaded to render
               nothing. Left lazy, the hidden column never fetches it, and on a
               desktop it sits at the top of the viewport so the browser starts
               it at parse time anyway. */}
           <Image
-            src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=1600&q=80"
+            src="/brand/hero-section.png"
             alt=""
             fill
             sizes="50vw"
