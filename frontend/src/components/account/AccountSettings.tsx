@@ -128,23 +128,27 @@ function ThemeSetting() {
 /* ------------------------------------------------------------------ */
 
 /**
- * ⚠ This toggle is no longer decorative.
+ * ⚠ THIS IS THE ONLY OFF SWITCH. There is no banner behind it.
  *
  * It used to write a key nothing read: the site's own counters are anonymous
- * and cookieless, so there was never anything for a reader to consent to. That
- * changed when Google Analytics was added — this switch is now the ONLY thing
- * standing between a reader and a `_ga` cookie, and it is what makes the
- * promise on /cookies ("set only if you agree") literally true.
+ * and cookieless, so there was never anything to opt out of. Google Analytics
+ * changed that, and it runs ON by default under legitimate interest — which
+ * means this control is not a nicety, it is the entire mechanism by which a
+ * reader can decline. /privacy and /cookies both point here by name.
  *
- * Which is why it goes through `setAnalyticsConsent` rather than touching
- * localStorage directly. That helper writes the answer AND pushes it into
- * Consent Mode in the same call, so consent withdrawn here stops applying on
- * this page immediately rather than at the next reload. Writing the key by
- * hand would leave the reader looking at an "off" switch on a page still being
- * measured. See lib/analytics.ts.
+ * So it defaults to ON, because that is the truth about what is happening, and
+ * a switch that reads "off" while the page is being measured is worse than no
+ * switch at all.
+ *
+ * It goes through `setAnalyticsConsent` rather than touching localStorage
+ * directly: that helper writes the choice and announces it, and GaRouteViews
+ * pushes it into Consent Mode, so turning this off stops the measurement on
+ * THIS page rather than at the next reload. See lib/analytics.ts.
  */
 function AnalyticsSetting() {
-  const [on, setOn] = useState(false);
+  // Starts true to match the default. Before mount nothing reads it (see
+  // `mounted` below), so this never renders a state the server disagreed with.
+  const [on, setOn] = useState(true);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -164,10 +168,11 @@ function AnalyticsSetting() {
         <div className="max-w-prose">
           <p className="text-body-md text-ink">Aggregate analytics</p>
           <p className="mt-2 text-body-sm text-ink-muted">
-            Lets us see which pages are read and which are not, using Google Analytics. With this
-            off it stays cookieless and cannot recognise you between visits; on, it sets a cookie
-            so returning readers are counted as returning. Never used to build a profile of you,
-            never shared with advertisers, and the site works identically either way.{" "}
+            On by default. Lets us see which pages are read and which are not, using Google
+            Analytics, which sets a cookie so returning readers are counted as returning. Turn it
+            off and it goes cookieless immediately — nothing stored, nothing that can recognise
+            you between visits. Never used to build a profile of you, never shared with
+            advertisers, and the site works identically either way.{" "}
             <Link
               href="/cookies"
               className="text-brand underline decoration-brand-line underline-offset-4
@@ -182,17 +187,17 @@ function AnalyticsSetting() {
         <button
           type="button"
           role="switch"
-          aria-checked={mounted ? on : false}
+          aria-checked={mounted ? on : true}
           aria-label="Aggregate analytics"
           onClick={toggle}
           className={`relative h-7 w-12 shrink-0 rounded-full border transition-colors duration-fast ${
-            mounted && on ? "border-brand-line bg-brand-fill" : "border-line bg-surface-2"
+            !mounted || on ? "border-brand-line bg-brand-fill" : "border-line bg-surface-2"
           }`}
         >
           <span
             className={`absolute top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-surface-0
                         shadow-e1 transition-transform duration-fast ease-ease ${
-                          mounted && on ? "translate-x-[1.4rem]" : "translate-x-[0.15rem]"
+                          !mounted || on ? "translate-x-[1.4rem]" : "translate-x-[0.15rem]"
                         }`}
           />
         </button>

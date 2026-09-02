@@ -97,9 +97,41 @@ export function readAnalyticsChoice(): AnalyticsChoice {
   }
 }
 
-/** The reader's stored answer. Absent, unreadable, or anything but "1" is a no. */
+/**
+ * Whether analytics may store anything for this reader.
+ *
+ * ⚠ OPT-OUT. Only an explicit "denied" is a no; `null` — never answered — is a
+ * YES. This is the line that decides the site's whole analytics posture, so it
+ * is worth being blunt about what it means and what it costs.
+ *
+ * It used to be opt-in, and opt-in did not work. GA4 does not report
+ * consent-denied traffic — cookieless pings never reach Realtime or the
+ * standard reports, they only feed behavioural modelling, and modelling
+ * switches on at volume thresholds a property collecting nothing else never
+ * reaches. With the default at "denied" and almost nobody opening a settings
+ * screen to turn measurement ON, the tag was installed, correct, firing on
+ * every page, and the dashboard read zero.
+ *
+ * The basis therefore changed from consent to legitimate interest, and that is
+ * a legal claim, not a config flag. It holds only while ALL of these stay true,
+ * and /privacy and /cookies now say so in public:
+ *
+ *   - The audience is India (see lib/legal.ts). The EU/UK rule — prior consent
+ *     for ANY non-essential cookie — is stricter than this and would not
+ *     survive here. If this site is ever aimed at European readers, this
+ *     function goes back to `=== "granted"` and the notice goes back to being
+ *     a question.
+ *   - Advertising signals stay denied and are never granted from anywhere.
+ *   - Turning it off is one click, permanent, and reachable forever from
+ *     /account/settings. There is deliberately no banner — the off switch is a
+ *     standing one on a page that is always there, rather than a one-time
+ *     offer in a bar that disappears after the first visit.
+ *
+ * Anything that erodes one of those makes the pages that describe this untrue,
+ * which is a bigger problem than the measurement is worth.
+ */
 export function readAnalyticsConsent(): boolean {
-  return readAnalyticsChoice() === "granted";
+  return readAnalyticsChoice() !== "denied";
 }
 
 /**

@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/privacy" },
 };
 
-const UPDATED = "2026-08-28";
+const UPDATED = "2026-09-02";
 
 export default function PrivacyPage() {
   return (
@@ -112,13 +112,18 @@ export default function PrivacyPage() {
                   items, your reviews. Without this data those features cannot exist.
                 </li>
                 <li>
-                  <strong>Because you consented</strong> — newsletter email and any non-essential
-                  analytics. Withdrawable at any time, and withdrawing is as easy as giving it.
+                  <strong>Because you consented</strong> — the newsletter. Withdrawable at any
+                  time, and withdrawing is as easy as giving it.
                 </li>
                 <li>
                   <strong>Because we have a legitimate interest</strong> — keeping the site up,
                   preventing fraud and review manipulation, and understanding in aggregate which
-                  pages are useful.
+                  pages are useful. Our own readership counters and Google Analytics both sit
+                  here: they measure which pages are read, not who read them, and we do not use
+                  either to build a profile of you or share either with advertisers. Google
+                  Analytics is on by default and you can switch it off at any time in{" "}
+                  <DocLink href="/account/settings">your settings</DocLink>; our own counters
+                  store no identifier of any kind, so there is nothing in them to switch off.
                 </li>
                 <li>
                   <strong>Because the law requires it</strong> — records we are obliged to keep.
@@ -228,8 +233,11 @@ export default function PrivacyPage() {
                 exercised a right.
               </p>
               <p>
-                Where you gave consent — the newsletter, non-essential analytics — you can withdraw
-                it at any time, and withdrawing is as easy as giving it was. If we handle a request
+                Where you gave consent — the newsletter — you can withdraw it at any time, and
+                withdrawing is as easy as giving it was. Where we rely on legitimate interest, you
+                can object: for analytics that objection is the switch in{" "}
+                <DocLink href="/account/settings">your settings</DocLink>, which takes effect
+                immediately and needs no request to us. If we handle a request
                 badly, take it to our {GRIEVANCE_OFFICER.role} through{" "}
                 <DocLink href="/grievance">grievance redressal</DocLink>; if that does not resolve
                 it, you can complain to the Data Protection Board of India, or to your own

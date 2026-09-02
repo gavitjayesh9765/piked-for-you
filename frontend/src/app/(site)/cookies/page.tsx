@@ -51,7 +51,8 @@ export default function CookiePolicyPage() {
               <h3>Analytics</h3>
               <p>
                 We measure readership two ways, and only one of them can set anything in your
-                browser.
+                browser. Neither is used to identify you, and you can switch the one that sets
+                cookies off in one click.
               </p>
               <ul>
                 <li>
@@ -60,12 +61,14 @@ export default function CookiePolicyPage() {
                   nothing that could be joined back to you and nothing to consent to.
                 </li>
                 <li>
-                  <strong>Google Analytics</strong> — runs on every page, but by default we tell it
-                  it may not store anything. In that state it sets <strong>no cookies</strong> and
-                  cannot recognise you between pages or between visits; Google receives an
-                  anonymous ping and estimates the totals. Only if you agree — and we ask, once —
-                  does it set its <code>_ga</code> cookies, which last up to two years and let it
-                  tell a returning reader from a new one.
+                  <strong>Google Analytics</strong> — runs on every page and is{" "}
+                  <strong>on by default</strong>. It sets <code>_ga</code> cookies, which last up
+                  to two years and let it tell a returning reader from a new one. We rely on
+                  legitimate interest for this rather than asking you first, because it measures
+                  readership and nothing else — and you can switch it off at any time in{" "}
+                  <DocLink href="/account/settings">your settings</DocLink>. Off, it goes
+                  cookieless immediately: nothing stored, and nothing that can recognise you
+                  between pages or between visits.
                 </li>
               </ul>
               <p>
@@ -109,12 +112,12 @@ export default function CookiePolicyPage() {
             <>
               <ul>
                 <li>
-                  <strong>Analytics</strong> — off unless you turn it on. We ask once, in a bar at
-                  the bottom of the page, and both answers are one click. Whatever you pick is
-                  remembered, so declining is not a question you get asked again. You can change
-                  your mind whenever you like from{" "}
-                  <DocLink href="/account/settings">your settings</DocLink>, and it takes effect
-                  immediately, in every tab, without a reload.
+                  <strong>Analytics</strong> — one switch in{" "}
+                  <DocLink href="/account/settings">your settings</DocLink>, on by default, off
+                  whenever you want it off. It takes effect immediately, in every tab, without a
+                  reload, and the choice is remembered. We do not put a cookie banner in front of
+                  you to ask: a switch that is always in the same place is a better control than a
+                  bar that appears once and then never again.
                 </li>
                 <li>
                   <strong>Everything else</strong> — your browser can block or clear cookies for
@@ -124,7 +127,8 @@ export default function CookiePolicyPage() {
               </ul>
               <p>
                 Refusing analytics costs you nothing here. There is no paywall, no degraded
-                experience, and no repeated nagging.
+                experience, and no repeated nagging. If you would rather we did not measure you at
+                all, the switch is the whole of it — there is nothing else to find.
               </p>
             </>
           ),

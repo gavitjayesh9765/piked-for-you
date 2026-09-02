@@ -3,7 +3,6 @@ import { Suspense } from "react";
 
 import { GA_ENABLED, GA_MEASUREMENT_ID, ANALYTICS_CONSENT_KEY } from "@/lib/analytics";
 import { GaRouteViews } from "@/components/analytics/GaRouteViews";
-import { ConsentBanner } from "@/components/analytics/ConsentBanner";
 
 /**
  * Google Analytics 4, mounted once on the public site shell.
@@ -25,18 +24,26 @@ import { ConsentBanner } from "@/components/analytics/ConsentBanner";
  * second opinion.
  *
  * ---------------------------------------------------------------------------
- * CONSENT: DENIED BY DEFAULT, AND WHAT THAT ACTUALLY MEANS
+ * CONSENT: GRANTED BY DEFAULT, WITH A STANDING OFF SWITCH AND NO BANNER
  *
- * `/cookies` promises analytics cookies are "set only if you agree", and
- * `/account/settings` has offered a toggle for that since before GA existed.
- * That toggle defaults OFF and there is no consent banner on this site.
+ * This was the other way round first, and it did not work. With
+ * `analytics_storage: denied` as the default, GA4 reports nothing at all — see
+ * the ⚠ in `readAnalyticsConsent`. The tag ran on every page for weeks' worth
+ * of traffic and the dashboard read zero, because a denied ping is not a
+ * reported ping.
  *
- * So the tag boots with Consent Mode v2 and `analytics_storage: denied`. In
- * that state gtag sets NO cookies — no `_ga`, no `_ga_*`, no client id — and
- * sends cookieless pings that GA turns into modelled traffic estimates. The
- * reader is counted; the reader is not identified, and nothing persists in
- * their browser. Flipping the settings toggle sends a `consent: update` and
- * from that point GA behaves normally, cookie and all.
+ * So the tag now boots GRANTED unless the reader has explicitly turned it off
+ * at /account/settings, and the basis for that is legitimate interest rather
+ * than consent. /privacy and /cookies say exactly that, in public, and they
+ * have to keep saying it — this is a claim about a legal basis, not a default
+ * someone can flip back for convenience. `readAnalyticsConsent` carries the
+ * conditions it depends on; read them before changing anything here.
+ *
+ * There is deliberately NO banner. A one-time bar that disappears is a worse
+ * control than a switch that is always in the same place, and interrupting
+ * every reader to announce a page counter is not a trade this site wants to
+ * make. The disclosure lives on /cookies and /privacy, which is also what
+ * Google's own terms require of anyone running this tag.
  *
  * The three advertising signals are denied at boot and never granted. There is
  * no code path anywhere in this repo that grants them.
@@ -66,13 +73,20 @@ import { ConsentBanner } from "@/components/analytics/ConsentBanner";
  * `script-src` is only there for browsers too old to implement strict-dynamic.
  *
  * ---------------------------------------------------------------------------
- * WHY CONSENT IS READ SYNCHRONOUSLY, IN THE INLINE SCRIPT
+ * WHY THE OPT-OUT IS READ SYNCHRONOUSLY, IN THE INLINE SCRIPT
  *
- * A returning reader who has already opted in must boot straight into
- * `granted`. Reading their answer from a React effect instead would leave
- * every first page view of every visit measured as denied and then upgraded a
- * moment later, which loses the session's first hit for the readers who
- * actually said yes. `localStorage` is synchronous, so this costs nothing.
+ * A reader who has turned analytics OFF must boot straight into `denied`.
+ * Reading their choice from a React effect instead would leave the first page
+ * view of every one of their visits measured as granted — cookie set, hit
+ * recorded — and only then corrected, which means the off switch would not
+ * actually be off for the page they are looking at. `localStorage` is
+ * synchronous, so honouring it costs nothing.
+ *
+ * ⚠ Note the polarity: only the exact string "0" opts out. Unreadable storage,
+ * a cleared profile or a corrupted value all resolve to GRANTED, which is the
+ * right default for a counter but the wrong one for a stated preference — so
+ * the value is written by exactly one place (`setAnalyticsConsent`) and read by
+ * exactly two (this script, and `readAnalyticsChoice`).
  */
 export async function GoogleAnalytics() {
   if (!GA_ENABLED) return null;
@@ -96,14 +110,6 @@ export async function GoogleAnalytics() {
       <Suspense fallback={null}>
         <GaRouteViews />
       </Suspense>
-      {/*
-        Rendered HERE, inside the GA component, and not in the site layout —
-        so the question is asked only when there is something to ask about.
-        Set NEXT_PUBLIC_GA_ID="" and the tag, the cookies and the bar all
-        disappear together, rather than leaving a banner asking permission for
-        a thing that is no longer loaded.
-      */}
-      <ConsentBanner />
     </>
   );
 }
@@ -133,14 +139,14 @@ function bootstrap(): string {
   function gtag(){ window.dataLayer.push(arguments); }
   window.gtag = gtag;
 
-  var granted = false;
-  try { granted = window.localStorage.getItem(${key}) === "1"; } catch (e) {}
+  var denied = false;
+  try { denied = window.localStorage.getItem(${key}) === "0"; } catch (e) {}
 
   gtag("consent", "default", {
     ad_storage: "denied",
     ad_user_data: "denied",
     ad_personalization: "denied",
-    analytics_storage: granted ? "granted" : "denied"
+    analytics_storage: denied ? "denied" : "granted"
   });
 
   gtag("js", new Date());
