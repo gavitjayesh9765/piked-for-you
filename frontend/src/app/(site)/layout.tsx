@@ -6,6 +6,7 @@ import { SessionExpiry } from "@/components/auth/SessionExpiry";
 import { SiteHeader } from "@/components/layout/SiteHeader";
 import { SiteFooter } from "@/components/layout/SiteFooter";
 import { PageView } from "@/components/analytics/PageView";
+import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
 import { CompareProvider } from "@/components/compare/CompareProvider";
 import { CompareShelf } from "@/components/compare/CompareShelf";
 import { SavedProvider, SavedHydrator } from "@/components/product/SavedProvider";
@@ -88,6 +89,18 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
           components/analytics/PageView.tsx for why that means it watches
           the pathname instead of firing on mount. */}
       <PageView />
+      {/* GA4, and note it is mounted BESIDE <PageView/> rather than instead of
+          it. They are two independent measurement paths that never talk to
+          each other: <PageView/> is the anonymous first-party counter the
+          admin Analytics screen reads, this is Google's. See the header of
+          components/analytics/GoogleAnalytics.tsx for why the numbers will
+          not match and why that is expected.
+
+          Mounted on the SITE layout, not the root one, so it covers the public
+          site and nothing else. /admin is staff traffic and would otherwise
+          inflate the site's own numbers with the people who read them; the
+          styleguide is not a page anybody visits. */}
+      <GoogleAnalytics />
      </SavedProvider>
     </CompareProvider>
   );

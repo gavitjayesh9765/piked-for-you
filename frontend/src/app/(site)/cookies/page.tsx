@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/cookies" },
 };
 
-const UPDATED = "2026-08-20";
+const UPDATED = "2026-09-02";
 
 export default function CookiePolicyPage() {
   return (
@@ -50,8 +50,29 @@ export default function CookiePolicyPage() {
 
               <h3>Analytics</h3>
               <p>
-                Aggregate measurement of which pages are read and which are not. Set only if you
-                agree, never used to build a profile of you, and never shared with advertisers.
+                We measure readership two ways, and only one of them can set anything in your
+                browser.
+              </p>
+              <ul>
+                <li>
+                  <strong>Our own counters</strong> — no cookie, no identifier, nothing stored in
+                  your browser at all. We count that a page was read, not who read it, so there is
+                  nothing that could be joined back to you and nothing to consent to.
+                </li>
+                <li>
+                  <strong>Google Analytics</strong> — runs on every page, but by default we tell it
+                  it may not store anything. In that state it sets <strong>no cookies</strong> and
+                  cannot recognise you between pages or between visits; Google receives an
+                  anonymous ping and estimates the totals. Only if you agree does it set its{" "}
+                  <code>_ga</code> cookies, which last up to two years and let it tell a returning
+                  reader from a new one.
+                </li>
+              </ul>
+              <p>
+                Either way we ask Google for measurement only. Advertising features, ad
+                personalisation and Google Signals are switched off in our configuration and are
+                never switched on by your agreeing — so nothing here reaches an advertiser, and no
+                profile is built about you.
               </p>
 
               <h3>What we do not set</h3>
@@ -88,9 +109,11 @@ export default function CookiePolicyPage() {
             <>
               <ul>
                 <li>
-                  <strong>Analytics</strong> — decline when asked, or change your mind later from{" "}
-                  <DocLink href="/account/settings">your settings</DocLink>. The site works
-                  identically either way.
+                  <strong>Analytics</strong> — off unless you turn it on. The switch is in{" "}
+                  <DocLink href="/account/settings">your settings</DocLink> and takes effect
+                  immediately, in every tab, without a reload. Turn it off again whenever you like.
+                  The site works identically either way, which is why we do not interrupt you with
+                  a banner to ask.
                 </li>
                 <li>
                   <strong>Everything else</strong> — your browser can block or clear cookies for

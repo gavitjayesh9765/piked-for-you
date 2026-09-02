@@ -4,6 +4,7 @@ import type { ComponentProps } from "react";
 
 import { RetailButton } from "@/components/ui/Button";
 import { trackOutbound } from "@/lib/track";
+import { gaEvent } from "@/lib/analytics";
 
 /**
  * <RetailButton> with an outbound click counted.
@@ -60,7 +61,33 @@ export function TrackedRetailButton({
   return (
     <span
       style={{ display: "contents" }}
-      onClick={() => trackOutbound(productId, linkId)}
+      onClick={() => {
+        /**
+         * TWO CALLS, TWO SYSTEMS, ON PURPOSE.
+         *
+         * `trackOutbound` is the first-party beacon — anonymous, posted to our
+         * own API, and the source the admin Analytics screen reads. `gaEvent`
+         * is Google's. They are deliberately NOT chained: `lib/track.ts` says
+         * in its header exactly what its payload may contain and that one
+         * extra field ends the property that lets this site count traffic
+         * without a banner, so nothing about GA belongs inside it.
+         *
+         * Both are fire-and-forget and neither may delay the navigation. See
+         * the note below on what this handler must never do — it applies to
+         * both calls equally.
+         */
+        trackOutbound(productId, linkId);
+        gaEvent("outbound_click", {
+          product_id: productId,
+          // The `product_retailers` row, when the button has one behind it.
+          // Absent is normal, not an error — see the prop's own comment.
+          link_id: linkId,
+          // GA's own recommended parameter name for a link leaving the site.
+          // Populated from the anchor rather than assumed, so a button whose
+          // href changes shape does not quietly start reporting the wrong host.
+          link_url: props.href,
+        });
+      }}
     >
       <RetailButton {...props} />
     </span>

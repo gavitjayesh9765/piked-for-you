@@ -3,9 +3,9 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { PasswordForm } from "@/components/account/PasswordForm";
+import { readAnalyticsConsent, setAnalyticsConsent } from "@/lib/analytics";
 
 const THEME_KEY = "pickd-theme";
-const ANALYTICS_KEY = "pickd-analytics-consent";
 
 type Theme = "light" | "dark" | "system";
 
@@ -127,19 +127,35 @@ function ThemeSetting() {
 
 /* ------------------------------------------------------------------ */
 
+/**
+ * ⚠ This toggle is no longer decorative.
+ *
+ * It used to write a key nothing read: the site's own counters are anonymous
+ * and cookieless, so there was never anything for a reader to consent to. That
+ * changed when Google Analytics was added — this switch is now the ONLY thing
+ * standing between a reader and a `_ga` cookie, and it is what makes the
+ * promise on /cookies ("set only if you agree") literally true.
+ *
+ * Which is why it goes through `setAnalyticsConsent` rather than touching
+ * localStorage directly. That helper writes the answer AND pushes it into
+ * Consent Mode in the same call, so consent withdrawn here stops applying on
+ * this page immediately rather than at the next reload. Writing the key by
+ * hand would leave the reader looking at an "off" switch on a page still being
+ * measured. See lib/analytics.ts.
+ */
 function AnalyticsSetting() {
   const [on, setOn] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    setOn(localStorage.getItem(ANALYTICS_KEY) === "1");
+    setOn(readAnalyticsConsent());
   }, []);
 
   function toggle() {
     const next = !on;
     setOn(next);
-    localStorage.setItem(ANALYTICS_KEY, next ? "1" : "0");
+    setAnalyticsConsent(next);
   }
 
   return (
@@ -148,8 +164,10 @@ function AnalyticsSetting() {
         <div className="max-w-prose">
           <p className="text-body-md text-ink">Aggregate analytics</p>
           <p className="mt-2 text-body-sm text-ink-muted">
-            Lets us see which pages are read and which are not. Never used to build a profile of
-            you, never shared with advertisers, and the site works identically either way.{" "}
+            Lets us see which pages are read and which are not, using Google Analytics. With this
+            off it stays cookieless and cannot recognise you between visits; on, it sets a cookie
+            so returning readers are counted as returning. Never used to build a profile of you,
+            never shared with advertisers, and the site works identically either way.{" "}
             <Link
               href="/cookies"
               className="text-brand underline decoration-brand-line underline-offset-4

@@ -1,3 +1,38 @@
+import { GA_ENABLED } from "@/lib/analytics";
+
+/**
+ * Google Analytics hosts, admitted ONLY when the tag is actually configured.
+ *
+ * `GA_ENABLED` is false when `NEXT_PUBLIC_GA_ID` is set to an empty string,
+ * and in that case none of these appear in the policy at all — turning GA off
+ * closes the holes it needed rather than leaving them open for nothing.
+ *
+ * ⚠ The `script-src` entry is dead weight in every modern browser and is here
+ * on purpose. `'strict-dynamic'` makes a browser that understands it IGNORE
+ * every host in `script-src`, and gtag.js is loaded by our nonce-carrying
+ * bootstrap, so trust reaches it that way. This host is the fallback for
+ * browsers old enough to skip strict-dynamic and fall back to the allowlist.
+ * Removing it does not break anything you are likely to test on, which is
+ * precisely why it needs a comment rather than a silent deletion.
+ *
+ * `connect-src` is NOT optional in the same way. gtag.js beacons to
+ * `*.google-analytics.com` (and region-sharded `*.analytics.google.com`) by
+ * fetch/sendBeacon, and those are blocked by `default-src 'self'` otherwise —
+ * the tag would load, appear installed, and report nothing.
+ *
+ * No doubleclick.net anywhere, deliberately: the advertising consent signals
+ * are denied at boot and never granted, so nothing here should ever be talking
+ * to an ad host. If one shows up blocked in the console, that is the policy
+ * doing its job and the question is what turned it on.
+ */
+const GA_SCRIPT_HOSTS = ["https://www.googletagmanager.com"];
+const GA_CONNECT_HOSTS = [
+  "https://www.googletagmanager.com",
+  "https://www.google-analytics.com",
+  "https://*.google-analytics.com",
+  "https://*.analytics.google.com",
+];
+
 /**
  * Security response headers.
  *
@@ -22,6 +57,7 @@ export function buildCsp(nonce: string, isDev: boolean): string {
       "'self'",
       `'nonce-${nonce}'`,
       "'strict-dynamic'",
+      ...(GA_ENABLED ? GA_SCRIPT_HOSTS : []),
       ...(isDev ? ["'unsafe-eval'"] : []),
     ],
 
@@ -40,6 +76,7 @@ export function buildCsp(nonce: string, isDev: boolean): string {
       process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
       (process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").replace(/^https?:/, "wss:"),
       process.env.NEXT_PUBLIC_API_URL ?? "",
+      ...(GA_ENABLED ? GA_CONNECT_HOSTS : []),
       ...(isDev ? ["ws://localhost:*", "http://localhost:*"] : []),
     ].filter(Boolean),
 
