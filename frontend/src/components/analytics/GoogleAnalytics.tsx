@@ -3,6 +3,7 @@ import { Suspense } from "react";
 
 import { GA_ENABLED, GA_MEASUREMENT_ID, ANALYTICS_CONSENT_KEY } from "@/lib/analytics";
 import { GaRouteViews } from "@/components/analytics/GaRouteViews";
+import { ConsentBanner } from "@/components/analytics/ConsentBanner";
 
 /**
  * Google Analytics 4, mounted once on the public site shell.
@@ -95,6 +96,14 @@ export async function GoogleAnalytics() {
       <Suspense fallback={null}>
         <GaRouteViews />
       </Suspense>
+      {/*
+        Rendered HERE, inside the GA component, and not in the site layout —
+        so the question is asked only when there is something to ask about.
+        Set NEXT_PUBLIC_GA_ID="" and the tag, the cookies and the bar all
+        disappear together, rather than leaving a banner asking permission for
+        a thing that is no longer loaded.
+      */}
+      <ConsentBanner />
     </>
   );
 }

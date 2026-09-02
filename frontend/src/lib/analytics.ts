@@ -69,32 +69,64 @@ declare global {
   }
 }
 
-/** The reader's stored answer. Absent, unreadable, or anything but "1" is a no. */
-export function readAnalyticsConsent(): boolean {
-  if (typeof window === "undefined") return false;
+/**
+ * The reader's stored answer, in THREE states rather than two.
+ *
+ * `null` — never asked. This is the state the banner exists to resolve, and it
+ * is why `readAnalyticsConsent()` below cannot be the only reader: it folds
+ * "declined" and "never asked" into the same `false`, so a banner built on it
+ * would reappear on every page for everyone who had already said no. That is
+ * the single most complained-about behaviour a consent banner can have.
+ *
+ * Unreadable storage also answers `null`, not `"denied"`. A reader in a private
+ * window gets asked again next visit, which is the honest outcome — we genuinely
+ * do not know what they chose, and guessing "denied" would be a decision made
+ * on their behalf that we then never revisit.
+ */
+export type AnalyticsChoice = "granted" | "denied" | null;
+
+export function readAnalyticsChoice(): AnalyticsChoice {
+  if (typeof window === "undefined") return null;
   try {
-    return window.localStorage.getItem(ANALYTICS_CONSENT_KEY) === "1";
+    const raw = window.localStorage.getItem(ANALYTICS_CONSENT_KEY);
+    if (raw === "1") return "granted";
+    if (raw === "0") return "denied";
+    return null;
   } catch {
-    // Private mode, disabled storage, a quota error. Unknown is not consent.
-    return false;
+    return null;
   }
 }
 
+/** The reader's stored answer. Absent, unreadable, or anything but "1" is a no. */
+export function readAnalyticsConsent(): boolean {
+  return readAnalyticsChoice() === "granted";
+}
+
 /**
- * Record the reader's answer and tell gtag about it in the same breath.
+ * Record the reader's answer and announce it.
  *
- * These two must not drift. A settings toggle that writes storage but leaves
- * the live page measuring is a consent control that does not control anything
- * until the next reload, and the reader has no way to know that.
+ * ⚠ This does NOT call gtag itself, and that is deliberate rather than an
+ * omission. `GaRouteViews` listens for the event below and is the single place
+ * that talks to the tag — because granting consent has to do two things in a
+ * fixed order (update Consent Mode, then re-send the page view that was
+ * measured while denied), and only that component knows what the current page
+ * view was. Calling gtag here as well produced two identical `consent: update`
+ * pushes for every answer, which is harmless but is the kind of duplication
+ * that stops being harmless the moment someone adds a side effect to it.
+ *
+ * So: this module owns the ANSWER, that component owns the TAG. If GA is
+ * switched off entirely there is no listener, and this correctly does nothing
+ * beyond remembering what the reader said.
  */
 export function setAnalyticsConsent(granted: boolean): void {
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(ANALYTICS_CONSENT_KEY, granted ? "1" : "0");
   } catch {
-    /* Storage refused. The consent update below still applies to this page. */
+    /* Storage refused — a private window, or storage disabled. The consent
+       still applies to THIS page via the event below; it just will not be
+       remembered for the next one, and the reader will be asked again. */
   }
-  applyAnalyticsConsent(granted);
   window.dispatchEvent(new CustomEvent(ANALYTICS_CONSENT_EVENT));
 }
 

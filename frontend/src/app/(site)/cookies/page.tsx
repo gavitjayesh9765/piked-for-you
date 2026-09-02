@@ -63,9 +63,9 @@ export default function CookiePolicyPage() {
                   <strong>Google Analytics</strong> — runs on every page, but by default we tell it
                   it may not store anything. In that state it sets <strong>no cookies</strong> and
                   cannot recognise you between pages or between visits; Google receives an
-                  anonymous ping and estimates the totals. Only if you agree does it set its{" "}
-                  <code>_ga</code> cookies, which last up to two years and let it tell a returning
-                  reader from a new one.
+                  anonymous ping and estimates the totals. Only if you agree — and we ask, once —
+                  does it set its <code>_ga</code> cookies, which last up to two years and let it
+                  tell a returning reader from a new one.
                 </li>
               </ul>
               <p>
@@ -109,11 +109,12 @@ export default function CookiePolicyPage() {
             <>
               <ul>
                 <li>
-                  <strong>Analytics</strong> — off unless you turn it on. The switch is in{" "}
-                  <DocLink href="/account/settings">your settings</DocLink> and takes effect
-                  immediately, in every tab, without a reload. Turn it off again whenever you like.
-                  The site works identically either way, which is why we do not interrupt you with
-                  a banner to ask.
+                  <strong>Analytics</strong> — off unless you turn it on. We ask once, in a bar at
+                  the bottom of the page, and both answers are one click. Whatever you pick is
+                  remembered, so declining is not a question you get asked again. You can change
+                  your mind whenever you like from{" "}
+                  <DocLink href="/account/settings">your settings</DocLink>, and it takes effect
+                  immediately, in every tab, without a reload.
                 </li>
                 <li>
                   <strong>Everything else</strong> — your browser can block or clear cookies for

@@ -35,6 +35,8 @@ export function GaRouteViews() {
   const url = pathname + (search ? `?${search}` : "");
 
   const lastSent = useRef<string | null>(null);
+  /** Consent as of the last time we looked, so `sync` can spot the edge. */
+  const wasGranted = useRef<boolean>(false);
 
   useEffect(() => {
     if (!pathname) return;
@@ -73,8 +75,42 @@ export function GaRouteViews() {
    */
   useEffect(() => {
     function sync() {
-      applyAnalyticsConsent(readAnalyticsConsent());
+      const granted = readAnalyticsConsent();
+      // Nothing actually changed — a `storage` event for some other key, or a
+      // second dispatch. Returning here is what keeps one answer from
+      // producing two `consent: update` pushes.
+      if (granted === wasGranted.current) return;
+
+      applyAnalyticsConsent(granted);
+
+      /**
+       * ⚠ RE-SEND THE PAGE VIEW WHEN CONSENT TURNS ON. This is not a
+       * duplicate, and leaving it out loses real data.
+       *
+       * A reader who accepts on the banner has already had this page's
+       * page_view sent — cookielessly, while consent was still denied. GA4
+       * does not report those (see the header of ConsentBanner.tsx), so
+       * without this the landing page of every accepting visit is missing
+       * from GA and the session appears to begin at whatever they clicked
+       * next. That makes the entry-page report wrong in a way that looks
+       * like readers arrive on interior pages.
+       *
+       * Only on the denied → granted edge. `wasGranted` is what keeps this
+       * from firing on a "storage" event that changed something else, on a
+       * decline, or on a second grant.
+       */
+      if (granted) {
+        window.gtag?.("event", "page_view", {
+          page_location: window.location.href,
+          page_path: lastSent.current ?? window.location.pathname,
+        });
+      }
+      wasGranted.current = granted;
     }
+    // Seed from what the bootstrap script already read, so the edge test
+    // above compares against the truth rather than against `false`.
+    wasGranted.current = readAnalyticsConsent();
+
     window.addEventListener("storage", sync);
     window.addEventListener(ANALYTICS_CONSENT_EVENT, sync);
     return () => {
